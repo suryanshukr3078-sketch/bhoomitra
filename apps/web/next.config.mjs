@@ -26,6 +26,14 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://land-governance-platform-virid.vercel.app/api/:path*',
+      },
+    ];
+  },
   async headers() {
     return [
       {
