@@ -20,12 +20,18 @@ connection_options = (
 )
 
 
+# Serverless connection pooling:
+# Serverless environments (e.g. Vercel) require small connection pools (pool_size=1, max_overflow=1)
+# to prevent connection exhaustion when connecting to Supabase transaction pooler (port 6543).
+effective_pool_size = 1 if settings.is_serverless else settings.db_pool_size
+effective_max_overflow = 1 if settings.is_serverless else settings.db_max_overflow
+
 engine: AsyncEngine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
     pool_pre_ping=True,
-    pool_size=settings.db_pool_size,
-    max_overflow=settings.db_max_overflow,
+    pool_size=effective_pool_size,
+    max_overflow=effective_max_overflow,
     pool_timeout=settings.db_pool_timeout_seconds,
     pool_recycle=settings.db_pool_recycle_seconds,
     pool_use_lifo=True,

@@ -54,3 +54,6 @@ Thumbs.db
 
 # Docker
 postgres_data/
+
+# Vercel
+.vercel/

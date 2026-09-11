@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("cors_origins", "backend_cors_origins"),
     )
     trusted_hosts: str = Field(
-        default="localhost,127.0.0.1,*.koyeb.app",
+        default="localhost,127.0.0.1,*.koyeb.app,*.vercel.app",
         validation_alias=AliasChoices("trusted_hosts"),
     )
 
@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     max_upload_size_bytes: int = 50 * 1024 * 1024
 
-    db_pool_size: int = Field(default=5, ge=1)
-    db_max_overflow: int = Field(default=5, ge=0)
+    db_pool_size: int = Field(default=1, ge=1)
+    db_max_overflow: int = Field(default=1, ge=0)
     db_pool_timeout_seconds: int = Field(default=30, ge=1)
     db_pool_recycle_seconds: int = Field(default=1800, ge=30)
 
@@ -129,9 +129,18 @@ class Settings(BaseSettings):
     @property
     def trusted_host_list(self) -> list[str]:
         hosts = [host.strip() for host in self.trusted_hosts.split(",") if host.strip()]
-        if "*" not in hosts and "*.koyeb.app" not in hosts:
-            hosts.append("*.koyeb.app")
+        if "*" not in hosts:
+            if "*.koyeb.app" not in hosts:
+                hosts.append("*.koyeb.app")
+            if "*.vercel.app" not in hosts:
+                hosts.append("*.vercel.app")
         return hosts
+
+    @property
+    def is_serverless(self) -> bool:
+        import os
+
+        return bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
 
     @property
     def is_production(self) -> bool:

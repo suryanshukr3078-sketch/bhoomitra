@@ -36,20 +36,39 @@ logger = structlog.get_logger(__name__)
 async def lifespan(
     app: FastAPI,
 ) -> AsyncIterator[None]:
-    database_details = await check_database_connection()
-
-    logger.info(
-        "Application started",
-        application=settings.app_name,
-        environment=settings.app_env,
-        database=database_details["database_name"],
-        postgis=database_details["postgis_version"],
-    )
+    # In serverless environments (Vercel), bypass heavy startup database probes to ensure instant cold starts
+    if not settings.is_serverless:
+        try:
+            database_details = await check_database_connection()
+            logger.info(
+                "Application started",
+                application=settings.app_name,
+                environment=settings.app_env,
+                database=database_details.get("database_name"),
+                postgis=database_details.get("postgis_version"),
+            )
+        except Exception as error:
+            logger.warning(
+                "Non-blocking startup database check failed",
+                error=str(error),
+            )
+    else:
+        logger.info(
+            "Application started in serverless mode",
+            application=settings.app_name,
+            environment=settings.app_env,
+        )
 
     yield
 
-    await close_database_connections()
-    await cache.close()
+    try:
+        await close_database_connections()
+    except Exception:
+        pass
+    try:
+        await cache.close()
+    except Exception:
+        pass
 
     logger.info(
         "Application stopped",
