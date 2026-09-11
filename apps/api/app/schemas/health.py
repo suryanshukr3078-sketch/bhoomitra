@@ -1,0 +1,20 @@
+from pydantic import BaseModel
+
+
+class HealthResponse(BaseModel):
+    status: str
+    version: str
+    environment: str
+    database: str
+    timestamp: str
+
+
+class LivenessResponse(BaseModel):
+    status: str
+    timestamp: str
+
+
+class ReadinessResponse(BaseModel):
+    status: str
+    database: str
+    timestamp: str
