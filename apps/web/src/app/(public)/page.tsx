@@ -67,12 +67,12 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-gradient-to-b from-emerald-900 via-emerald-800 to-slate-900 text-white py-16 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 w-full">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
         <div className="relative max-w-5xl mx-auto text-center space-y-6 sm:space-y-8">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-700/80 border border-emerald-500/30 text-emerald-100 backdrop-blur-sm shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
-            PostGIS 3.6 Enabled & Provenance-Backed Cadastral Registry
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-700/80 border border-emerald-500/30 text-emerald-100 backdrop-blur-sm shadow-sm max-w-full truncate">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-300 shrink-0" aria-hidden="true" />
+            <span className="truncate">PostGIS 3.6 Enabled & Provenance-Backed Cadastral Registry</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-2xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight break-words">
             Transparent Land Governance &{' '}
             <span className="text-emerald-400">Cadastral Administration</span>
           </h1>
