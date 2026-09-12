@@ -69,3 +69,25 @@ async def list_policies(
             for item in items
         ],
     }
+
+
+@router.get(
+    "/{policy_id}",
+    summary="Get single policy details by ID or slug",
+)
+@limiter.limit("60/minute")
+async def get_policy(
+    policy_id: str,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    from app.api.v1.routes.resources import get_resource
+
+    return await get_resource(
+        resource_id=policy_id,
+        request=request,
+        response=response,
+        db=db,
+    )
+

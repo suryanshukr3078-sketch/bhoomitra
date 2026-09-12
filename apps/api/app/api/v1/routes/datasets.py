@@ -68,3 +68,25 @@ async def list_datasets(
             for item in items
         ],
     }
+
+
+@router.get(
+    "/{dataset_id}",
+    summary="Get single dataset details by ID or slug",
+)
+@limiter.limit("60/minute")
+async def get_dataset(
+    dataset_id: str,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    from app.api.v1.routes.resources import get_resource
+
+    return await get_resource(
+        resource_id=dataset_id,
+        request=request,
+        response=response,
+        db=db,
+    )
+

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import {
   FileText,
   Search,
@@ -412,7 +413,12 @@ export default function PoliciesPage() {
 
               <div className="space-y-1">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-                  {policy.title}
+                  <Link
+                    href={`/policies/${policy.id}`}
+                    className="hover:text-emerald-700 hover:underline transition-colors"
+                  >
+                    {policy.title}
+                  </Link>
                 </h2>
                 <p className="text-xs text-slate-500 flex items-center gap-1">
                   <Building className="w-3.5 h-3.5 text-slate-400" /> {policy.issuingAuthority}
@@ -431,10 +437,16 @@ export default function PoliciesPage() {
                   <span className="text-slate-400 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" /> Effective: {policy.effectiveFrom}
                   </span>
+                  <Link
+                    href={`/policies/${policy.id}`}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                  >
+                    View Policy
+                  </Link>
                   <button
                     type="button"
                     onClick={() => handleDownload(policy)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                   >
                     <Download className="w-3.5 h-3.5" /> Download Gazette
                   </button>

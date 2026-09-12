@@ -134,9 +134,11 @@ class StorageService:
             )
             storage_uri = f"s3://{self.bucket_name}/{object_key}"
         except Exception as e:
-            logger.error("Storage upload failure", error=str(e))
-            # If MinIO is offline in local dev/test, fallback to simulated storage uri
-            storage_uri = f"local://{self.bucket_name}/{object_key}"
+            logger.warning("S3 storage unavailable, persisting via validated data URI in database", error=str(e))
+            import base64
+
+            b64_data = base64.b64encode(content).decode("ascii")
+            storage_uri = f"data:{expected_mime};base64,{b64_data}"
 
         return {
             "original_filename": sanitized_name,
@@ -145,6 +147,27 @@ class StorageService:
             "checksum_sha256": checksum,
             "storage_uri": storage_uri,
         }
+
+    async def get_file_content(self, storage_uri: str) -> tuple[bytes, str]:
+        import base64
+
+        if storage_uri.startswith("data:"):
+            header, b64_data = storage_uri.split(",", 1)
+            mime_type = header.split(";")[0].replace("data:", "").strip() or "application/octet-stream"
+            content = base64.b64decode(b64_data)
+            return content, mime_type
+
+        if storage_uri.startswith("s3://"):
+            parts = storage_uri[5:].split("/", 1)
+            bucket = parts[0]
+            key = parts[1]
+            client = self._get_client()
+            obj = client.get_object(Bucket=bucket, Key=key)
+            content = obj["Body"].read()
+            mime_type = obj.get("ContentType", "application/octet-stream")
+            return content, mime_type
+
+        raise ValueError(f"Unsupported storage URI scheme: {storage_uri[:30]}")
 
 
 storage_service = StorageService()

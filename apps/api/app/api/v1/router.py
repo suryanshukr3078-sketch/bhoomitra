@@ -22,5 +22,21 @@ router.include_router(dashboard_router)
 router.include_router(spatial_router)
 router.include_router(uploads_router)
 
+# Documents router alias for direct compatibility with /documents and /documents/{id}
+from app.api.v1.routes.resources import (
+    create_resource,
+    download_resource_file,
+    get_resource,
+    list_resources,
+)
+
+documents_router = APIRouter(prefix="/documents", tags=["Documents"])
+documents_router.add_api_route("", list_resources, methods=["GET"])
+documents_router.add_api_route("", create_resource, methods=["POST"])
+documents_router.add_api_route("/{resource_id}", get_resource, methods=["GET"])
+documents_router.add_api_route("/{resource_id}/download", download_resource_file, methods=["GET"])
+router.include_router(documents_router)
+
 # Alias for backwards compatibility
 api_v1_router = router
+

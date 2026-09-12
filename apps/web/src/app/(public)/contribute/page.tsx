@@ -21,6 +21,8 @@ import {
 import { env } from '@/lib/environment';
 import { getAuthToken } from '@/lib/api/client';
 
+import Link from 'next/link';
+
 export default function ContributePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -30,6 +32,11 @@ export default function ContributePage() {
     storage_uri: string;
     file_size_bytes: number;
     mime_type: string;
+  } | null>(null);
+  const [publishedResource, setPublishedResource] = useState<{
+    id: string;
+    title: string;
+    detailUrl: string;
   } | null>(null);
   const { toast } = useToast();
 
@@ -54,11 +61,13 @@ export default function ContributePage() {
       const file = e.target.files[0];
       setSelectedFile(file);
       setUploadResult(null);
+      setPublishedResource(null);
     }
   };
 
   const onSubmit = async (data: ContributeFormData) => {
     setIsUploading(true);
+    setPublishedResource(null);
     try {
       let uploadInfo = null;
       const baseUrl = env.apiUrl.replace(/\/$/, '');
@@ -109,6 +118,11 @@ export default function ContributePage() {
           status: 'published',
           jurisdiction: data.jurisdiction,
           source_url: uploadInfo?.storage_uri,
+          storage_uri: uploadInfo?.storage_uri,
+          original_filename: uploadInfo?.original_filename,
+          mime_type: uploadInfo?.mime_type,
+          file_size_bytes: uploadInfo?.file_size_bytes,
+          checksum_sha256: uploadInfo?.checksum_sha256,
         }),
       });
 
@@ -119,16 +133,28 @@ export default function ContributePage() {
 
       const createdResource = await resourceRes.json();
 
+      let targetSection = 'research';
+      if (data.resourceType === 'policy') {
+        targetSection = 'policies';
+      } else if (data.resourceType === 'dataset' || data.resourceType === 'spatial_layer') {
+        targetSection = 'datasets';
+      }
+
+      const detailUrl = `/${targetSection}/${createdResource.id}`;
+      setPublishedResource({
+        id: createdResource.id,
+        title: createdResource.title,
+        detailUrl,
+      });
+
       toast({
         title: 'Contribution Published',
         description: `"${createdResource.title}" was saved and published to the national registry.`,
         variant: 'success',
       });
 
-      if (!uploadInfo) {
-        reset();
-        setSelectedFile(null);
-      }
+      reset();
+      setSelectedFile(null);
     } catch (err: any) {
       toast({
         title: 'Submission Failed',
@@ -289,6 +315,30 @@ export default function ContributePage() {
                 <div>Filename: {uploadResult.original_filename}</div>
                 <div>SHA-256: {uploadResult.checksum_sha256}</div>
                 <div>Storage URI: {uploadResult.storage_uri}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Publication Success Details & View Detail Link */}
+          {publishedResource && (
+            <div className="p-5 bg-emerald-50 border-2 border-emerald-500/40 rounded-2xl space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+                  Resource Successfully Published & Verified
+                </div>
+                <Badge variant="success">Live Record</Badge>
+              </div>
+              <p className="text-xs text-emerald-800">
+                &ldquo;{publishedResource.title}&rdquo; is now publicly indexed. You can view its full metadata, download the uploaded attachment, and inspect its cryptographic provenance on its dedicated detail page.
+              </p>
+              <div>
+                <Link
+                  href={publishedResource.detailUrl}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+                >
+                  Open Published Resource Detail Page &rarr;
+                </Link>
               </div>
             </div>
           )}

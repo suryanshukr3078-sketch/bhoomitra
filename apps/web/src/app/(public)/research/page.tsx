@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import {
   BookOpen,
   Search,
@@ -401,7 +402,12 @@ export default function ResearchPage() {
 
               <div className="space-y-1">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-                  {paper.title}
+                  <Link
+                    href={`/research/${paper.id}`}
+                    className="hover:text-emerald-700 hover:underline transition-colors"
+                  >
+                    {paper.title}
+                  </Link>
                 </h2>
                 <p className="text-xs sm:text-sm font-medium text-emerald-800">
                   {paper.authors.join(', ')}
@@ -418,6 +424,12 @@ export default function ResearchPage() {
                   DOI: <span className="text-slate-700 font-medium">{paper.doi}</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link
+                    href={`/research/${paper.id}`}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                  >
+                    View Details
+                  </Link>
                   <button
                     type="button"
                     onClick={() => handleDownload(paper)}
@@ -425,14 +437,12 @@ export default function ResearchPage() {
                   >
                     <Download className="w-3.5 h-3.5" /> Citation & BibTeX
                   </button>
-                  <a
-                    href={`https://doi.org/${paper.doi}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <Link
+                    href={`/research/${paper.id}`}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors shadow-sm"
                   >
                     Full Text <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                  </Link>
                 </div>
               </div>
             </article>

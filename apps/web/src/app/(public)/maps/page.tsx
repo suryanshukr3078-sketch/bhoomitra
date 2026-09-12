@@ -20,6 +20,23 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/api/client';
 
+import dynamic from 'next/dynamic';
+
+const MapView = dynamic(
+  () => import('@/components/maps/MapView').then((mod) => mod.MapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-slate-950 text-emerald-400">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2.5 text-xs font-semibold text-slate-200">
+          Loading OpenStreetMap Cadastre Engine...
+        </span>
+      </div>
+    ),
+  }
+);
+
 interface ParcelDetail {
   id: string;
   surveyNumber: string;
@@ -32,6 +49,26 @@ interface ParcelDetail {
 }
 
 const SAMPLE_PARCELS: Record<string, ParcelDetail> = {
+  'PAR-DEL-01': {
+    id: 'PAR-DEL-01',
+    surveyNumber: 'Survey DL-01/Central',
+    owner: 'Delhi Development Authority & Public Estate',
+    areaHa: 6.2,
+    tenureType: 'Institutional Freehold',
+    jurisdiction: 'Delhi (Central District)',
+    mutationDate: '15 August 2026',
+    coordinates: '28.6139° N, 77.2090° E',
+  },
+  'PAR-BPL-74': {
+    id: 'PAR-BPL-74',
+    surveyNumber: 'Survey MP-BPL/74',
+    owner: 'Madhya Pradesh State Land Revenue Dept',
+    areaHa: 8.5,
+    tenureType: 'Municipal Land Trust',
+    jurisdiction: 'Madhya Pradesh (Bhopal)',
+    mutationDate: '10 July 2026',
+    coordinates: '23.2599° N, 77.4126° E',
+  },
   'PAR-44029': {
     id: 'PAR-44029-MH',
     surveyNumber: 'Survey 142/3A',
@@ -55,7 +92,9 @@ const SAMPLE_PARCELS: Record<string, ParcelDetail> = {
 };
 
 export default function MapsPage() {
-  const [selectedParcelId, setSelectedParcelId] = useState<string>('PAR-44029');
+  const [selectedParcelId, setSelectedParcelId] = useState<string>('PAR-DEL-01');
+  const [mapCenter, setMapCenter] = useState<[number, number]>([77.209, 28.6139]);
+  const [mapZoom, setMapZoom] = useState<number>(12);
   const [spatialFeatures, setSpatialFeatures] = useState<any[]>([]);
   const [isLoadingSpatial, setIsLoadingSpatial] = useState(false);
   const [activeLayers, setActiveLayers] = useState({
@@ -101,17 +140,40 @@ export default function MapsPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.toUpperCase().includes('12093')) {
-      setSelectedParcelId('PAR-12093');
+    const query = searchQuery.trim().toLowerCase();
+    if (query.includes('delhi') || query.includes('del') || query.includes('cp')) {
+      setSelectedParcelId('PAR-DEL-01');
+      setMapCenter([77.2090, 28.6139]);
+      setMapZoom(13);
       toast({
-        title: 'Parcel Located',
+        title: 'Delhi Parcel Located',
+        description: 'Loaded PAR-DEL-01 (Delhi Central Cadastral Zone).',
+        variant: 'success',
+      });
+    } else if (query.includes('bhopal') || query.includes('bpl') || query.includes('mp') || query.includes('74')) {
+      setSelectedParcelId('PAR-BPL-74');
+      setMapCenter([77.4126, 23.2599]);
+      setMapZoom(13);
+      toast({
+        title: 'Bhopal Parcel Located',
+        description: 'Loaded PAR-BPL-74 (Bhopal Urban Cadastral Division).',
+        variant: 'success',
+      });
+    } else if (query.includes('12093') || query.includes('bangalore') || query.includes('bengaluru')) {
+      setSelectedParcelId('PAR-12093');
+      setMapCenter([77.5946, 12.9716]);
+      setMapZoom(13);
+      toast({
+        title: 'Bangalore Parcel Located',
         description: 'Loaded PAR-12093-KA polygon boundary from PostGIS.',
         variant: 'success',
       });
     } else {
       setSelectedParcelId('PAR-44029');
+      setMapCenter([73.8567, 18.5204]);
+      setMapZoom(13);
       toast({
-        title: 'Parcel Located',
+        title: 'Pune Parcel Located',
         description: 'Loaded PAR-44029-MH boundary coordinates.',
         variant: 'success',
       });
@@ -202,90 +264,93 @@ export default function MapsPage() {
         )}
       </div>
 
-      {/* Main Map Canvas Area */}
-      <div className="flex-1 relative flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-4">
-        {/* Stylized Vector Grid Background simulating Cadastre */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 pointer-events-none" />
+      {/* Main Map Canvas Area with Real OpenStreetMap Base Tiles & PostGIS Layer */}
+      <div className="flex-1 relative w-full h-full min-h-[500px] overflow-hidden bg-slate-950">
+        <MapView
+          features={spatialFeatures}
+          selectedFeatureId={selectedParcelId}
+          center={mapCenter}
+          zoom={mapZoom}
+          activeLayers={activeLayers}
+          onSelectFeature={(feat) => {
+            setSelectedParcelId(feat.id);
+            toast({
+              title: feat.properties.name || feat.properties.surveyNumber || 'Cadastral Parcel',
+              description: `Selected ${feat.id} in ${feat.properties.jurisdiction || 'Jurisdiction'}`,
+              variant: 'default',
+            });
+          }}
+          className="w-full h-full min-h-[500px]"
+        />
 
-        {/* Vector Parcel Polygons Representation */}
-        <div className="relative z-10 w-full max-w-2xl aspect-video bg-slate-950/70 border border-emerald-500/30 rounded-2xl shadow-2xl p-6 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-              <span className="font-mono text-emerald-400">GPS Stream: Active</span>
-            </div>
-            <div className="font-mono">{selectedParcel.coordinates}</div>
-          </div>
-
-          {/* SVG Cadastral Wireframe with Interactive Polygons */}
-          <div className="my-auto py-4 flex items-center justify-center">
-            <svg viewBox="0 0 500 260" className="w-full h-48 drop-shadow-md">
-              {/* Parcel 1 */}
-              <polygon
-                points="40,50 180,30 220,120 70,140"
-                className={`transition-all duration-300 cursor-pointer ${
-                  selectedParcelId === 'PAR-44029'
-                    ? 'fill-emerald-600/40 stroke-emerald-400 stroke-2'
-                    : 'fill-slate-800/40 stroke-slate-600 hover:fill-slate-700/50'
-                }`}
-                onClick={() => setSelectedParcelId('PAR-44029')}
-              />
-              <text x="110" y="90" fill="#a7f3d0" fontSize="12" fontFamily="monospace">
-                PAR-44029 (4.85 Ha)
-              </text>
-
-              {/* Parcel 2 */}
-              <polygon
-                points="220,120 380,90 440,210 260,230 180,180"
-                className={`transition-all duration-300 cursor-pointer ${
-                  selectedParcelId === 'PAR-12093'
-                    ? 'fill-emerald-600/40 stroke-emerald-400 stroke-2'
-                    : 'fill-slate-800/40 stroke-slate-600 hover:fill-slate-700/50'
-                }`}
-                onClick={() => setSelectedParcelId('PAR-12093')}
-              />
-              <text x="290" y="170" fill="#a7f3d0" fontSize="12" fontFamily="monospace">
-                PAR-12093 (12.4 Ha)
-              </text>
-
-              {/* Corner markers */}
-              {activeLayers.surveyPoints && (
-                <>
-                  <circle cx="40" cy="50" r="4" fill="#34d399" />
-                  <circle cx="180" cy="30" r="4" fill="#34d399" />
-                  <circle cx="220" cy="120" r="4" fill="#34d399" />
-                  <circle cx="70" cy="140" r="4" fill="#34d399" />
-                  <circle cx="380" cy="90" r="4" fill="#34d399" />
-                  <circle cx="440" cy="210" r="4" fill="#34d399" />
-                  <circle cx="260" cy="230" r="4" fill="#34d399" />
-                </>
-              )}
-            </svg>
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-800 pt-3">
-            <span>Click any polygon to inspect legal tenure & surveyor records</span>
-            <span className="text-emerald-400 font-semibold">PostGIS TopoGeometry: Valid</span>
-          </div>
-        </div>
-
-        {/* Floating Zoom Controls */}
-        <div className="absolute right-4 bottom-4 z-20 flex flex-col gap-1 bg-slate-900/90 border border-slate-700 p-1 rounded-xl shadow-xl backdrop-blur">
+        {/* Floating City Navigation Quick Selector */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-slate-900/90 border border-slate-700 p-1.5 rounded-xl shadow-xl backdrop-blur-md">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 hidden sm:inline">
+            Quick Jump:
+          </span>
           <button
             type="button"
-            onClick={() => toast({ title: 'Zoom In', description: 'Scale 1:2500' })}
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg"
-            aria-label="Zoom in"
+            onClick={() => {
+              setMapCenter([77.2090, 28.6139]);
+              setMapZoom(13);
+              setSelectedParcelId('PAR-DEL-01');
+              toast({ title: 'Delhi Central', description: 'Centering on Delhi Cadastral Sector', variant: 'default' });
+            }}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+              selectedParcelId === 'PAR-DEL-01'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
           >
-            <ZoomIn className="w-4 h-4" />
+            Delhi
           </button>
           <button
             type="button"
-            onClick={() => toast({ title: 'Zoom Out', description: 'Scale 1:10000' })}
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg"
-            aria-label="Zoom out"
+            onClick={() => {
+              setMapCenter([77.4126, 23.2599]);
+              setMapZoom(13);
+              setSelectedParcelId('PAR-BPL-74');
+              toast({ title: 'Bhopal Urban', description: 'Centering on Bhopal Cadastral Division', variant: 'default' });
+            }}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+              selectedParcelId === 'PAR-BPL-74'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
           >
-            <ZoomOut className="w-4 h-4" />
+            Bhopal
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMapCenter([73.8567, 18.5204]);
+              setMapZoom(13);
+              setSelectedParcelId('PAR-44029');
+              toast({ title: 'Pune Rural', description: 'Centering on Pune Survey 142/3A', variant: 'default' });
+            }}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+              selectedParcelId === 'PAR-44029'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            Pune
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMapCenter([77.5946, 12.9716]);
+              setMapZoom(13);
+              setSelectedParcelId('PAR-12093');
+              toast({ title: 'Bangalore Buffer', description: 'Centering on Bangalore Survey 88/1', variant: 'default' });
+            }}
+            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+              selectedParcelId === 'PAR-12093'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            Bangalore
           </button>
         </div>
       </div>
