@@ -130,7 +130,7 @@ async def create_resource(
             policy = Policy(
                 resource_id=resource.id,
                 jurisdiction_code=payload.jurisdiction or "IN-MH",
-                lifecycle_status=PolicyLifecycleStatus.IN_FORCE,
+                lifecycle_status=PolicyLifecycleStatus.ACTIVE,
             )
             db.add(policy)
         elif payload.resource_type in (ResourceType.DATASET, ResourceType.SPATIAL_LAYER):
