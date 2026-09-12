@@ -1,5 +1,11 @@
 import { env } from '@/lib/environment';
 
+export const API_URL = env.apiUrl;
+
+if (typeof window !== 'undefined') {
+  console.debug(`[API Client] Initialized with API_URL: ${API_URL}`);
+}
+
 export function getAuthToken(): string | null {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(^| )access_token=([^;]+)'));
@@ -24,7 +30,15 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const baseUrl = env.apiUrl.replace(/\/$/, '');
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  const url = path.startsWith('http') ? path : `${baseUrl}${cleanPath}`;
+  let url = path.startsWith('http') ? path : `${baseUrl}${cleanPath}`;
+
+  // If executing in SSR/Node.js environment, relative URLs must be converted to absolute
+  if (typeof window === 'undefined' && url.startsWith('/')) {
+    const origin = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'https://land-governance-platform-virid.vercel.app';
+    url = `${origin}${url}`;
+  }
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -58,4 +72,17 @@ export async function apiRequest<T>(
   }
 
   return res.json() as Promise<T>;
+}
+
+/**
+ * Defensive data-fetching helper that wraps fetch in a try/catch block.
+ * Never throws — returns defaultValue if the API call fails or is unreachable.
+ */
+export async function apiGet<T>(path: string, defaultValue: T): Promise<T> {
+  try {
+    return await apiRequest<T>(path, { method: 'GET' });
+  } catch (err) {
+    console.warn(`[apiGet] Request to "${path}" failed, returning safe fallback:`, err);
+    return defaultValue;
+  }
 }

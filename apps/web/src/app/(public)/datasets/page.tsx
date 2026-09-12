@@ -12,12 +12,13 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
+  AlertCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, apiGet } from '@/lib/api/client';
 
 interface DatasetItem {
   id: string;
@@ -104,6 +105,7 @@ export default function DatasetsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [apiItems, setApiItems] = useState<DatasetItem[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
   const pageSize = 2;
   const { toast } = useToast();
 
@@ -113,41 +115,47 @@ export default function DatasetsPage() {
     let isMounted = true;
     setIsLoading(true);
 
-    const timer = setTimeout(() => {
-      apiRequest<{ items: any[]; count: number }>(
-        `/search?resource_type=dataset&q=${encodeURIComponent(searchQuery)}`
-      )
-        .then((data) => {
-          if (!isMounted) return;
-          if (data && Array.isArray(data.items) && data.items.length > 0) {
-            const mapped: DatasetItem[] = data.items.map((item) => ({
-              id: item.id,
-              title: item.title,
-              format: 'GeoJSON',
-              featuresCount: 'Verified PostGIS Features',
-              srid: 'EPSG:4326 (WGS 84)',
-              bbox: '[68.0, 8.0, 97.0, 37.0]',
-              fileSize: '12.4 MB',
-              fileSizeBytes: 13002342,
-              lastUpdated: new Date(item.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                year: 'numeric',
-              }),
-              lastUpdatedTimestamp: new Date(item.created_at).getTime(),
-              jurisdiction: 'National Cadastre',
-              description: item.abstract,
-            }));
-            setApiItems(mapped);
-          } else {
-            setApiItems([]);
-          }
-        })
-        .catch((err) => {
-          console.warn('API datasets search fallback:', err);
-        })
-        .finally(() => {
-          if (isMounted) setIsLoading(false);
-        });
+    const timer = setTimeout(async () => {
+      try {
+        const data = await apiGet<{ items: any[]; count: number }>(
+          `/search?resource_type=dataset&q=${encodeURIComponent(searchQuery)}`,
+          { items: [], count: 0 }
+        );
+
+        if (!isMounted) return;
+
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          const mapped: DatasetItem[] = data.items.map((item) => ({
+            id: item.id,
+            title: item.title,
+            format: 'GeoJSON',
+            featuresCount: 'Verified PostGIS Features',
+            srid: 'EPSG:4326 (WGS 84)',
+            bbox: '[68.0, 8.0, 97.0, 37.0]',
+            fileSize: '12.4 MB',
+            fileSizeBytes: 13002342,
+            lastUpdated: new Date(item.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              year: 'numeric',
+            }),
+            lastUpdatedTimestamp: new Date(item.created_at).getTime(),
+            jurisdiction: 'National Cadastre',
+            description: item.abstract,
+          }));
+          setApiItems(mapped);
+          setApiError(null);
+        } else {
+          setApiItems([]);
+          setApiError(null);
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('API datasets search error, using safe defaults:', err);
+        setApiItems([]);
+        setApiError('Unable to load live dataset records from API. Displaying standard spatial catalog.');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }, 250);
 
     return () => {
@@ -291,6 +299,14 @@ export default function DatasetsPage() {
           Page {currentPage} of {totalPages}
         </span>
       </div>
+
+      {/* API Warning/Status Banner if offline */}
+      {apiError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
+          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
 
       {/* Dataset Cards Grid */}
       {isLoading ? (

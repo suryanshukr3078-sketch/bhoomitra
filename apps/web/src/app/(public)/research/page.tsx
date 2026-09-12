@@ -13,12 +13,13 @@ import {
   ArrowUpDown,
   ExternalLink,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, apiGet } from '@/lib/api/client';
 
 interface ResearchPaper {
   id: string;
@@ -95,6 +96,7 @@ export default function ResearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [apiItems, setApiItems] = useState<ResearchPaper[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
   const pageSize = 3;
   const { toast } = useToast();
 
@@ -104,39 +106,45 @@ export default function ResearchPage() {
     let isMounted = true;
     setIsLoading(true);
 
-    const timer = setTimeout(() => {
-      apiRequest<{ items: any[]; count: number }>(
-        `/search?resource_type=research_paper&q=${encodeURIComponent(searchQuery)}`
-      )
-        .then((data) => {
-          if (!isMounted) return;
-          if (data && Array.isArray(data.items) && data.items.length > 0) {
-            const mapped: ResearchPaper[] = data.items.map((item) => ({
-              id: item.id,
-              title: item.title,
-              authors: ['Accredited Platform Author'],
-              journal: 'Land Governance Open Repository',
-              doi: `10.1016/landgov.${item.slug || item.id}`,
-              publicationDate: new Date(item.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                year: 'numeric',
-              }),
-              publicationTimestamp: new Date(item.created_at).getTime(),
-              peerReviewed: true,
-              category: 'Cadastral GIS',
-              abstract: item.abstract,
-            }));
-            setApiItems(mapped);
-          } else {
-            setApiItems([]);
-          }
-        })
-        .catch((err) => {
-          console.warn('API search fallback:', err);
-        })
-        .finally(() => {
-          if (isMounted) setIsLoading(false);
-        });
+    const timer = setTimeout(async () => {
+      try {
+        const data = await apiGet<{ items: any[]; count: number }>(
+          `/search?resource_type=research_paper&q=${encodeURIComponent(searchQuery)}`,
+          { items: [], count: 0 }
+        );
+
+        if (!isMounted) return;
+
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          const mapped: ResearchPaper[] = data.items.map((item) => ({
+            id: item.id,
+            title: item.title,
+            authors: ['Accredited Platform Author'],
+            journal: 'Land Governance Open Repository',
+            doi: `10.1016/landgov.${item.slug || item.id}`,
+            publicationDate: new Date(item.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              year: 'numeric',
+            }),
+            publicationTimestamp: new Date(item.created_at).getTime(),
+            peerReviewed: true,
+            category: 'Cadastral GIS',
+            abstract: item.abstract,
+          }));
+          setApiItems(mapped);
+          setApiError(null);
+        } else {
+          setApiItems([]);
+          setApiError(null);
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('API research search error, using safe defaults:', err);
+        setApiItems([]);
+        setApiError('Unable to load live research data from API. Displaying standard catalog papers.');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }, 250);
 
     return () => {
@@ -282,6 +290,14 @@ export default function ResearchPage() {
           Page {currentPage} of {totalPages}
         </span>
       </div>
+
+      {/* API Warning/Status Banner if offline */}
+      {apiError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
+          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
 
       {/* Papers Grid */}
       {isLoading ? (

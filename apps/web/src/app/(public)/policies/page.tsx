@@ -15,12 +15,13 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
+  AlertCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, apiGet } from '@/lib/api/client';
 
 interface PolicyDocument {
   id: string;
@@ -102,6 +103,7 @@ export default function PoliciesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [apiItems, setApiItems] = useState<PolicyDocument[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
   const pageSize = 3;
   const { toast } = useToast();
 
@@ -111,40 +113,46 @@ export default function PoliciesPage() {
     let isMounted = true;
     setIsLoading(true);
 
-    const timer = setTimeout(() => {
-      apiRequest<{ items: any[]; count: number }>(
-        `/search?resource_type=policy&q=${encodeURIComponent(searchQuery)}`
-      )
-        .then((data) => {
-          if (!isMounted) return;
-          if (data && Array.isArray(data.items) && data.items.length > 0) {
-            const mapped: PolicyDocument[] = data.items.map((item) => ({
-              id: item.id,
-              policyNumber: `POL-${(item.slug || item.id).slice(0, 8).toUpperCase()}`,
-              title: item.title,
-              jurisdictionCode: 'IN',
-              jurisdictionName: 'National / State Registry',
-              issuingAuthority: 'Government Land Administration',
-              lifecycleStatus: 'active',
-              effectiveFrom: new Date(item.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                year: 'numeric',
-              }),
-              effectiveTimestamp: new Date(item.created_at).getTime(),
-              legalBasis: 'Constitution of India, Entry 18 State List',
-              summary: item.abstract,
-            }));
-            setApiItems(mapped);
-          } else {
-            setApiItems([]);
-          }
-        })
-        .catch((err) => {
-          console.warn('API policies search fallback:', err);
-        })
-        .finally(() => {
-          if (isMounted) setIsLoading(false);
-        });
+    const timer = setTimeout(async () => {
+      try {
+        const data = await apiGet<{ items: any[]; count: number }>(
+          `/search?resource_type=policy&q=${encodeURIComponent(searchQuery)}`,
+          { items: [], count: 0 }
+        );
+
+        if (!isMounted) return;
+
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          const mapped: PolicyDocument[] = data.items.map((item) => ({
+            id: item.id,
+            policyNumber: `POL-${(item.slug || item.id).slice(0, 8).toUpperCase()}`,
+            title: item.title,
+            jurisdictionCode: 'IN',
+            jurisdictionName: 'National / State Registry',
+            issuingAuthority: 'Government Land Administration',
+            lifecycleStatus: 'active',
+            effectiveFrom: new Date(item.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              year: 'numeric',
+            }),
+            effectiveTimestamp: new Date(item.created_at).getTime(),
+            legalBasis: 'Constitution of India, Entry 18 State List',
+            summary: item.abstract,
+          }));
+          setApiItems(mapped);
+          setApiError(null);
+        } else {
+          setApiItems([]);
+          setApiError(null);
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('API policies search error, using safe defaults:', err);
+        setApiItems([]);
+        setApiError('Unable to load live policies data from API. Displaying standard statutory records.');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }, 250);
 
     return () => {
@@ -314,6 +322,14 @@ export default function PoliciesPage() {
           Page {currentPage} of {totalPages}
         </span>
       </div>
+
+      {/* API Warning/Status Banner if offline */}
+      {apiError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
+          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
 
       {/* Policies List */}
       {isLoading ? (
