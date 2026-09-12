@@ -1,7 +1,7 @@
 import asyncio
 import sys
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any
 
 import structlog
@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 async def lifespan(
     app: FastAPI,
 ) -> AsyncIterator[None]:
-    # In serverless environments (Vercel), bypass heavy startup database probes to ensure instant cold starts
+    # In serverless mode (Vercel), bypass heavy startup database probes for instant cold starts
     if not settings.is_serverless:
         try:
             database_details = await check_database_connection()
@@ -61,14 +61,10 @@ async def lifespan(
 
     yield
 
-    try:
+    with suppress(Exception):
         await close_database_connections()
-    except Exception:
-        pass
-    try:
+    with suppress(Exception):
         await cache.close()
-    except Exception:
-        pass
 
     logger.info(
         "Application stopped",

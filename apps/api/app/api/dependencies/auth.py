@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,16 +13,18 @@ security_bearer = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
+    request: Request,
     auth: HTTPAuthorizationCredentials | None = Depends(security_bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    if not auth:
+    raw_token = auth.credentials if auth else request.cookies.get("access_token")
+    if not raw_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing authentication credentials.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    payload = decode_access_token(auth.credentials)
+    payload = decode_access_token(raw_token)
     if not payload or "sub" not in payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

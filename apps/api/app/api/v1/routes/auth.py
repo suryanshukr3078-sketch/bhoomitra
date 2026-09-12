@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +42,7 @@ class AuthResponse(BaseModel):
 @limiter.limit("5/minute")
 async def register(
     request: Request,
+    response: Response,
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
@@ -67,6 +68,16 @@ async def register(
 
     access_token = create_access_token({"sub": str(user.id), "email": user.email})
 
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=86400,
+        httponly=False,
+        samesite="lax",
+        secure=True,
+        path="/",
+    )
+
     return {
         "token": Token(access_token=access_token, token_type="bearer"),
         "user": UserRead(
@@ -88,6 +99,7 @@ async def register(
 @limiter.limit("5/minute")
 async def login(
     request: Request,
+    response: Response,
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
@@ -111,6 +123,16 @@ async def login(
     await db.commit()
 
     access_token = create_access_token({"sub": str(user.id), "email": user.email})
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=86400,
+        httponly=False,
+        samesite="lax",
+        secure=True,
+        path="/",
+    )
 
     return {
         "token": Token(access_token=access_token, token_type="bearer"),

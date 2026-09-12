@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/search", tags=["Search"])
 @limiter.limit("30/minute")
 async def search_resources(
     request: Request,
+    response: Response,
     q: str = Query(default="", description="Search query string"),
     resource_type: ResourceType | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
