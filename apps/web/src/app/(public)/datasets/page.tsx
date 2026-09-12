@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
+import { StaggerContainer, StaggerItem, MotionCard } from '@/components/motion/motion-primitives';
 import {
   Database,
   Search,
@@ -101,6 +103,7 @@ const DATASETS: DatasetItem[] = [
 ];
 
 export default function DatasetsPage() {
+  const prefersReduced = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFormat, setSelectedFormat] = useState('All');
   const [sortBy, setSortBy] = useState<'date_desc' | 'size_desc' | 'title_asc'>('date_desc');
@@ -278,9 +281,12 @@ export default function DatasetsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
               {formats.map((fmt) => (
-                <button
+                <motion.button
                   key={fmt}
                   type="button"
+                  whileHover={prefersReduced ? undefined : { scale: 1.05 }}
+                  whileTap={prefersReduced ? undefined : { scale: 0.95 }}
+                  transition={{ duration: 0.12 }}
                   onClick={() => {
                     setSelectedFormat(fmt);
                     setCurrentPage(1);
@@ -292,7 +298,7 @@ export default function DatasetsPage() {
                   }`}
                 >
                   {fmt}
-                </button>
+                </motion.button>
               ))}
             </div>
 
@@ -361,100 +367,117 @@ export default function DatasetsPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <StaggerContainer
+          key={`${currentPage}-${selectedFormat}-${searchQuery}`}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
           {paginatedDatasets.map((ds) => (
-            <article
-              key={ds.id}
-              className="flex flex-col justify-between p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4"
-            >
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+            <StaggerItem key={ds.id}>
+              <MotionCard
+                className="flex flex-col justify-between p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4 h-full"
+              >
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default">{ds.format}</Badge>
+                      {ds.isDemo ? (
+                        <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
+                          Synthetic GeoJSON (Demo)
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
+                          Verified Spatial Dataset
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-slate-500">{ds.jurisdiction}</span>
+                  </div>
+
+                  <h2 className="text-lg font-bold text-slate-900 leading-snug">
+                    <Link
+                      href={`/datasets/${ds.id}`}
+                      className="hover:text-emerald-700 hover:underline transition-colors"
+                    >
+                      {ds.title}
+                    </Link>
+                  </h2>
+
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    {ds.description}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{ds.featuresCount}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 font-mono">
+                      <Globe2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{ds.srid}</span>
+                    </div>
+                    <div className="col-span-2 flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
+                      <span className="font-semibold text-slate-700">BBOX:</span> {ds.bbox}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex items-center justify-between border-t border-slate-100 text-xs">
+                  <span className="text-slate-400 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" /> Updated {ds.lastUpdated}
+                  </span>
                   <div className="flex items-center gap-2">
-                    <Badge variant="default">{ds.format}</Badge>
-                    {ds.isDemo ? (
-                      <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
-                        Synthetic GeoJSON (Demo)
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
-                        Verified Spatial Dataset
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-xs font-medium text-slate-500">{ds.jurisdiction}</span>
-                </div>
-
-                <h2 className="text-lg font-bold text-slate-900 leading-snug">
-                  <Link
-                    href={`/datasets/${ds.id}`}
-                    className="hover:text-emerald-700 hover:underline transition-colors"
-                  >
-                    {ds.title}
-                  </Link>
-                </h2>
-
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  {ds.description}
-                </p>
-
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1">
-                  <div className="flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{ds.featuresCount}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 font-mono">
-                    <Globe2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{ds.srid}</span>
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
-                    <span className="font-semibold text-slate-700">BBOX:</span> {ds.bbox}
+                    <motion.div
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      className="inline-flex"
+                    >
+                      <Link
+                        href={`/datasets/${ds.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                      >
+                        View Dataset
+                      </Link>
+                    </motion.div>
+                    <motion.button
+                      type="button"
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      onClick={() => handleDownload(ds)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download ({ds.fileSize})
+                    </motion.button>
                   </div>
                 </div>
-              </div>
-
-              <div className="pt-4 flex items-center justify-between border-t border-slate-100 text-xs">
-                <span className="text-slate-400 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" /> Updated {ds.lastUpdated}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/datasets/${ds.id}`}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
-                  >
-                    View Dataset
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(ds)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Download ({ds.fileSize})
-                  </button>
-                </div>
-              </div>
-            </article>
+              </MotionCard>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       )}
 
       {/* Pagination Controls Bar */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4">
-          <button
+          <motion.button
             type="button"
+            whileHover={prefersReduced || currentPage === 1 ? undefined : { scale: 1.08 }}
+            whileTap={prefersReduced || currentPage === 1 ? undefined : { scale: 0.92 }}
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
             aria-label="Previous Page"
           >
             <ChevronLeft className="w-4 h-4" />
-          </button>
+          </motion.button>
           {Array.from({ length: totalPages }).map((_, i) => {
             const pageNum = i + 1;
             return (
-              <button
+              <motion.button
                 key={pageNum}
                 type="button"
+                whileHover={prefersReduced ? undefined : { scale: 1.08 }}
+                whileTap={prefersReduced ? undefined : { scale: 0.92 }}
                 onClick={() => setCurrentPage(pageNum)}
                 className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors ${
                   currentPage === pageNum
@@ -463,18 +486,20 @@ export default function DatasetsPage() {
                 }`}
               >
                 {pageNum}
-              </button>
+              </motion.button>
             );
           })}
-          <button
+          <motion.button
             type="button"
+            whileHover={prefersReduced || currentPage === totalPages ? undefined : { scale: 1.08 }}
+            whileTap={prefersReduced || currentPage === totalPages ? undefined : { scale: 0.92 }}
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
             aria-label="Next Page"
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
       )}
     </div>

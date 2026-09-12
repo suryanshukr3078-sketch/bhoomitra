@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
+import { StaggerContainer, StaggerItem, MotionCard } from '@/components/motion/motion-primitives';
 import {
   FileText,
   Search,
@@ -99,6 +101,7 @@ const POLICIES: PolicyDocument[] = [
 ];
 
 export default function PoliciesPage() {
+  const prefersReduced = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'jurisdiction_asc'>('date_desc');
@@ -301,9 +304,12 @@ export default function PoliciesPage() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
               {statusOptions.map((status) => (
-                <button
+                <motion.button
                   key={status}
                   type="button"
+                  whileHover={prefersReduced ? undefined : { scale: 1.05 }}
+                  whileTap={prefersReduced ? undefined : { scale: 0.95 }}
+                  transition={{ duration: 0.12 }}
                   onClick={() => {
                     setStatusFilter(status);
                     setCurrentPage(1);
@@ -315,7 +321,7 @@ export default function PoliciesPage() {
                   }`}
                 >
                   {status === 'All' ? 'All Statuses' : status}
-                </button>
+                </motion.button>
               ))}
             </div>
 
@@ -384,97 +390,114 @@ export default function PoliciesPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <StaggerContainer
+          key={`${currentPage}-${statusFilter}-${searchQuery}`}
+          className="grid grid-cols-1 gap-6"
+        >
           {paginatedPolicies.map((policy) => (
-            <article
-              key={policy.id}
-              className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                    {policy.policyNumber}
-                  </span>
-                  {getStatusBadge(policy.lifecycleStatus)}
-                  {policy.isDemo ? (
-                    <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
-                      Synthetic Policy (Demo)
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
-                      Verified Statutory Policy
-                    </Badge>
-                  )}
+            <StaggerItem key={policy.id}>
+              <MotionCard
+                className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                      {policy.policyNumber}
+                    </span>
+                    {getStatusBadge(policy.lifecycleStatus)}
+                    {policy.isDemo ? (
+                      <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
+                        Synthetic Policy (Demo)
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
+                        Verified Statutory Policy
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="font-medium text-slate-700">{policy.jurisdictionName}</span> ({policy.jurisdictionCode})
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <span className="font-medium text-slate-700">{policy.jurisdictionName}</span> ({policy.jurisdictionCode})
-                </div>
-              </div>
 
-              <div className="space-y-1">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-                  <Link
-                    href={`/policies/${policy.id}`}
-                    className="hover:text-emerald-700 hover:underline transition-colors"
-                  >
-                    {policy.title}
-                  </Link>
-                </h2>
-                <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <Building className="w-3.5 h-3.5 text-slate-400" /> {policy.issuingAuthority}
+                <div className="space-y-1">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+                    <Link
+                      href={`/policies/${policy.id}`}
+                      className="hover:text-emerald-700 hover:underline transition-colors"
+                    >
+                      {policy.title}
+                    </Link>
+                  </h2>
+                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <Building className="w-3.5 h-3.5 text-slate-400" /> {policy.issuingAuthority}
+                  </p>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                  {policy.summary}
                 </p>
-              </div>
 
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                {policy.summary}
-              </p>
-
-              <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 text-xs">
-                <div className="text-slate-500">
-                  <span className="font-semibold text-slate-700">Legal Basis:</span> {policy.legalBasis}
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 text-xs">
+                  <div className="text-slate-500">
+                    <span className="font-semibold text-slate-700">Legal Basis:</span> {policy.legalBasis}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" /> Effective: {policy.effectiveFrom}
+                    </span>
+                    <motion.div
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      className="inline-flex"
+                    >
+                      <Link
+                        href={`/policies/${policy.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                      >
+                        View Policy
+                      </Link>
+                    </motion.div>
+                    <motion.button
+                      type="button"
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      onClick={() => handleDownload(policy)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download Gazette
+                    </motion.button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" /> Effective: {policy.effectiveFrom}
-                  </span>
-                  <Link
-                    href={`/policies/${policy.id}`}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
-                  >
-                    View Policy
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(policy)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Download Gazette
-                  </button>
-                </div>
-              </div>
-            </article>
+              </MotionCard>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       )}
 
       {/* Pagination Controls Bar */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4">
-          <button
+          <motion.button
             type="button"
+            whileHover={prefersReduced || currentPage === 1 ? undefined : { scale: 1.08 }}
+            whileTap={prefersReduced || currentPage === 1 ? undefined : { scale: 0.92 }}
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
             aria-label="Previous Page"
           >
             <ChevronLeft className="w-4 h-4" />
-          </button>
+          </motion.button>
           {Array.from({ length: totalPages }).map((_, i) => {
             const pageNum = i + 1;
             return (
-              <button
+              <motion.button
                 key={pageNum}
                 type="button"
+                whileHover={prefersReduced ? undefined : { scale: 1.08 }}
+                whileTap={prefersReduced ? undefined : { scale: 0.92 }}
                 onClick={() => setCurrentPage(pageNum)}
                 className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors ${
                   currentPage === pageNum
@@ -483,18 +506,20 @@ export default function PoliciesPage() {
                 }`}
               >
                 {pageNum}
-              </button>
+              </motion.button>
             );
           })}
-          <button
+          <motion.button
             type="button"
+            whileHover={prefersReduced || currentPage === totalPages ? undefined : { scale: 1.08 }}
+            whileTap={prefersReduced || currentPage === totalPages ? undefined : { scale: 0.92 }}
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
             aria-label="Next Page"
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/header';
+import { PageTransition } from '@/components/layout/page-transition';
 import { Toaster } from '@/components/ui/toast';
 
 export const viewport: Viewport = {
@@ -58,7 +59,9 @@ export default function RootLayout({
     <html lang="en" className="h-full scroll-smooth overflow-x-hidden">
       <body className="min-h-full flex flex-col bg-slate-50/50 text-slate-900 font-sans antialiased overflow-x-hidden w-full max-w-full">
         <Header />
-        <main className="flex-1 w-full max-w-full overflow-x-hidden">{children}</main>
+        <main className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col">
+          <PageTransition>{children}</PageTransition>
+        </main>
         <footer className="border-t border-slate-200 bg-white pt-12 pb-8 text-xs text-slate-500 w-full max-w-full overflow-x-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-left">

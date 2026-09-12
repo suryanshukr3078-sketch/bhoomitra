@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
+import { StaggerContainer, StaggerItem, MotionCard } from '@/components/motion/motion-primitives';
 import {
   BookOpen,
   Search,
@@ -92,6 +94,7 @@ const PAPERS: ResearchPaper[] = [
 ];
 
 export default function ResearchPage() {
+  const prefersReduced = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'title_asc'>('date_desc');
@@ -287,9 +290,12 @@ export default function ResearchPage() {
             {/* Category Filter */}
             <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
               {categories.map((cat) => (
-                <button
+                <motion.button
                   key={cat}
                   type="button"
+                  whileHover={prefersReduced ? undefined : { scale: 1.05 }}
+                  whileTap={prefersReduced ? undefined : { scale: 0.95 }}
+                  transition={{ duration: 0.12 }}
                   onClick={() => {
                     setSelectedCategory(cat);
                     setCurrentPage(1);
@@ -301,7 +307,7 @@ export default function ResearchPage() {
                   }`}
                 >
                   {cat}
-                </button>
+                </motion.button>
               ))}
             </div>
 
@@ -371,103 +377,126 @@ export default function ResearchPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <StaggerContainer
+          key={`${currentPage}-${selectedCategory}-${searchQuery}`}
+          className="grid grid-cols-1 gap-6"
+        >
           {paginatedPapers.map((paper) => (
-            <article
-              key={paper.id}
-              className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{paper.category}</Badge>
-                  {paper.peerReviewed && (
-                    <Badge variant="success">
-                      <Award className="w-3 h-3" /> Peer Reviewed
-                    </Badge>
-                  )}
-                  {paper.isDemo ? (
-                    <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
-                      Synthetic Paper (Demo)
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
-                      Verified Registry Record
-                    </Badge>
-                  )}
+            <StaggerItem key={paper.id}>
+              <MotionCard
+                className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{paper.category}</Badge>
+                    {paper.peerReviewed && (
+                      <Badge variant="success">
+                        <Award className="w-3 h-3" /> Peer Reviewed
+                      </Badge>
+                    )}
+                    {paper.isDemo ? (
+                      <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
+                        Synthetic Paper (Demo)
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
+                        Verified Registry Record
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" /> {paper.publicationDate}
+                  </span>
                 </div>
-                <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" /> {paper.publicationDate}
-                </span>
-              </div>
 
-              <div className="space-y-1">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-                  <Link
-                    href={`/research/${paper.id}`}
-                    className="hover:text-emerald-700 hover:underline transition-colors"
-                  >
-                    {paper.title}
-                  </Link>
-                </h2>
-                <p className="text-xs sm:text-sm font-medium text-emerald-800">
-                  {paper.authors.join(', ')}
+                <div className="space-y-1">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+                    <Link
+                      href={`/research/${paper.id}`}
+                      className="hover:text-emerald-700 hover:underline transition-colors"
+                    >
+                      {paper.title}
+                    </Link>
+                  </h2>
+                  <p className="text-xs sm:text-sm font-medium text-emerald-800">
+                    {paper.authors.join(', ')}
+                  </p>
+                  <p className="text-xs text-slate-500 italic">{paper.journal}</p>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                  {paper.abstract}
                 </p>
-                <p className="text-xs text-slate-500 italic">{paper.journal}</p>
-              </div>
 
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                {paper.abstract}
-              </p>
-
-              <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
-                <div className="text-xs font-mono text-slate-500">
-                  DOI: <span className="text-slate-700 font-medium">{paper.doi}</span>
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
+                  <div className="text-xs font-mono text-slate-500">
+                    DOI: <span className="text-slate-700 font-medium">{paper.doi}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <motion.div
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      className="inline-flex"
+                    >
+                      <Link
+                        href={`/research/${paper.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                      >
+                        View Details
+                      </Link>
+                    </motion.div>
+                    <motion.button
+                      type="button"
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      onClick={() => handleDownload(paper)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Citation & BibTeX
+                    </motion.button>
+                    <motion.div
+                      whileHover={prefersReduced ? undefined : { scale: 1.03, boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      className="inline-flex"
+                    >
+                      <Link
+                        href={`/research/${paper.id}`}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors shadow-sm"
+                      >
+                        Full Text <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    </motion.div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/research/${paper.id}`}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
-                  >
-                    View Details
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(paper)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Citation & BibTeX
-                  </button>
-                  <Link
-                    href={`/research/${paper.id}`}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors shadow-sm"
-                  >
-                    Full Text <ExternalLink className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </article>
+              </MotionCard>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       )}
 
       {/* Pagination Controls Bar */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4">
-          <button
+          <motion.button
             type="button"
+            whileHover={prefersReduced || currentPage === 1 ? undefined : { scale: 1.08 }}
+            whileTap={prefersReduced || currentPage === 1 ? undefined : { scale: 0.92 }}
             disabled={currentPage === 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
             aria-label="Previous Page"
           >
             <ChevronLeft className="w-4 h-4" />
-          </button>
+          </motion.button>
           {Array.from({ length: totalPages }).map((_, i) => {
             const pageNum = i + 1;
             return (
-              <button
+              <motion.button
                 key={pageNum}
                 type="button"
+                whileHover={prefersReduced ? undefined : { scale: 1.08 }}
+                whileTap={prefersReduced ? undefined : { scale: 0.92 }}
                 onClick={() => setCurrentPage(pageNum)}
                 className={`w-9 h-9 rounded-xl text-xs font-bold transition-colors ${
                   currentPage === pageNum
@@ -476,18 +505,20 @@ export default function ResearchPage() {
                 }`}
               >
                 {pageNum}
-              </button>
+              </motion.button>
             );
           })}
-          <button
+          <motion.button
             type="button"
+            whileHover={prefersReduced || currentPage === totalPages ? undefined : { scale: 1.08 }}
+            whileTap={prefersReduced || currentPage === totalPages ? undefined : { scale: 0.92 }}
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             className="p-2 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700"
             aria-label="Next Page"
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
       )}
     </div>

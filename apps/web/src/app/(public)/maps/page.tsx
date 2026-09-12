@@ -27,11 +27,17 @@ const MapView = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-slate-950 text-emerald-400">
-        <Loader2 className="w-8 h-8 animate-spin" />
-        <span className="ml-2.5 text-xs font-semibold text-slate-200">
-          Loading OpenStreetMap Cadastre Engine...
-        </span>
+      <div className="w-full h-full min-h-[400px] flex flex-col items-center justify-center bg-slate-950/95 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] animate-pulse" />
+        <div className="relative z-10 flex flex-col items-center gap-3 p-6 rounded-2xl bg-slate-900/80 border border-emerald-900/40 backdrop-blur shadow-2xl">
+          <div className="w-10 h-10 rounded-xl bg-emerald-950 text-emerald-400 flex items-center justify-center border border-emerald-800/50 shadow-inner">
+            <Loader2 className="w-5 h-5 animate-spin" />
+          </div>
+          <div className="space-y-1.5 text-center">
+            <div className="h-4 w-48 bg-slate-800 rounded animate-pulse" />
+            <div className="h-3 w-32 bg-slate-800/80 rounded animate-pulse mx-auto" />
+          </div>
+        </div>
       </div>
     ),
   }
