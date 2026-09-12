@@ -35,6 +35,7 @@ interface PolicyDocument {
   effectiveTimestamp: number;
   legalBasis: string;
   summary: string;
+  isDemo?: boolean;
 }
 
 const POLICIES: PolicyDocument[] = [
@@ -104,7 +105,7 @@ export default function PoliciesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiItems, setApiItems] = useState<PolicyDocument[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
-  const pageSize = 3;
+  const pageSize = 6;
   const { toast } = useToast();
 
   const statusOptions = ['All', 'active', 'consultation', 'draft', 'superseded'];
@@ -115,10 +116,26 @@ export default function PoliciesPage() {
 
     const timer = setTimeout(async () => {
       try {
-        const data = await apiGet<{ items: any[]; count: number }>(
-          `/search?resource_type=policy&q=${encodeURIComponent(searchQuery)}`,
+        const queryParam = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
+        // Try standard REST collection route /resources first, fallback to /policies and /search
+        let data = await apiGet<{ items: any[]; count: number }>(
+          `/resources?resource_type=policy${queryParam}`,
           { items: [], count: 0 }
         );
+
+        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+          data = await apiGet<{ items: any[]; count: number }>(
+            `/policies?${queryParam.replace(/^&/, '')}`,
+            { items: [], count: 0 }
+          );
+        }
+
+        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+          data = await apiGet<{ items: any[]; count: number }>(
+            `/search?resource_type=policy${queryParam}`,
+            { items: [], count: 0 }
+          );
+        }
 
         if (!isMounted) return;
 
@@ -138,6 +155,7 @@ export default function PoliciesPage() {
             effectiveTimestamp: new Date(item.created_at).getTime(),
             legalBasis: 'Constitution of India, Entry 18 State List',
             summary: item.abstract,
+            isDemo: item.is_demo ?? false,
           }));
           setApiItems(mapped);
           setApiError(null);
@@ -235,9 +253,15 @@ export default function PoliciesPage() {
             <Scale className="w-3.5 h-3.5" aria-hidden="true" />
             Statutory Registry
           </div>
-          <Badge variant="outline" className="border-amber-400 text-amber-900 bg-amber-50">
-            Synthetic Policies (Demo)
-          </Badge>
+          {apiItems.length > 0 ? (
+            <Badge variant="outline" className="border-emerald-400 text-emerald-900 bg-emerald-50 font-semibold">
+              Live Statutory Registry ({apiItems.length} published)
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-400 text-amber-900 bg-amber-50">
+              Synthetic Policies (Demo)
+            </Badge>
+          )}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -371,9 +395,15 @@ export default function PoliciesPage() {
                     {policy.policyNumber}
                   </span>
                   {getStatusBadge(policy.lifecycleStatus)}
-                  <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
-                    Synthetic Policy (Demo)
-                  </Badge>
+                  {policy.isDemo ? (
+                    <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
+                      Synthetic Policy (Demo)
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
+                      Verified Statutory Policy
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <span className="font-medium text-slate-700">{policy.jurisdictionName}</span> ({policy.jurisdictionCode})

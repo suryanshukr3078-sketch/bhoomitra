@@ -9,33 +9,31 @@ from app.core.limiter import limiter
 from app.models.enums import ResourceStatus, ResourceType, ResourceVisibility
 from app.models.resources import Resource
 
-router = APIRouter(prefix="/search", tags=["Search"])
+router = APIRouter(prefix="/policies", tags=["Policies"])
 
 
 @router.get(
     "",
-    summary="Search resources with rate limiting and index optimization",
+    summary="List or search published policies",
 )
-@limiter.limit("30/minute")
-async def search_resources(
+@limiter.limit("60/minute")
+async def list_policies(
     request: Request,
     response: Response,
     q: str = Query(default="", description="Search query string"),
-    resource_type: ResourceType | None = Query(default=None),
+    jurisdiction: str | None = Query(default=None, description="Jurisdiction filter"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    query = select(Resource).where(
-        Resource.status == ResourceStatus.PUBLISHED,
-        Resource.visibility == ResourceVisibility.PUBLIC,
+    query = (
+        select(Resource)
+        .where(
+            Resource.resource_type == ResourceType.POLICY,
+            Resource.status == ResourceStatus.PUBLISHED,
+            Resource.visibility == ResourceVisibility.PUBLIC,
+        )
     )
-
-    if resource_type:
-        if resource_type == ResourceType.DATASET:
-            query = query.where(Resource.resource_type.in_([ResourceType.DATASET, ResourceType.SPATIAL_LAYER]))
-        else:
-            query = query.where(Resource.resource_type == resource_type)
 
     if q.strip():
         search_pattern = f"%{q.strip()}%"
@@ -52,7 +50,7 @@ async def search_resources(
 
     return {
         "query": q,
-        "resource_type": resource_type.value if resource_type else None,
+        "resource_type": "policy",
         "count": len(items),
         "limit": limit,
         "offset": offset,

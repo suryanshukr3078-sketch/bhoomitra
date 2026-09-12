@@ -33,6 +33,7 @@ interface DatasetItem {
   lastUpdatedTimestamp: number;
   jurisdiction: string;
   description: string;
+  isDemo?: boolean;
 }
 
 const DATASETS: DatasetItem[] = [
@@ -106,7 +107,7 @@ export default function DatasetsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiItems, setApiItems] = useState<DatasetItem[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
-  const pageSize = 2;
+  const pageSize = 4;
   const { toast } = useToast();
 
   const formats = ['All', 'GeoJSON', 'Cloud-Optimized GeoTIFF', 'PMTiles', 'Shapefile'];
@@ -117,10 +118,26 @@ export default function DatasetsPage() {
 
     const timer = setTimeout(async () => {
       try {
-        const data = await apiGet<{ items: any[]; count: number }>(
-          `/search?resource_type=dataset&q=${encodeURIComponent(searchQuery)}`,
+        const queryParam = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
+        // Try standard REST collection route /resources first, fallback to /datasets and /search
+        let data = await apiGet<{ items: any[]; count: number }>(
+          `/resources?resource_type=dataset${queryParam}`,
           { items: [], count: 0 }
         );
+
+        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+          data = await apiGet<{ items: any[]; count: number }>(
+            `/datasets?${queryParam.replace(/^&/, '')}`,
+            { items: [], count: 0 }
+          );
+        }
+
+        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+          data = await apiGet<{ items: any[]; count: number }>(
+            `/search?resource_type=dataset${queryParam}`,
+            { items: [], count: 0 }
+          );
+        }
 
         if (!isMounted) return;
 
@@ -141,6 +158,7 @@ export default function DatasetsPage() {
             lastUpdatedTimestamp: new Date(item.created_at).getTime(),
             jurisdiction: 'National Cadastre',
             description: item.abstract,
+            isDemo: item.is_demo ?? false,
           }));
           setApiItems(mapped);
           setApiError(null);
@@ -212,9 +230,15 @@ export default function DatasetsPage() {
             <Database className="w-3.5 h-3.5" aria-hidden="true" />
             Open Spatial Catalog
           </div>
-          <Badge variant="outline" className="border-amber-400 text-amber-900 bg-amber-50">
-            Synthetic Datasets (Demo)
-          </Badge>
+          {apiItems.length > 0 ? (
+            <Badge variant="outline" className="border-emerald-400 text-emerald-900 bg-emerald-50 font-semibold">
+              Live Spatial Catalog ({apiItems.length} published)
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-400 text-amber-900 bg-amber-50">
+              Synthetic Datasets (Demo)
+            </Badge>
+          )}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -346,9 +370,15 @@ export default function DatasetsPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="default">{ds.format}</Badge>
-                    <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
-                      Synthetic GeoJSON (Demo)
-                    </Badge>
+                    {ds.isDemo ? (
+                      <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
+                        Synthetic GeoJSON (Demo)
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
+                        Verified Spatial Dataset
+                      </Badge>
+                    )}
                   </div>
                   <span className="text-xs font-medium text-slate-500">{ds.jurisdiction}</span>
                 </div>

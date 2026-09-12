@@ -17,10 +17,11 @@ from app.models.enums import (
     ResourceStatus,
     ResourceType,
     ResourceVisibility,
+    SpatialStorageType,
     UserStatus,
 )
 from app.models.identity import Organization, User
-from app.models.resources import Policy, ResearchPaper, Resource
+from app.models.resources import Policy, ResearchPaper, Resource, SpatialLayer
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
 
@@ -132,6 +133,15 @@ async def create_resource(
                 lifecycle_status=PolicyLifecycleStatus.IN_FORCE,
             )
             db.add(policy)
+        elif payload.resource_type in (ResourceType.DATASET, ResourceType.SPATIAL_LAYER):
+            layer = SpatialLayer(
+                resource_id=resource.id,
+                geometry_type="MultiPolygon",
+                srid=4326,
+                storage_type=SpatialStorageType.POSTGIS,
+                source_table="spatial_features",
+            )
+            db.add(layer)
 
         await db.commit()
         await db.refresh(resource)
@@ -170,7 +180,10 @@ async def list_resources(
     )
 
     if resource_type:
-        query = query.where(Resource.resource_type == resource_type)
+        if resource_type == ResourceType.DATASET:
+            query = query.where(Resource.resource_type.in_([ResourceType.DATASET, ResourceType.SPATIAL_LAYER]))
+        else:
+            query = query.where(Resource.resource_type == resource_type)
 
     if q.strip():
         search_pattern = f"%{q.strip()}%"
