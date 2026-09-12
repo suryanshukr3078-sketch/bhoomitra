@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,7 +37,15 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("trusted_hosts"),
     )
 
-    database_url: str
+    database_url: str = Field(
+        ...,
+        validation_alias=AliasChoices(
+            "database_url",
+            "postgres_url",
+            "postgres_prisma_url",
+            "postgres_url_non_pooling",
+        ),
+    )
 
     secret_key: str = "change-this-to-a-secure-random-secret-key-in-production"
     access_token_expire_minutes: int = 60 * 24 * 7
@@ -70,12 +79,29 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("database_url")
+    @field_validator("database_url", mode="before")
     @classmethod
     def validate_database_url(
         cls,
         value: str,
     ) -> str:
+        if not value or not isinstance(value, str):
+            raise ValueError("Database connection URL must be a non-empty string.")
+
+        # Automatically normalize standard postgres:// or postgresql:// to SQLAlchemy's postgresql+psycopg://
+        if value.startswith("postgres://"):
+            value = "postgresql+psycopg://" + value[len("postgres://"):]
+        elif value.startswith("postgresql://"):
+            value = "postgresql+psycopg://" + value[len("postgresql://"):]
+
+        # Strip Prisma-specific query parameters like pgbouncer=true which cause libpq/psycopg errors
+        parsed = urlparse(value)
+        if "pgbouncer" in parsed.query:
+            qs = parse_qs(parsed.query, keep_blank_values=True)
+            qs.pop("pgbouncer", None)
+            new_query = urlencode(qs, doseq=True)
+            value = urlunparse(parsed._replace(query=new_query))
+
         allowed_prefixes = (
             "postgresql+psycopg://",
             "postgresql+psycopg_async://",
