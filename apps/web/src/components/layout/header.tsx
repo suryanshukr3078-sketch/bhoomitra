@@ -32,17 +32,24 @@ export function Header() {
     { href: '/about', label: 'About', icon: Landmark },
   ];
 
+  const primaryLinks = [
+    { href: '/maps', label: 'Maps', icon: MapPin },
+    { href: '/policies', label: 'Policies', icon: FileText },
+    { href: '/research', label: 'Research', icon: BookOpen },
+    { href: '/datasets', label: 'Datasets', icon: Database },
+  ];
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="flex h-16 items-center justify-between gap-2 min-w-0">
           {/* Logo */}
           <a
             href="/"
-            className="flex items-center gap-2.5 text-emerald-800 font-bold text-lg sm:text-xl tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
+            className="flex items-center gap-2.5 text-emerald-800 font-bold text-lg sm:text-xl tracking-tight shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
             aria-label="Land Governance Platform Home"
           >
-            <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shadow-sm">
+            <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shadow-sm shrink-0">
               <Landmark className="w-5 h-5" aria-hidden="true" />
             </div>
             <span className="hidden min-[400px]:inline font-extrabold text-slate-900">
@@ -50,10 +57,10 @@ export function Header() {
             </span>
           </a>
 
-          {/* Desktop Navigation Links */}
+          {/* Desktop Navigation Links - Full list on extra large screens (>= 1280px) */}
           <nav
             aria-label="Primary Navigation"
-            className="hidden md:flex items-center gap-1 lg:gap-2"
+            className="hidden xl:flex items-center gap-1 min-w-0 shrink"
           >
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -61,7 +68,7 @@ export function Header() {
                 <a
                   key={link.href}
                   href={link.href}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   <Icon className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" aria-hidden="true" />
                   {link.label}
@@ -70,32 +77,68 @@ export function Header() {
             })}
           </nav>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden sm:flex items-center gap-2.5">
+          {/* Compact Navigation Links - Core links on medium & large screens (768px - 1279px) */}
+          <nav
+            aria-label="Core Navigation"
+            className="hidden md:flex xl:hidden items-center gap-1 min-w-0 shrink"
+          >
+            {primaryLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <Icon className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" aria-hidden="true" />
+                  {link.label}
+                </a>
+              );
+            })}
+          </nav>
+
+          {/* Desktop Auth Buttons (>= 1024px) */}
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             <a
               href="/dashboard"
-              className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-600" aria-hidden="true" />
               Dashboard
             </a>
             <a
               href="/login"
-              className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap"
             >
               <LogIn className="w-4 h-4" aria-hidden="true" />
               Sign In
             </a>
             <a
               href="/register"
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap"
             >
               Register
             </a>
           </div>
 
-          {/* Mobile Menu Toggle Button */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Compact Auth Buttons for 640px - 1023px (e.g. tablet & 980px desktop-site mode) */}
+          <div className="hidden sm:flex lg:hidden items-center gap-1.5 shrink-0">
+            <a
+              href="/login"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap"
+            >
+              Sign In
+            </a>
+            <a
+              href="/register"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap"
+            >
+              Register
+            </a>
+          </div>
+
+          {/* Mobile/Tablet Menu Toggle Button (visible up to xl so all links remain accessible) */}
+          <div className="flex xl:hidden items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -113,10 +156,10 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Slide-down Menu Drawer */}
+      {/* Mobile/Tablet Slide-down Menu Drawer */}
       {mobileMenuOpen && (
         <div
-          className="md:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2"
+          className="xl:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2"
           role="dialog"
           aria-modal="true"
           aria-label="Mobile Navigation"

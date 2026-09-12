@@ -62,9 +62,9 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="space-y-16 sm:space-y-24 pb-20">
+    <div className="space-y-16 sm:space-y-24 pb-20 w-full max-w-full overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-900 via-emerald-800 to-slate-900 text-white py-16 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-900 via-emerald-800 to-slate-900 text-white py-16 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 w-full">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
         <div className="relative max-w-5xl mx-auto text-center space-y-6 sm:space-y-8">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-700/80 border border-emerald-500/30 text-emerald-100 backdrop-blur-sm shadow-sm">
@@ -101,7 +101,7 @@ export default function HomePage() {
       </section>
 
       {/* Stats Counter Bar */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 sm:-mt-16 relative z-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 sm:-mt-16 relative z-10 w-full">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 bg-white rounded-2xl p-6 sm:p-8 shadow-xl border border-slate-200/80">
           {stats.map((stat) => (
             <div key={stat.label} className="text-center p-2 sm:p-4">
@@ -117,7 +117,7 @@ export default function HomePage() {
       </section>
 
       {/* Pillars / Features Grid */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10 w-full">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Integrated Land Administration Infrastructure
@@ -160,9 +160,9 @@ export default function HomePage() {
       </section>
 
       {/* Call to Action Bar */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-slate-900 text-white p-8 sm:p-12 lg:p-16 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
-          <div className="space-y-3 max-w-xl text-center md:text-left">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="rounded-3xl bg-slate-900 text-white p-8 sm:p-12 lg:p-16 flex flex-col lg:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
+          <div className="space-y-3 max-w-xl text-center lg:text-left min-w-0">
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Ready to verify land titles or publish policy evidence?
             </h2>
@@ -170,7 +170,7 @@ export default function HomePage() {
               Join surveyors, civil society, municipal registries, and academic researchers in building tamper-proof land tenure.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto shrink-0">
             <Link
               href="/register"
               className="inline-flex items-center justify-center px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg transition-colors text-center"
