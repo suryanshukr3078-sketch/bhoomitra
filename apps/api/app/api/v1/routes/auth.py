@@ -55,16 +55,20 @@ async def register(
             detail="User with this email address already exists.",
         )
 
-    user = User(
-        email=body.email.lower().strip(),
-        full_name=body.full_name.strip(),
-        password_hash=hash_password(body.password),
-        status=UserStatus.ACTIVE,
-        is_superuser=False,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
+    try:
+        user = User(
+            email=body.email.lower().strip(),
+            full_name=body.full_name.strip(),
+            password_hash=hash_password(body.password),
+            status=UserStatus.ACTIVE,
+            is_superuser=False,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    except Exception:
+        await db.rollback()
+        raise
 
     access_token = create_access_token({"sub": str(user.id), "email": user.email})
 
@@ -119,8 +123,12 @@ async def login(
             detail="User account is inactive or suspended.",
         )
 
-    user.last_login_at = datetime.now(UTC)
-    await db.commit()
+    try:
+        user.last_login_at = datetime.now(UTC)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
 
     access_token = create_access_token({"sub": str(user.id), "email": user.email})
 

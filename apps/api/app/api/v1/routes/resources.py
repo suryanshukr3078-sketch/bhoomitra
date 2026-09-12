@@ -57,90 +57,94 @@ async def create_resource(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ) -> dict[str, Any]:
-    # 1. Resolve Creator User
-    user_id = current_user.id if current_user else None
-    if not user_id:
-        user_res = await db.execute(select(User).limit(1))
-        existing_user = user_res.scalars().first()
-        if existing_user:
-            user_id = existing_user.id
+    try:
+        # 1. Resolve Creator User
+        user_id = current_user.id if current_user else None
+        if not user_id:
+            user_res = await db.execute(select(User).limit(1))
+            existing_user = user_res.scalars().first()
+            if existing_user:
+                user_id = existing_user.id
+            else:
+                new_user = User(
+                    email="contributor@landgovernance.org",
+                    full_name="Registry Contributor",
+                    status=UserStatus.ACTIVE,
+                    is_superuser=False,
+                )
+                db.add(new_user)
+                await db.flush()
+                user_id = new_user.id
+
+        # 2. Resolve Owner Organization
+        org_res = await db.execute(select(Organization).limit(1))
+        existing_org = org_res.scalars().first()
+        if existing_org:
+            org_id = existing_org.id
         else:
-            new_user = User(
-                email="contributor@landgovernance.org",
-                full_name="Registry Contributor",
-                status=UserStatus.ACTIVE,
-                is_superuser=False,
+            new_org = Organization(
+                name="National Land Governance Observatory",
+                slug=f"national-land-observatory-{uuid4().hex[:6]}",
+                organization_type=OrganizationType.GOVERNMENT,
             )
-            db.add(new_user)
+            db.add(new_org)
             await db.flush()
-            user_id = new_user.id
+            org_id = new_org.id
 
-    # 2. Resolve Owner Organization
-    org_res = await db.execute(select(Organization).limit(1))
-    existing_org = org_res.scalars().first()
-    if existing_org:
-        org_id = existing_org.id
-    else:
-        new_org = Organization(
-            name="National Land Governance Observatory",
-            slug=f"national-land-observatory-{uuid4().hex[:6]}",
-            organization_type=OrganizationType.GOVERNMENT,
+        # 3. Create Resource
+        slug = generate_slug(payload.title)
+        resource = Resource(
+            title=payload.title,
+            slug=slug,
+            abstract=payload.abstract,
+            resource_type=payload.resource_type,
+            status=payload.status,
+            visibility=payload.visibility,
+            owner_organization_id=org_id,
+            created_by_id=user_id,
+            source_url=payload.source_url,
+            published_at=datetime.now(timezone.utc) if payload.status == ResourceStatus.PUBLISHED else None,
+            is_demo=False,
         )
-        db.add(new_org)
+        db.add(resource)
         await db.flush()
-        org_id = new_org.id
 
-    # 3. Create Resource
-    slug = generate_slug(payload.title)
-    resource = Resource(
-        title=payload.title,
-        slug=slug,
-        abstract=payload.abstract,
-        resource_type=payload.resource_type,
-        status=payload.status,
-        visibility=payload.visibility,
-        owner_organization_id=org_id,
-        created_by_id=user_id,
-        source_url=payload.source_url,
-        published_at=datetime.now(timezone.utc) if payload.status == ResourceStatus.PUBLISHED else None,
-        is_demo=False,
-    )
-    db.add(resource)
-    await db.flush()
+        # 4. Create child entity based on resource_type
+        if payload.resource_type == ResourceType.RESEARCH_PAPER:
+            paper = ResearchPaper(
+                resource_id=resource.id,
+                journal=payload.journal or "Land Governance Journal",
+                doi=payload.doi,
+                publication_date=date(
+                    payload.publication_year or datetime.now(timezone.utc).year,
+                    1,
+                    1,
+                ),
+                publication_type="Journal Article",
+                authors=[{"name": "Contributor", "affiliation": "Observatory"}],
+                peer_reviewed=True,
+            )
+            db.add(paper)
+        elif payload.resource_type == ResourceType.POLICY:
+            policy = Policy(
+                resource_id=resource.id,
+                jurisdiction_code=payload.jurisdiction or "IN-MH",
+                lifecycle_status=PolicyLifecycleStatus.IN_FORCE,
+            )
+            db.add(policy)
 
-    # 4. Create child entity based on resource_type
-    if payload.resource_type == ResourceType.RESEARCH_PAPER:
-        paper = ResearchPaper(
-            resource_id=resource.id,
-            journal=payload.journal or "Land Governance Journal",
-            doi=payload.doi,
-            publication_date=date(
-                payload.publication_year or datetime.now(timezone.utc).year,
-                1,
-                1,
-            ),
-            publication_type="Journal Article",
-            authors=[{"name": "Contributor", "affiliation": "Observatory"}],
-            peer_reviewed=True,
-        )
-        db.add(paper)
-    elif payload.resource_type == ResourceType.POLICY:
-        policy = Policy(
-            resource_id=resource.id,
-            jurisdiction_code=payload.jurisdiction or "IN-MH",
-            lifecycle_status=PolicyLifecycleStatus.IN_FORCE,
-        )
-        db.add(policy)
+        await db.commit()
+        await db.refresh(resource)
 
-    await db.commit()
-    await db.refresh(resource)
-
-    return {
-        "id": str(resource.id),
-        "title": resource.title,
-        "slug": resource.slug,
-        "resource_type": resource.resource_type.value,
-        "status": resource.status.value,
-        "visibility": resource.visibility.value,
-        "created_at": resource.created_at.isoformat(),
-    }
+        return {
+            "id": str(resource.id),
+            "title": resource.title,
+            "slug": resource.slug,
+            "resource_type": resource.resource_type.value,
+            "status": resource.status.value,
+            "visibility": resource.visibility.value,
+            "created_at": resource.created_at.isoformat(),
+        }
+    except Exception:
+        await db.rollback()
+        raise

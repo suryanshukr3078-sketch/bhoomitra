@@ -20,7 +20,11 @@ class BaseRepository[ModelType: Base]:
         return result.scalars().all()
 
     async def create(self, obj: ModelType) -> ModelType:
-        self.db.add(obj)
-        await self.db.commit()
-        await self.db.refresh(obj)
-        return obj
+        try:
+            self.db.add(obj)
+            await self.db.commit()
+            await self.db.refresh(obj)
+            return obj
+        except Exception:
+            await self.db.rollback()
+            raise
