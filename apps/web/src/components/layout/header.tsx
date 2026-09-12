@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   User,
   LogIn,
+  UploadCloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +27,7 @@ export function Header() {
     { href: '/research', label: 'Research', icon: BookOpen },
     { href: '/datasets', label: 'Datasets', icon: Database },
     { href: '/evidence', label: 'Provenance', icon: ShieldCheck },
+    { href: '/contribute', label: 'Contribute', icon: UploadCloud },
     { href: '/assistant', label: 'AI Assistant', icon: Bot },
     { href: '/about', label: 'About', icon: Landmark },
   ];

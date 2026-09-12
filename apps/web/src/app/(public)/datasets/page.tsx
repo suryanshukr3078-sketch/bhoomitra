@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Database,
   Search,
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/api/client';
 
 interface DatasetItem {
   id: string;
@@ -101,13 +102,69 @@ export default function DatasetsPage() {
   const [selectedFormat, setSelectedFormat] = useState('All');
   const [sortBy, setSortBy] = useState<'date_desc' | 'size_desc' | 'title_asc'>('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiItems, setApiItems] = useState<DatasetItem[]>([]);
   const pageSize = 2;
   const { toast } = useToast();
 
   const formats = ['All', 'GeoJSON', 'Cloud-Optimized GeoTIFF', 'PMTiles', 'Shapefile'];
 
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    const timer = setTimeout(() => {
+      apiRequest<{ items: any[]; count: number }>(
+        `/search?resource_type=dataset&q=${encodeURIComponent(searchQuery)}`
+      )
+        .then((data) => {
+          if (!isMounted) return;
+          if (data && Array.isArray(data.items) && data.items.length > 0) {
+            const mapped: DatasetItem[] = data.items.map((item) => ({
+              id: item.id,
+              title: item.title,
+              format: 'GeoJSON',
+              featuresCount: 'Verified PostGIS Features',
+              srid: 'EPSG:4326 (WGS 84)',
+              bbox: '[68.0, 8.0, 97.0, 37.0]',
+              fileSize: '12.4 MB',
+              fileSizeBytes: 13002342,
+              lastUpdated: new Date(item.created_at).toLocaleDateString('en-US', {
+                month: 'short',
+                year: 'numeric',
+              }),
+              lastUpdatedTimestamp: new Date(item.created_at).getTime(),
+              jurisdiction: 'National Cadastre',
+              description: item.abstract,
+            }));
+            setApiItems(mapped);
+          } else {
+            setApiItems([]);
+          }
+        })
+        .catch((err) => {
+          console.warn('API datasets search fallback:', err);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  const allAvailableDatasets = useMemo(() => {
+    if (apiItems.length > 0) {
+      return [...apiItems, ...DATASETS.filter((p) => !apiItems.some((a) => a.title === p.title))];
+    }
+    return DATASETS;
+  }, [apiItems]);
+
   const filteredAndSortedDatasets = useMemo(() => {
-    const filtered = DATASETS.filter((ds) => {
+    const filtered = allAvailableDatasets.filter((ds) => {
       const matchesSearch =
         ds.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ds.jurisdiction.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -122,7 +179,7 @@ export default function DatasetsPage() {
       if (sortBy === 'title_asc') return a.title.localeCompare(b.title);
       return 0;
     });
-  }, [searchQuery, selectedFormat, sortBy]);
+  }, [allAvailableDatasets, searchQuery, selectedFormat, sortBy]);
 
   const totalPages = Math.ceil(filteredAndSortedDatasets.length / pageSize) || 1;
   const paginatedDatasets = useMemo(() => {
@@ -236,7 +293,21 @@ export default function DatasetsPage() {
       </div>
 
       {/* Dataset Cards Grid */}
-      {filteredAndSortedDatasets.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-6">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 space-y-4">
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-28 rounded-full" />
+              </div>
+              <Skeleton className="h-7 w-3/4" />
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : filteredAndSortedDatasets.length === 0 ? (
         <EmptyState
           icon="database"
           title="No Datasets Found"

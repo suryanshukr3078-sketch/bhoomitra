@@ -79,6 +79,7 @@ export default function RootLayout({
                 <div className="font-bold text-slate-900 text-sm">Trust & Provenance</div>
                 <ul className="space-y-2">
                   <li><a href="/evidence" className="hover:text-emerald-700">Evidence & DAG Trail</a></li>
+                  <li><a href="/contribute" className="hover:text-emerald-700">Contribute Record</a></li>
                   <li><a href="/assistant" className="hover:text-emerald-700">AI Policy Assistant</a></li>
                   <li><a href="/dashboard" className="hover:text-emerald-700">Governance Dashboard</a></li>
                 </ul>

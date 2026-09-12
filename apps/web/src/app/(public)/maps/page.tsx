@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Layers,
   MapPin,
@@ -14,9 +14,11 @@ import {
   Eye,
   SlidersHorizontal,
   X,
+  Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/api/client';
 
 interface ParcelDetail {
   id: string;
@@ -54,6 +56,8 @@ const SAMPLE_PARCELS: Record<string, ParcelDetail> = {
 
 export default function MapsPage() {
   const [selectedParcelId, setSelectedParcelId] = useState<string>('PAR-44029');
+  const [spatialFeatures, setSpatialFeatures] = useState<any[]>([]);
+  const [isLoadingSpatial, setIsLoadingSpatial] = useState(false);
   const [activeLayers, setActiveLayers] = useState({
     polygons: true,
     surveyPoints: true,
@@ -63,6 +67,22 @@ export default function MapsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showLayerPanel, setShowLayerPanel] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setIsLoadingSpatial(true);
+    apiRequest<{ type: string; features: any[]; count: number }>('/spatial/features')
+      .then((data) => {
+        if (data && Array.isArray(data.features)) {
+          setSpatialFeatures(data.features);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch PostGIS spatial features:', err);
+      })
+      .finally(() => {
+        setIsLoadingSpatial(false);
+      });
+  }, []);
 
   const selectedParcel = SAMPLE_PARCELS[selectedParcelId] || SAMPLE_PARCELS['PAR-44029'];
 
@@ -330,9 +350,35 @@ export default function MapsPage() {
           <button
             type="button"
             onClick={() => {
+              const feature = {
+                type: 'Feature',
+                id: selectedParcel.id,
+                geometry: {
+                  type: 'Polygon',
+                  coordinates: [
+                    [
+                      [73.8567, 18.5204],
+                      [73.8577, 18.5214],
+                      [73.8587, 18.5194],
+                      [73.8567, 18.5204],
+                    ],
+                  ],
+                },
+                properties: {
+                  surveyNumber: selectedParcel.surveyNumber,
+                  owner: selectedParcel.owner,
+                  areaHa: selectedParcel.areaHa,
+                  tenureType: selectedParcel.tenureType,
+                  jurisdiction: selectedParcel.jurisdiction,
+                  mutationDate: selectedParcel.mutationDate,
+                },
+              };
+              if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText(JSON.stringify(feature, null, 2));
+              }
               toast({
                 title: 'GeoJSON Exported',
-                description: `FeatureCollection for ${selectedParcel.id} copied to clipboard.`,
+                description: `Feature definition for ${selectedParcel.id} copied to clipboard.`,
                 variant: 'success',
               });
             }}

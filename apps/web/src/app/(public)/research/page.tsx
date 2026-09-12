@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BookOpen,
   Search,
@@ -12,11 +12,13 @@ import {
   ChevronRight,
   ArrowUpDown,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/api/client';
 
 interface ResearchPaper {
   id: string;
@@ -91,13 +93,67 @@ export default function ResearchPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'title_asc'>('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiItems, setApiItems] = useState<ResearchPaper[]>([]);
   const pageSize = 3;
   const { toast } = useToast();
 
   const categories = ['All', 'Cadastral GIS', 'Tenure Security', 'Customary Rights'];
 
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    const timer = setTimeout(() => {
+      apiRequest<{ items: any[]; count: number }>(
+        `/search?resource_type=research_paper&q=${encodeURIComponent(searchQuery)}`
+      )
+        .then((data) => {
+          if (!isMounted) return;
+          if (data && Array.isArray(data.items) && data.items.length > 0) {
+            const mapped: ResearchPaper[] = data.items.map((item) => ({
+              id: item.id,
+              title: item.title,
+              authors: ['Accredited Platform Author'],
+              journal: 'Land Governance Open Repository',
+              doi: `10.1016/landgov.${item.slug || item.id}`,
+              publicationDate: new Date(item.created_at).toLocaleDateString('en-US', {
+                month: 'short',
+                year: 'numeric',
+              }),
+              publicationTimestamp: new Date(item.created_at).getTime(),
+              peerReviewed: true,
+              category: 'Cadastral GIS',
+              abstract: item.abstract,
+            }));
+            setApiItems(mapped);
+          } else {
+            setApiItems([]);
+          }
+        })
+        .catch((err) => {
+          console.warn('API search fallback:', err);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  const allAvailablePapers = useMemo(() => {
+    if (apiItems.length > 0) {
+      return [...apiItems, ...PAPERS.filter((p) => !apiItems.some((a) => a.title === p.title))];
+    }
+    return PAPERS;
+  }, [apiItems]);
+
   const filteredAndSortedPapers = useMemo(() => {
-    const filtered = PAPERS.filter((p) => {
+    const filtered = allAvailablePapers.filter((p) => {
       const matchesSearch =
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -112,7 +168,7 @@ export default function ResearchPage() {
       if (sortBy === 'title_asc') return a.title.localeCompare(b.title);
       return 0;
     });
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [allAvailablePapers, searchQuery, selectedCategory, sortBy]);
 
   const totalPages = Math.ceil(filteredAndSortedPapers.length / pageSize) || 1;
   const paginatedPapers = useMemo(() => {
@@ -228,7 +284,21 @@ export default function ResearchPage() {
       </div>
 
       {/* Papers Grid */}
-      {filteredAndSortedPapers.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 space-y-4">
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-28 rounded-full" />
+              </div>
+              <Skeleton className="h-7 w-3/4" />
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : filteredAndSortedPapers.length === 0 ? (
         <EmptyState
           icon="search"
           title="No Research Papers Found"

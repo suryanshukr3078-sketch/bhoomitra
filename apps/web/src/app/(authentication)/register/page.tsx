@@ -18,6 +18,7 @@ import {
   Check,
   ArrowRight,
 } from 'lucide-react';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -51,20 +52,33 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
-      // Simulate / real registration flow
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      const response = await apiRequest<{
+        token: { access_token: string; token_type: string };
+        user: { id: string; email: string; full_name: string; role: string };
+      }>('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email.trim(),
+          full_name: data.fullName.trim(),
+          password: data.password,
+        }),
+      });
+
+      setAuthToken(response.token.access_token);
+
       toast({
-        title: 'Registration Submitted',
-        description: `Account created for ${data.fullName}. Verification link sent to ${data.email}.`,
+        title: 'Registration Successful',
+        description: `Account created for ${response.user.full_name || data.fullName}. Redirecting to dashboard...`,
         variant: 'success',
       });
       setTimeout(() => {
-        window.location.href = '/login';
-      }, 1200);
-    } catch {
+        window.location.href = '/dashboard';
+      }, 800);
+    } catch (err: any) {
       toast({
         title: 'Registration Error',
-        description: 'Failed to create account. Please check your data and try again.',
+        description: err.message || 'Failed to create account. Please check your data and try again.',
         variant: 'error',
       });
     } finally {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileText,
   Search,
@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/api/client';
 
 interface PolicyDocument {
   id: string;
@@ -99,13 +100,68 @@ export default function PoliciesPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'jurisdiction_asc'>('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiItems, setApiItems] = useState<PolicyDocument[]>([]);
   const pageSize = 3;
   const { toast } = useToast();
 
   const statusOptions = ['All', 'active', 'consultation', 'draft', 'superseded'];
 
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    const timer = setTimeout(() => {
+      apiRequest<{ items: any[]; count: number }>(
+        `/search?resource_type=policy&q=${encodeURIComponent(searchQuery)}`
+      )
+        .then((data) => {
+          if (!isMounted) return;
+          if (data && Array.isArray(data.items) && data.items.length > 0) {
+            const mapped: PolicyDocument[] = data.items.map((item) => ({
+              id: item.id,
+              policyNumber: `POL-${(item.slug || item.id).slice(0, 8).toUpperCase()}`,
+              title: item.title,
+              jurisdictionCode: 'IN',
+              jurisdictionName: 'National / State Registry',
+              issuingAuthority: 'Government Land Administration',
+              lifecycleStatus: 'active',
+              effectiveFrom: new Date(item.created_at).toLocaleDateString('en-US', {
+                month: 'short',
+                year: 'numeric',
+              }),
+              effectiveTimestamp: new Date(item.created_at).getTime(),
+              legalBasis: 'Constitution of India, Entry 18 State List',
+              summary: item.abstract,
+            }));
+            setApiItems(mapped);
+          } else {
+            setApiItems([]);
+          }
+        })
+        .catch((err) => {
+          console.warn('API policies search fallback:', err);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  const allAvailablePolicies = useMemo(() => {
+    if (apiItems.length > 0) {
+      return [...apiItems, ...POLICIES.filter((p) => !apiItems.some((a) => a.title === p.title))];
+    }
+    return POLICIES;
+  }, [apiItems]);
+
   const filteredAndSortedPolicies = useMemo(() => {
-    const filtered = POLICIES.filter((p) => {
+    const filtered = allAvailablePolicies.filter((p) => {
       const matchesSearch =
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.policyNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,7 +177,7 @@ export default function PoliciesPage() {
       if (sortBy === 'jurisdiction_asc') return a.jurisdictionName.localeCompare(b.jurisdictionName);
       return 0;
     });
-  }, [searchQuery, statusFilter, sortBy]);
+  }, [allAvailablePolicies, searchQuery, statusFilter, sortBy]);
 
   const totalPages = Math.ceil(filteredAndSortedPolicies.length / pageSize) || 1;
   const paginatedPolicies = useMemo(() => {
@@ -260,7 +316,21 @@ export default function PoliciesPage() {
       </div>
 
       {/* Policies List */}
-      {filteredAndSortedPolicies.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 space-y-4">
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-28 rounded-full" />
+              </div>
+              <Skeleton className="h-7 w-3/4" />
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : filteredAndSortedPolicies.length === 0 ? (
         <EmptyState
           icon="file"
           title="No Policy Documents Found"

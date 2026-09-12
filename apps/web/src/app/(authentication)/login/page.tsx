@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginFormData } from '@/schemas/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Landmark, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -28,20 +29,32 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      // Simulate / real auth flow
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const response = await apiRequest<{
+        token: { access_token: string; token_type: string };
+        user: { id: string; email: string; full_name: string; role: string };
+      }>('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email.trim(),
+          password: data.password,
+        }),
+      });
+
+      setAuthToken(response.token.access_token);
+
       toast({
         title: 'Authentication Successful',
-        description: `Welcome back, ${data.email}. Redirecting to governance dashboard...`,
+        description: `Welcome back, ${response.user.full_name || data.email}. Redirecting to dashboard...`,
         variant: 'success',
       });
       setTimeout(() => {
         window.location.href = '/dashboard';
-      }, 1000);
-    } catch {
+      }, 800);
+    } catch (err: any) {
       toast({
         title: 'Authentication Failed',
-        description: 'Invalid credentials. Please verify your email and password.',
+        description: err.message || 'Invalid credentials. Please verify your email and password.',
         variant: 'error',
       });
     } finally {
