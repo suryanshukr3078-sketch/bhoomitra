@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.db import get_db
 from app.core.limiter import limiter
-from app.models.enums import ResourceStatus, ResourceType
+from app.models.enums import ResourceStatus, ResourceType, ResourceVisibility
 from app.models.resources import Resource
 
 router = APIRouter(prefix="/search", tags=["Search"])
@@ -26,7 +26,10 @@ async def search_resources(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    query = select(Resource).where(Resource.status == ResourceStatus.PUBLISHED)
+    query = select(Resource).where(
+        Resource.status == ResourceStatus.PUBLISHED,
+        Resource.visibility == ResourceVisibility.PUBLIC,
+    )
 
     if resource_type:
         query = query.where(Resource.resource_type == resource_type)
@@ -58,6 +61,7 @@ async def search_resources(
                 "abstract": item.abstract,
                 "resource_type": item.resource_type.value,
                 "status": item.status.value,
+                "visibility": item.visibility.value,
                 "created_at": item.created_at.isoformat(),
                 "is_demo": item.is_demo,
             }

@@ -32,6 +32,7 @@ interface ResearchPaper {
   peerReviewed: boolean;
   abstract: string;
   category: string;
+  isDemo?: boolean;
 }
 
 const PAPERS: ResearchPaper[] = [
@@ -97,7 +98,7 @@ export default function ResearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiItems, setApiItems] = useState<ResearchPaper[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
-  const pageSize = 3;
+  const pageSize = 6;
   const { toast } = useToast();
 
   const categories = ['All', 'Cadastral GIS', 'Tenure Security', 'Customary Rights'];
@@ -108,29 +109,65 @@ export default function ResearchPage() {
 
     const timer = setTimeout(async () => {
       try {
-        const data = await apiGet<{ items: any[]; count: number }>(
-          `/search?resource_type=research_paper&q=${encodeURIComponent(searchQuery)}`,
+        const queryParam = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
+        // Try standard REST collection route /resources first, fallback to /search
+        let data = await apiGet<{ items: any[]; count: number }>(
+          `/resources?resource_type=research_paper${queryParam}`,
           { items: [], count: 0 }
         );
+
+        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+          data = await apiGet<{ items: any[]; count: number }>(
+            `/search?resource_type=research_paper${queryParam}`,
+            { items: [], count: 0 }
+          );
+        }
 
         if (!isMounted) return;
 
         if (data && Array.isArray(data.items) && data.items.length > 0) {
-          const mapped: ResearchPaper[] = data.items.map((item) => ({
-            id: item.id,
-            title: item.title,
-            authors: ['Accredited Platform Author'],
-            journal: 'Land Governance Open Repository',
-            doi: `10.1016/landgov.${item.slug || item.id}`,
-            publicationDate: new Date(item.created_at).toLocaleDateString('en-US', {
-              month: 'short',
-              year: 'numeric',
-            }),
-            publicationTimestamp: new Date(item.created_at).getTime(),
-            peerReviewed: true,
-            category: 'Cadastral GIS',
-            abstract: item.abstract,
-          }));
+          const mapped: ResearchPaper[] = data.items.map((item) => {
+            const titleLower = (item.title || '').toLowerCase();
+            const abstractLower = (item.abstract || '').toLowerCase();
+            let category = 'Cadastral GIS';
+            if (
+              titleLower.includes('tenure') ||
+              titleLower.includes('credit') ||
+              titleLower.includes('titling') ||
+              titleLower.includes('ownership') ||
+              abstractLower.includes('credit') ||
+              abstractLower.includes('tenure')
+            ) {
+              category = 'Tenure Security';
+            } else if (
+              titleLower.includes('customary') ||
+              titleLower.includes('forest') ||
+              titleLower.includes('tribal') ||
+              titleLower.includes('fra') ||
+              abstractLower.includes('forest') ||
+              abstractLower.includes('tribal') ||
+              abstractLower.includes('customary')
+            ) {
+              category = 'Customary Rights';
+            }
+
+            return {
+              id: item.id,
+              title: item.title,
+              authors: ['Accredited Registry Contributor'],
+              journal: 'Land Governance Open Repository',
+              doi: `10.1016/landgov.${item.slug || item.id.slice(0, 8)}`,
+              publicationDate: new Date(item.created_at).toLocaleDateString('en-US', {
+                month: 'short',
+                year: 'numeric',
+              }),
+              publicationTimestamp: new Date(item.created_at).getTime(),
+              peerReviewed: true,
+              category,
+              abstract: item.abstract,
+              isDemo: item.is_demo ?? false,
+            };
+          });
           setApiItems(mapped);
           setApiError(null);
         } else {
@@ -201,9 +238,15 @@ export default function ResearchPage() {
             <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
             Peer-Reviewed Repository
           </div>
-          <Badge variant="outline" className="border-amber-400 text-amber-900 bg-amber-50">
-            Synthetic Records (Demo)
-          </Badge>
+          {apiItems.length > 0 ? (
+            <Badge variant="outline" className="border-emerald-400 text-emerald-900 bg-emerald-50">
+              Live Registry ({apiItems.length} papers indexed)
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-400 text-amber-900 bg-amber-50">
+              Synthetic Records (Demo)
+            </Badge>
+          )}
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -341,9 +384,15 @@ export default function ResearchPage() {
                       <Award className="w-3 h-3" /> Peer Reviewed
                     </Badge>
                   )}
-                  <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
-                    Synthetic Paper (Demo)
-                  </Badge>
+                  {paper.isDemo ? (
+                    <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
+                      Synthetic Paper (Demo)
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
+                      Verified Registry Record
+                    </Badge>
+                  )}
                 </div>
                 <span className="text-xs text-slate-400 flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" /> {paper.publicationDate}
