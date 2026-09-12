@@ -164,6 +164,7 @@ async def create_resource(
                 file_size_bytes=payload.file_size_bytes,
                 checksum_sha256=payload.checksum_sha256,
                 extracted_text=raw_uri if raw_uri and raw_uri.startswith("data:") else None,
+                created_by_id=user_id,
             )
             db.add(version)
 
@@ -179,7 +180,9 @@ async def create_resource(
             "visibility": resource.visibility.value,
             "created_at": resource.created_at.isoformat(),
         }
-    except Exception:
+    except Exception as e:
+        import structlog
+        structlog.get_logger(__name__).error("Failed to create resource", error=str(e), exc_info=True)
         await db.rollback()
         raise
 
