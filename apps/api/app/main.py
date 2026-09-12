@@ -36,6 +36,13 @@ logger = structlog.get_logger(__name__)
 async def lifespan(
     app: FastAPI,
 ) -> AsyncIterator[None]:
+    # Log database connection configuration with masked credentials
+    logger.info(
+        "Database configuration initialized",
+        connection_source=settings.db_connection_source,
+        masked_database_url=settings.masked_database_url,
+    )
+
     # In serverless mode (Vercel), bypass heavy startup database probes for instant cold starts
     if not settings.is_serverless:
         try:

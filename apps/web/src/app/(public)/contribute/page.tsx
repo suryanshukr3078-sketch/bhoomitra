@@ -61,13 +61,13 @@ export default function ContributePage() {
     setIsUploading(true);
     try {
       let uploadInfo = null;
+      const baseUrl = env.apiUrl.replace(/\/$/, '');
+      const token = getAuthToken();
 
       if (selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        const baseUrl = env.apiUrl.replace(/\/$/, '');
-        const token = getAuthToken();
         const headers: Record<string, string> = {};
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
@@ -89,9 +89,39 @@ export default function ContributePage() {
         setUploadResult(uploadInfo);
       }
 
+      // Submit resource metadata to persist the record in the registry database
+      const resourceHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        resourceHeaders['Authorization'] = `Bearer ${token}`;
+      }
+
+      const resourceRes = await fetch(`${baseUrl}/resources`, {
+        method: 'POST',
+        headers: resourceHeaders,
+        credentials: 'include',
+        body: JSON.stringify({
+          title: data.title,
+          abstract: data.abstract,
+          resource_type: data.resourceType,
+          visibility: data.visibility,
+          status: 'published',
+          jurisdiction: data.jurisdiction,
+          source_url: uploadInfo?.storage_uri,
+        }),
+      });
+
+      if (!resourceRes.ok) {
+        const errData = await resourceRes.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to create resource (Status: ${resourceRes.status})`);
+      }
+
+      const createdResource = await resourceRes.json();
+
       toast({
-        title: 'Contribution Recorded',
-        description: `"${data.title}" was submitted to the registry${uploadInfo ? ' with verified file hash.' : '.'}`,
+        title: 'Contribution Published',
+        description: `"${createdResource.title}" was saved and published to the national registry.`,
         variant: 'success',
       });
 

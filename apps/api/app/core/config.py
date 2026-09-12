@@ -1,6 +1,6 @@
 from functools import lru_cache
-from typing import Literal
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from typing import Any, Literal
+from urllib.parse import parse_qs, quote_plus, urlencode, urlparse, urlunparse
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        ...,
+        default="",
         validation_alias=AliasChoices(
             "database_url",
             "postgres_url",
@@ -46,6 +46,7 @@ class Settings(BaseSettings):
             "postgres_url_non_pooling",
         ),
     )
+    db_connection_source: str = "DEFAULT"
 
     secret_key: str = "change-this-to-a-secure-random-secret-key-in-production"
     access_token_expire_minutes: int = 60 * 24 * 7
@@ -79,7 +80,70 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("database_url", mode="before")
+    @model_validator(mode="before")
+    @classmethod
+    def assemble_database_configuration(cls, data: Any) -> Any:
+        import os
+
+        if not isinstance(data, dict):
+            data = {}
+
+        def get_val(key: str) -> str | None:
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if k.lower() == key.lower() and v:
+                        return str(v)
+            return os.environ.get(key) or os.environ.get(key.upper()) or os.environ.get(key.lower())
+
+        db_url = get_val("database_url")
+        source = "DATABASE_URL"
+
+        if not db_url:
+            db_url = get_val("postgres_url")
+            source = "POSTGRES_URL"
+
+        if not db_url:
+            db_url = get_val("postgres_prisma_url")
+            source = "POSTGRES_PRISMA_URL"
+
+        if not db_url:
+            db_url = get_val("postgres_url_non_pooling")
+            source = "POSTGRES_URL_NON_POOLING"
+
+        if not db_url:
+            user = get_val("postgres_user")
+            password = get_val("postgres_password")
+            host = get_val("postgres_host")
+            database = get_val("postgres_database") or "postgres"
+            port = get_val("postgres_port") or "6543"
+
+            if user and host:
+                quoted_user = quote_plus(user)
+                quoted_pass = f":{quote_plus(password)}" if password else ""
+                db_url = f"postgresql+psycopg://{quoted_user}{quoted_pass}@{host}:{port}/{database}?sslmode=require"
+                source = "POSTGRES_COMPONENTS"
+
+        if db_url:
+            # Automatically normalize standard postgres:// or postgresql:// to SQLAlchemy's postgresql+psycopg://
+            if db_url.startswith("postgres://"):
+                db_url = "postgresql+psycopg://" + db_url[len("postgres://"):]
+            elif db_url.startswith("postgresql://"):
+                db_url = "postgresql+psycopg://" + db_url[len("postgresql://"):]
+
+            # Strip Prisma-specific query parameters like pgbouncer=true which cause libpq/psycopg errors
+            parsed = urlparse(db_url)
+            if "pgbouncer" in parsed.query:
+                qs = parse_qs(parsed.query, keep_blank_values=True)
+                qs.pop("pgbouncer", None)
+                new_query = urlencode(qs, doseq=True)
+                db_url = urlunparse(parsed._replace(query=new_query))
+
+            data["database_url"] = db_url
+            data["db_connection_source"] = source
+
+        return data
+
+    @field_validator("database_url")
     @classmethod
     def validate_database_url(
         cls,
@@ -87,20 +151,6 @@ class Settings(BaseSettings):
     ) -> str:
         if not value or not isinstance(value, str):
             raise ValueError("Database connection URL must be a non-empty string.")
-
-        # Automatically normalize standard postgres:// or postgresql:// to SQLAlchemy's postgresql+psycopg://
-        if value.startswith("postgres://"):
-            value = "postgresql+psycopg://" + value[len("postgres://"):]
-        elif value.startswith("postgresql://"):
-            value = "postgresql+psycopg://" + value[len("postgresql://"):]
-
-        # Strip Prisma-specific query parameters like pgbouncer=true which cause libpq/psycopg errors
-        parsed = urlparse(value)
-        if "pgbouncer" in parsed.query:
-            qs = parse_qs(parsed.query, keep_blank_values=True)
-            qs.pop("pgbouncer", None)
-            new_query = urlencode(qs, doseq=True)
-            value = urlunparse(parsed._replace(query=new_query))
 
         allowed_prefixes = (
             "postgresql+psycopg://",
@@ -111,6 +161,17 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL must use the SQLAlchemy psycopg dialect.")
 
         return value
+
+    @property
+    def masked_database_url(self) -> str:
+        try:
+            parsed = urlparse(self.database_url)
+            if parsed.password:
+                netloc = parsed.netloc.replace(f":{parsed.password}@", ":****@")
+                return parsed._replace(netloc=netloc).geturl()
+            return self.database_url
+        except Exception:
+            return "postgresql+psycopg://****"
 
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":

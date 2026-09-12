@@ -39,5 +39,9 @@ async def readiness() -> dict[str, Any]:
     return {
         "status": "ready",
         "service": settings.app_name,
-        "database": database,
+        "database": {
+            **database,
+            "connection_source": settings.db_connection_source,
+            "database_url": settings.masked_database_url,
+        },
     }
