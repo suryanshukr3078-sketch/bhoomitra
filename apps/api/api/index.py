@@ -6,7 +6,8 @@ API_ROOT = Path(__file__).resolve().parent.parent
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
+from app.core.middleware import QueryPathRewriteMiddleware
 from app.main import app
 
 # Expose ASGI application instance for Vercel serverless Python runtime
-__all__ = ["app"]
+__all__ = ["app", "QueryPathRewriteMiddleware"]

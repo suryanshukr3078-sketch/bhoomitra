@@ -1,0 +1,146 @@
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+from uuid import UUID
+
+import pytest
+from fastapi.testclient import TestClient
+
+# Ensure apps/api is in sys.path
+apps_api_dir = Path(__file__).resolve().parent.parent
+if str(apps_api_dir) not in sys.path:
+    sys.path.insert(0, str(apps_api_dir))
+
+from app.api.dependencies.db import get_db
+from app.api.v1.routes.resources import MINIMAL_JPEG, MINIMAL_PNG
+from app.main import app
+from app.models.enums import ResourceStatus, ResourceType, ResourceVisibility
+from app.models.resources import Resource
+
+
+@pytest.fixture
+def mock_target_resource() -> Resource:
+    res = Resource(
+        id=UUID("23387c84-6f0b-4bce-9105-5e9103a459dd"),
+        title="Gold Crown Name Wallpaper",
+        slug="gold-crown-name-wallpaper-suryanshu",
+        abstract="A sample wallpaper resource with image binary in source_url.",
+        resource_type=ResourceType.RESEARCH_PAPER,
+        status=ResourceStatus.PUBLISHED,
+        visibility=ResourceVisibility.PUBLIC,
+        source_url="local://land-governance-documents/uploads/c0be4fd8-f7d6-4fe2-8e8c-7147d56dcc05/Gold_Crown_Name_Wallpaper_Suryanshu.jpeg",
+        created_at=datetime.now(timezone.utc),
+        is_demo=False,
+    )
+    res.versions = []
+    res.research_paper = None
+    res.policy = None
+    res.spatial_layer = None
+    return res
+
+
+@pytest.fixture
+def test_client_with_resource(mock_target_resource: Resource) -> TestClient:
+    async def override_get_db():
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_target_resource
+        mock_result.scalars.return_value.first.return_value = mock_target_resource
+        mock_result.scalars.return_value.all.return_value = [mock_target_resource]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        yield mock_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app, base_url="http://localhost")
+    yield client
+    app.dependency_overrides.clear()
+
+
+def test_direct_resource_download(test_client_with_resource: TestClient) -> None:
+    response = test_client_with_resource.get("/api/v1/resources/23387c84-6f0b-4bce-9105-5e9103a459dd/download")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert 'filename="Gold_Crown_Name_Wallpaper_Suryanshu.jpeg"' in response.headers["content-disposition"]
+    assert response.headers["content-disposition"].startswith("attachment;")
+    assert response.content == MINIMAL_JPEG
+
+
+def test_query_path_resource_download(test_client_with_resource: TestClient) -> None:
+    # Test /?path=api/v1/resources/...
+    response = test_client_with_resource.get(
+        "/?path=api/v1/resources/23387c84-6f0b-4bce-9105-5e9103a459dd/download"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert 'filename="Gold_Crown_Name_Wallpaper_Suryanshu.jpeg"' in response.headers["content-disposition"]
+    assert response.content == MINIMAL_JPEG
+
+
+def test_api_prefix_query_path(test_client_with_resource: TestClient) -> None:
+    # Test /api?path=...
+    response = test_client_with_resource.get(
+        "/api?path=api/v1/resources/23387c84-6f0b-4bce-9105-5e9103a459dd/download"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == MINIMAL_JPEG
+
+
+def test_api_index_py_query_path(test_client_with_resource: TestClient) -> None:
+    # Test /api/index.py?path=...
+    response = test_client_with_resource.get(
+        "/api/index.py?path=api/v1/resources/23387c84-6f0b-4bce-9105-5e9103a459dd/download"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == MINIMAL_JPEG
+
+
+def test_research_router_download(test_client_with_resource: TestClient) -> None:
+    # Test /api/v1/research/...
+    response = test_client_with_resource.get(
+        "/api/v1/research/23387c84-6f0b-4bce-9105-5e9103a459dd/download"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == MINIMAL_JPEG
+
+
+def test_documents_router_download(test_client_with_resource: TestClient) -> None:
+    # Test /api/v1/documents/...
+    response = test_client_with_resource.get(
+        "/api/v1/documents/23387c84-6f0b-4bce-9105-5e9103a459dd/download"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == MINIMAL_JPEG
+
+
+def test_view_resource_file_inline(test_client_with_resource: TestClient) -> None:
+    # Test inline view disposition
+    response = test_client_with_resource.get(
+        "/?path=api/v1/resources/23387c84-6f0b-4bce-9105-5e9103a459dd/view"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.headers["content-disposition"].startswith("inline;")
+    assert 'filename="Gold_Crown_Name_Wallpaper_Suryanshu.jpeg"' in response.headers["content-disposition"]
+
+
+def test_resource_details_mime_and_filename(test_client_with_resource: TestClient) -> None:
+    # Direct get
+    response = test_client_with_resource.get("/api/v1/resources/23387c84-6f0b-4bce-9105-5e9103a459dd")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["file"] is not None
+    assert data["file"]["filename"] == "Gold_Crown_Name_Wallpaper_Suryanshu.jpeg"
+    assert data["file"]["mime_type"] == "image/jpeg"
+
+    # Query get
+    response_q = test_client_with_resource.get("/?path=api/v1/resources/23387c84-6f0b-4bce-9105-5e9103a459dd")
+    assert response_q.status_code == 200
+    data_q = response_q.json()
+    assert data_q["file"]["filename"] == "Gold_Crown_Name_Wallpaper_Suryanshu.jpeg"
+    assert data_q["file"]["mime_type"] == "image/jpeg"

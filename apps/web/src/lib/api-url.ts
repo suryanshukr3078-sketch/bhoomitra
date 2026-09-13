@@ -7,12 +7,50 @@ import { env } from '@/lib/environment';
 export function resolveApiUrl(path?: string | null): string {
   if (!path) return '';
 
-  // Already a data URI or absolute HTTP/HTTPS URL
-  if (path.startsWith('data:') || path.startsWith('http://') || path.startsWith('https://')) {
+  // Already a data URI
+  if (path.startsWith('data:')) {
     return path;
   }
 
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  let cleanPath = path;
+
+  // Handle absolute URLs that wrap query routing, e.g. http://localhost:3000/?path=...
+  if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+    try {
+      const parsedUrl = new URL(cleanPath);
+      const queryParam = parsedUrl.searchParams.get('path');
+      if (queryParam) {
+        cleanPath = decodeURIComponent(queryParam);
+      } else {
+        return cleanPath;
+      }
+    } catch {
+      return cleanPath;
+    }
+  }
+
+  // Handle malformed /api/v1/?path=, /?path=, or ?path= query routing
+  if (cleanPath.startsWith('/api/v1/?path=')) {
+    cleanPath = decodeURIComponent(cleanPath.slice('/api/v1/?path='.length));
+  } else if (cleanPath.startsWith('/?path=')) {
+    cleanPath = decodeURIComponent(cleanPath.slice('/?path='.length));
+  } else if (cleanPath.startsWith('?path=')) {
+    cleanPath = decodeURIComponent(cleanPath.slice('?path='.length));
+  }
+
+  if (!cleanPath) return '';
+
+  // Normalize slashes and ensure cleanPath starts with /
+  cleanPath = cleanPath.replace(/^\/+/, '/');
+  if (!cleanPath.startsWith('/')) {
+    cleanPath = `/${cleanPath}`;
+  }
+
+  // Deduplicate /api/v1 prefixes if repeated (e.g. /api/v1/api/v1)
+  while (cleanPath.startsWith('/api/v1/api/v1')) {
+    cleanPath = cleanPath.slice('/api/v1'.length);
+  }
+
   const baseUrl = env.apiUrl.replace(/\/$/, '');
 
   // If baseUrl already ends with /api/v1 and cleanPath starts with /api/v1, prevent duplication

@@ -27,12 +27,28 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'https://land-governance-platform-virid.vercel.app/api/:path*',
-      },
-    ];
+    return {
+      beforeFiles: [
+        {
+          source: '/',
+          has: [
+            {
+              type: 'query',
+              key: 'path',
+              value: '(?<targetPath>.*)',
+            },
+          ],
+          destination: '/:targetPath',
+        },
+      ],
+      afterFiles: [
+        {
+          source: '/api/:path*',
+          destination: 'https://land-governance-platform-virid.vercel.app/api/:path*',
+        },
+      ],
+      fallback: [],
+    };
   },
   async headers() {
     return [

@@ -12,6 +12,7 @@ if not apps_api_dir.exists():
 if apps_api_dir.exists() and str(apps_api_dir) not in sys.path:
     sys.path.insert(0, str(apps_api_dir))
 
+from app.core.middleware import QueryPathRewriteMiddleware
 from app.main import app
 
-__all__ = ["app"]
+__all__ = ["app", "QueryPathRewriteMiddleware"]

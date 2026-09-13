@@ -17,7 +17,10 @@ from app.core.cache import cache
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import configure_logging
-from app.core.middleware import RequestIDMiddleware
+from app.core.middleware import (
+    QueryPathRewriteMiddleware,
+    RequestIDMiddleware,
+)
 from app.db.session import (
     check_database_connection,
     close_database_connections,
@@ -165,6 +168,10 @@ def create_application() -> FastAPI:
 
     application.add_middleware(
         RequestIDMiddleware,
+    )
+
+    application.add_middleware(
+        QueryPathRewriteMiddleware,
     )
 
     application.include_router(api_router)

@@ -28,6 +28,7 @@ from app.api.v1.routes.resources import (
     download_resource_file,
     get_resource,
     list_resources,
+    view_resource_file,
 )
 
 documents_router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -35,7 +36,17 @@ documents_router.add_api_route("", list_resources, methods=["GET"])
 documents_router.add_api_route("", create_resource, methods=["POST"])
 documents_router.add_api_route("/{resource_id}", get_resource, methods=["GET"])
 documents_router.add_api_route("/{resource_id}/download", download_resource_file, methods=["GET"])
+documents_router.add_api_route("/{resource_id}/view", view_resource_file, methods=["GET"])
 router.include_router(documents_router)
+
+# Research router alias for direct compatibility with /research and /research/{id}
+research_router = APIRouter(prefix="/research", tags=["Research"])
+research_router.add_api_route("", list_resources, methods=["GET"])
+research_router.add_api_route("", create_resource, methods=["POST"])
+research_router.add_api_route("/{resource_id}", get_resource, methods=["GET"])
+research_router.add_api_route("/{resource_id}/download", download_resource_file, methods=["GET"])
+research_router.add_api_route("/{resource_id}/view", view_resource_file, methods=["GET"])
+router.include_router(research_router)
 
 # Alias for backwards compatibility
 api_v1_router = router
