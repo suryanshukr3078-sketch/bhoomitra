@@ -85,6 +85,30 @@ const SEED_PAPERS: Record<string, Partial<ResourceDetail>> = {
     created_at: '2026-07-20T00:00:00Z',
     is_demo: true,
   },
+  'res-003': {
+    id: 'res-003',
+    title: 'Comparative Analysis of Customary and Statutory Land Rights in Sub-Saharan Agrosystems',
+    abstract:
+      'Examines the legal interface between customary village chiefs and centralized statutory GIS registries. Highlights institutional friction points and proposes hybrid titling architectures that respect community ownership.',
+    journal: 'African Land Governance Review',
+    doi: '10.1111/j.1477-8947.2026.01289',
+    authors: [{ name: 'Kwame Mensah' }, { name: 'Dr. Sarah Ndlovu' }],
+    peer_reviewed: false,
+    created_at: '2026-06-18T00:00:00Z',
+    is_demo: true,
+  },
+  'res-004': {
+    id: 'res-004',
+    title: 'Drone Photogrammetry and High-Resolution Orthomosaics for Rapid Informal Settlement Mapping',
+    abstract:
+      'Centimeter-accuracy orthomosaic processing with Cloud-Optimized GeoTIFFs for informal settlement formalization. Evaluates cost-effectiveness and administrative velocity compared to conventional ground survey methods.',
+    journal: 'Urban Land Information Systems',
+    doi: '10.1007/s10901-026-09874-x',
+    authors: [{ name: 'Carlos Mendez' }, { name: 'Maria Santos' }],
+    peer_reviewed: true,
+    created_at: '2026-05-12T00:00:00Z',
+    is_demo: true,
+  },
 };
 
 export default function ResearchDetailPage() {
@@ -107,14 +131,14 @@ export default function ResearchDetailPage() {
     async function fetchResource() {
       try {
         // Try /resources/{id} first, fallback to /documents/{id}
-        let res = await fetch(`${baseUrl}/resources/${id}`);
-        if (!res.ok) {
-          res = await fetch(`${baseUrl}/documents/${id}`);
+        let res = await fetch(`${baseUrl}/resources/${id}`).catch(() => null);
+        if (!res || !res.ok) {
+          res = await fetch(`${baseUrl}/documents/${id}`).catch(() => null);
         }
 
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted) {
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && isMounted) {
             setResource(data);
             setIsLoading(false);
             return;

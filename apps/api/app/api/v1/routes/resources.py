@@ -332,7 +332,7 @@ async def get_resource(
         child_meta = {
             "geometry_type": sl.geometry_type,
             "srid": sl.srid,
-            "feature_count": sl.feature_count,
+            "feature_count": getattr(sl, "feature_count", None),
         }
 
     return {

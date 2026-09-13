@@ -91,6 +91,17 @@ const SEED_POLICIES: Record<string, Partial<PolicyDetail>> = {
     created_at: '2026-02-10T00:00:00Z',
     is_demo: true,
   },
+  'pol-004': {
+    id: 'pol-004',
+    title: 'Agricultural Land Lease Formalization Guidelines',
+    abstract:
+      'Framework for 5-year tenant farmer protections (superseded by National Unified Tenancy Framework 2026). Specifies dispute arbitration channels and transparent rental ceiling guidelines.',
+    jurisdiction_code: 'IN-GJ',
+    lifecycle_status: 'superseded',
+    legal_basis: 'Gujarat Agricultural Tenancy Act',
+    created_at: '2024-03-01T00:00:00Z',
+    is_demo: true,
+  },
 };
 
 export default function PolicyDetailPage() {
@@ -112,17 +123,17 @@ export default function PolicyDetailPage() {
     async function fetchPolicy() {
       try {
         // Try /policies/{id} first, fallback to /resources/{id}
-        let res = await fetch(`${baseUrl}/policies/${id}`);
-        if (!res.ok) {
-          res = await fetch(`${baseUrl}/resources/${id}`);
+        let res = await fetch(`${baseUrl}/policies/${id}`).catch(() => null);
+        if (!res || !res.ok) {
+          res = await fetch(`${baseUrl}/resources/${id}`).catch(() => null);
         }
-        if (!res.ok) {
-          res = await fetch(`${baseUrl}/documents/${id}`);
+        if (!res || !res.ok) {
+          res = await fetch(`${baseUrl}/documents/${id}`).catch(() => null);
         }
 
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted) {
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && isMounted) {
             setPolicy(data);
             setIsLoading(false);
             return;

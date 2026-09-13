@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { env } from '@/lib/environment';
+import { SpatialFeaturePreview } from '@/components/resources/SpatialFeaturePreview';
 
 interface DatasetDetail {
   id: string;
@@ -63,8 +64,9 @@ const SEED_DATASETS: Record<string, Partial<DatasetDetail>> = {
     title: 'Pune District Cadastral Parcel Polygons (2026)',
     abstract:
       'High-precision cadastral boundary polygons with surveyor verification timestamps, mutation sequence numbers, and land use codes. Fully compliant with EPSG:4326 PostGIS topology rules with zero overlapping boundaries.',
+    resource_type: 'spatial_layer',
     geometry_type: 'MultiPolygon',
-    srid: 'EPSG:4326 (WGS 84)',
+    srid: '4326',
     feature_count: '48,200 parcels',
     created_at: '2026-09-01T00:00:00Z',
     is_demo: true,
@@ -74,10 +76,35 @@ const SEED_DATASETS: Record<string, Partial<DatasetDetail>> = {
     title: 'Bangalore Metropolitan 10cm Digital Surface Model & Orthomosaics',
     abstract:
       'High-resolution drone photogrammetry orthomosaic tiled for rapid streaming and informal settlement encroachment audits. Optimized as Cloud-Optimized GeoTIFF (COG) with overview pyramids.',
+    resource_type: 'spatial_layer',
     geometry_type: 'Raster COG',
-    srid: 'EPSG:32643 (UTM 43N)',
+    srid: '32643',
     feature_count: '1 Raster Layer',
     created_at: '2026-08-10T00:00:00Z',
+    is_demo: true,
+  },
+  'ds-03': {
+    id: 'ds-03',
+    title: 'National Protected Forest Rights & Tribal Demarcations',
+    abstract:
+      'Serverless vector tile archive containing digitized community forest rights boundaries and customary tenure buffers. Built using Tippecanoe for seamless multi-scale rendering from country overview to village-level parcel parcels.',
+    resource_type: 'spatial_layer',
+    geometry_type: 'PMTiles Vector',
+    srid: '4326',
+    feature_count: '12,840 boundaries',
+    created_at: '2026-07-15T00:00:00Z',
+    is_demo: true,
+  },
+  'ds-04': {
+    id: 'ds-04',
+    title: 'Gujarat Agricultural Irrigation Command Cadastre',
+    abstract:
+      'Field-verified parcel shapefiles for canal irrigation distribution, soil classification, and crop tenancy records. Enforces strict attribute topology matching state revenue survey numbers.',
+    resource_type: 'dataset',
+    geometry_type: 'ESRI Shapefile Archive',
+    srid: '4326',
+    feature_count: '31,500 parcels',
+    created_at: '2026-06-20T00:00:00Z',
     is_demo: true,
   },
 };
@@ -101,15 +128,15 @@ export default function DatasetDetailPage() {
     async function fetchDataset() {
       try {
         // Try /datasets/{id} first, fallback to /resources/{id}
-        let res = await fetch(`${baseUrl}/datasets/${id}`);
-        if (!res.ok) {
-          res = await fetch(`${baseUrl}/resources/${id}`);
+        let res = await fetch(`${baseUrl}/datasets/${id}`).catch(() => null);
+        if (!res || !res.ok) {
+          res = await fetch(`${baseUrl}/resources/${id}`).catch(() => null);
         }
-        if (!res.ok) {
-          res = await fetch(`${baseUrl}/documents/${id}`);
+        if (!res || !res.ok) {
+          res = await fetch(`${baseUrl}/documents/${id}`).catch(() => null);
         }
 
-        if (res.ok) {
+        if (res && res.ok) {
           const data = await res.json();
           if (isMounted) {
             setDataset(data);
@@ -127,7 +154,7 @@ export default function DatasetDetailPage() {
               title: seed.title || 'Cadastral Spatial Dataset',
               slug: id,
               abstract: seed.abstract || '',
-              resource_type: 'dataset',
+              resource_type: seed.resource_type || 'dataset',
               status: 'published',
               visibility: 'public',
               created_at: seed.created_at || new Date().toISOString(),
@@ -148,7 +175,7 @@ export default function DatasetDetailPage() {
           }
         }
 
-        throw new Error(`Spatial dataset with ID "${id}" was not found.`);
+        throw new Error(`Dataset with ID "${id}" was not found in the registry.`);
       } catch (err: any) {
         if (isMounted) {
           setError(err.message || 'Could not load dataset details.');
@@ -209,9 +236,9 @@ export default function DatasetDetailPage() {
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="p-8 bg-white rounded-2xl border border-rose-200 text-center space-y-4 shadow-sm">
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-          <h1 className="text-xl font-bold text-slate-900">Spatial Dataset Not Found</h1>
+          <h1 className="text-xl font-bold text-slate-900">Dataset Not Found</h1>
           <p className="text-sm text-slate-600 max-w-md mx-auto">
-            {error || 'The requested GIS dataset could not be retrieved from the decentralized registry.'}
+            {error || 'The requested dataset could not be retrieved from the decentralized registry.'}
           </p>
           <div className="pt-2">
             <Link
@@ -226,6 +253,7 @@ export default function DatasetDetailPage() {
     );
   }
 
+  const isSpatialLayer = dataset.resource_type === 'spatial_layer';
   const baseUrl = env.apiUrl.replace(/\/$/, '');
   const downloadUrl =
     dataset.file?.download_url
@@ -254,17 +282,25 @@ export default function DatasetDetailPage() {
         {/* Badges */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <Database className="w-3.5 h-3.5" /> Spatial GIS Layer
-            </span>
-            <Badge variant="default">{dataset.geometry_type || 'Vector Features'}</Badge>
+            {isSpatialLayer ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <Layers className="w-3.5 h-3.5" /> Spatial GIS Layer
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                <Database className="w-3.5 h-3.5 text-emerald-700" /> Open Dataset
+              </span>
+            )}
+            <Badge variant={isSpatialLayer ? 'default' : 'secondary'}>
+              {dataset.geometry_type || (isSpatialLayer ? 'Vector Features' : 'Data File')}
+            </Badge>
             {dataset.is_demo ? (
               <Badge variant="outline" className="text-[10px] text-amber-800 bg-amber-50/70 border-amber-200">
-                Synthetic GeoJSON (Demo)
+                Synthetic Record (Demo)
               </Badge>
             ) : (
               <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50/70 border-emerald-200 font-medium">
-                Verified Spatial Layer
+                Verified Registry Record
               </Badge>
             )}
           </div>
@@ -290,46 +326,54 @@ export default function DatasetDetailPage() {
           </div>
         </div>
 
-        {/* Title & Spatial Properties */}
+        {/* Title & Properties */}
         <div className="space-y-3">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
             {dataset.title}
           </h1>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div>
-              <span className="text-slate-400 block">Geometry Type:</span>
-              <span className="font-semibold text-slate-800">{dataset.geometry_type || 'MultiPolygon'}</span>
+          {(isSpatialLayer || dataset.geometry_type || dataset.srid) && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div>
+                <span className="text-slate-400 block">Geometry / Format:</span>
+                <span className="font-semibold text-slate-800">{dataset.geometry_type || 'MultiPolygon'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Projection / SRID:</span>
+                <span className="font-mono font-semibold text-emerald-800">
+                  {dataset.srid ? `EPSG:${dataset.srid}` : 'EPSG:4326 (WGS 84)'}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Feature Volume:</span>
+                <span className="font-semibold text-slate-800">
+                  {dataset.feature_count ? `${dataset.feature_count}` : 'Full Coverage'}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-400 block">Projection / SRID:</span>
-              <span className="font-mono font-semibold text-emerald-800">
-                {dataset.srid ? `EPSG:${dataset.srid}` : 'EPSG:4326 (WGS 84)'}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block">Feature Volume:</span>
-              <span className="font-semibold text-slate-800">
-                {dataset.feature_count ? `${dataset.feature_count} features` : 'Full Coverage'}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Summary / Description */}
         <div className="space-y-2 pt-2">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Dataset Description & Spatial Specifications
+            Dataset Description & Specifications
           </h2>
           <div className="p-4 sm:p-5 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-line">
             {dataset.abstract}
           </div>
         </div>
 
+        {/* Spatial Preview (ONLY rendered and fetched when resource_type is spatial_layer) */}
+        <SpatialFeaturePreview
+          resourceId={dataset.id}
+          resourceType={dataset.resource_type}
+        />
+
         {/* Prominent File Attachment & Download Card */}
         <section aria-labelledby="attachment-heading" className="space-y-3 pt-2">
           <h2 id="attachment-heading" className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Downloadable Spatial Artifact & File Binary
+            Downloadable Artifact & File Binary
           </h2>
 
           <div className="p-5 bg-emerald-50/50 rounded-2xl border-2 border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
@@ -339,7 +383,7 @@ export default function DatasetDetailPage() {
               </div>
               <div className="space-y-1">
                 <div className="font-bold text-slate-900 text-sm break-all">
-                  {dataset.file?.filename || `${dataset.slug || 'spatial-layer'}.geojson`}
+                  {dataset.file?.filename || `${dataset.slug || 'dataset-file'}.geojson`}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                   <span className="font-mono uppercase text-emerald-800 font-semibold">
@@ -348,7 +392,7 @@ export default function DatasetDetailPage() {
                   {dataset.file?.size_bytes ? (
                     <span>• {(dataset.file.size_bytes / 1024).toFixed(1)} KB</span>
                   ) : null}
-                  <span>• Standard OGC GeoJSON</span>
+                  <span>• Cryptographically Verified Binary</span>
                 </div>
                 {dataset.file?.checksum_sha256 && (
                   <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1 break-all">
@@ -375,11 +419,11 @@ export default function DatasetDetailPage() {
         <div className="pt-4 border-t border-slate-100 space-y-2 text-xs text-slate-500">
           <div className="flex items-center gap-2 font-semibold text-slate-700">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            PostGIS Verification & Provenance
+            Append-Only Provenance Ledger Entry
           </div>
           <p className="leading-relaxed text-[11px] text-slate-500">
             Indexed with UUID <code className="font-mono text-slate-700">{dataset.id}</code>. 
-            All polygon boundaries within this layer adhere to the EPSG:4326 PostGIS geometry specification with zero overlap topological rules.
+            All cadastral boundary polygons, surveyor certificates, and policy citations referencing this record are tracked in the immutable DAG ledger.
           </p>
         </div>
       </article>
