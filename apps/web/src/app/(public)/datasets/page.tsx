@@ -228,11 +228,12 @@ export default function DatasetsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full w-fit">
-            <Database className="w-3.5 h-3.5" aria-hidden="true" />
-            Open Spatial Catalog
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/85 shadow-card space-y-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500" />
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-full w-fit">
+            <Database className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+            <span>Open Spatial Catalog</span>
           </div>
           {apiItems.length > 0 ? (
             <Badge variant="outline" className="border-emerald-400 text-emerald-900 bg-emerald-50 font-semibold">
@@ -245,15 +246,15 @@ export default function DatasetsPage() {
           )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Cadastral Datasets & GIS Layers
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight font-heading">
+          Cadastral Datasets &amp; GIS Layers
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
+        <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
           Standardized geospatial datasets, vector tile packages, and aerial orthomosaics available under open data licensing.
         </p>
 
         {/* Search, Filter & Sort Controls */}
-        <div className="pt-4 flex flex-col md:flex-row gap-3">
+        <div className="pt-2 flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
             <input
@@ -264,7 +265,7 @@ export default function DatasetsPage() {
                 setCurrentPage(1);
               }}
               placeholder="Search datasets by jurisdiction, format, or parcel attributes..."
-              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white transition-all shadow-sm"
             />
             {searchQuery && (
               <button
@@ -279,22 +280,22 @@ export default function DatasetsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
               {formats.map((fmt) => (
                 <motion.button
                   key={fmt}
                   type="button"
-                  whileHover={prefersReduced ? undefined : { scale: 1.05 }}
-                  whileTap={prefersReduced ? undefined : { scale: 0.95 }}
+                  whileHover={prefersReduced ? undefined : { scale: 1.04 }}
+                  whileTap={prefersReduced ? undefined : { scale: 0.96 }}
                   transition={{ duration: 0.12 }}
                   onClick={() => {
                     setSelectedFormat(fmt);
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
+                  className={`px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
                     selectedFormat === fmt
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'bg-gradient-to-r from-emerald-800 to-teal-700 text-white shadow-sm'
+                      : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/90'
                   }`}
                 >
                   {fmt}
@@ -302,15 +303,16 @@ export default function DatasetsPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-1.5 border border-slate-300 rounded-xl px-2.5 py-1.5 bg-white text-xs text-slate-700">
+            <div className="flex items-center gap-1.5 border border-slate-300 rounded-xl px-3 py-2 bg-white text-xs text-slate-700 shadow-sm">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-transparent focus:outline-none cursor-pointer"
+                className="bg-transparent focus:outline-none cursor-pointer font-medium"
                 aria-label="Sort datasets"
               >
                 <option value="date_desc">Newest First</option>
+                <option value="date_asc">Oldest First</option>
                 <option value="size_desc">File Size (Largest)</option>
                 <option value="title_asc">Title (A-Z)</option>
               </select>
@@ -320,11 +322,11 @@ export default function DatasetsPage() {
       </div>
 
       {/* Item Count & Page Info */}
-      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+      <div className="flex items-center justify-between text-xs text-slate-500 px-1 font-medium">
         <span>
           Showing {filteredAndSortedDatasets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
           {Math.min(currentPage * pageSize, filteredAndSortedDatasets.length)} of{' '}
-          {filteredAndSortedDatasets.length} spatial layers
+          {filteredAndSortedDatasets.length} datasets
         </span>
         <span>
           Page {currentPage} of {totalPages}
@@ -333,36 +335,39 @@ export default function DatasetsPage() {
 
       {/* API Warning/Status Banner if offline */}
       {apiError && (
-        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
+        <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
           <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
           <span>{apiError}</span>
         </div>
       )}
 
-      {/* Dataset Cards Grid */}
+      {/* Datasets Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-6">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-card space-y-4">
               <div className="flex gap-2">
+                <Skeleton className="h-5 w-20 rounded-full" />
                 <Skeleton className="h-5 w-24 rounded-full" />
-                <Skeleton className="h-5 w-28 rounded-full" />
               </div>
-              <Skeleton className="h-7 w-3/4" />
-              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-16 w-full" />
+              <div className="grid grid-cols-2 gap-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
             </div>
           ))}
         </div>
       ) : filteredAndSortedDatasets.length === 0 ? (
         <EmptyState
           icon="database"
-          title="No Datasets Found"
-          description={`No spatial layers match your search query for "${searchQuery}".`}
-          actionLabel="Reset Filters"
+          title="No Spatial Datasets Found"
+          description={`No GIS datasets matched your filter criteria for "${searchQuery}".`}
+          actionLabel="Reset Search"
           onAction={() => {
             setSearchQuery('');
-            setSelectedFormat('All');
+            setSelectedFormat('All Formats');
             setCurrentPage(1);
           }}
         />
@@ -374,9 +379,9 @@ export default function DatasetsPage() {
           {paginatedDatasets.map((ds) => (
             <StaggerItem key={ds.id}>
               <MotionCard
-                className="flex flex-col justify-between p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4 h-full"
+                className="h-full flex flex-col justify-between p-6 sm:p-7 bg-white rounded-2xl border border-slate-200/85 shadow-card hover:shadow-card-hover hover:border-emerald-300/80 transition-all space-y-4"
               >
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="default">{ds.format}</Badge>
@@ -390,10 +395,12 @@ export default function DatasetsPage() {
                         </Badge>
                       )}
                     </div>
-                    <span className="text-xs font-medium text-slate-500">{ds.jurisdiction}</span>
+                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                      {ds.jurisdiction}
+                    </span>
                   </div>
 
-                  <h2 className="text-lg font-bold text-slate-900 leading-snug">
+                  <h2 className="text-lg font-bold text-slate-900 leading-snug font-heading">
                     <Link
                       href={`/datasets/${ds.id}`}
                       className="hover:text-emerald-700 hover:underline transition-colors"
@@ -402,28 +409,28 @@ export default function DatasetsPage() {
                     </Link>
                   </h2>
 
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
                     {ds.description}
                   </p>
 
                   <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 font-medium">
                       <Layers className="w-3.5 h-3.5 text-emerald-600" />
                       <span>{ds.featuresCount}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 font-mono">
-                      <Globe2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                      <Globe2 className="w-3.5 h-3.5 text-teal-600" />
                       <span>{ds.srid}</span>
                     </div>
-                    <div className="col-span-2 flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
+                    <div className="col-span-2 flex items-center gap-1.5 font-mono text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md">
                       <span className="font-semibold text-slate-700">BBOX:</span> {ds.bbox}
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-4 flex items-center justify-between border-t border-slate-100 text-xs">
-                  <span className="text-slate-400 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" /> Updated {ds.lastUpdated}
+                  <span className="text-slate-400 flex items-center gap-1.5 font-medium">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> Updated {ds.lastUpdated}
                   </span>
                   <div className="flex items-center gap-2">
                     <motion.div
@@ -433,7 +440,7 @@ export default function DatasetsPage() {
                     >
                       <Link
                         href={`/datasets/${ds.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                        className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold text-slate-800 hover:text-emerald-800 bg-white hover:bg-slate-50 rounded-xl transition-colors border border-slate-300 shadow-sm"
                       >
                         View Dataset
                       </Link>
@@ -444,7 +451,7 @@ export default function DatasetsPage() {
                       whileTap={prefersReduced ? undefined : { scale: 0.97 }}
                       transition={{ duration: 0.12 }}
                       onClick={() => handleDownload(ds)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-800 hover:bg-slate-100 rounded-xl transition-colors"
                     >
                       <Download className="w-3.5 h-3.5" /> Download ({ds.fileSize})
                     </motion.button>

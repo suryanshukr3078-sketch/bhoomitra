@@ -112,7 +112,13 @@ export default function PoliciesPage() {
   const pageSize = 6;
   const { toast } = useToast();
 
-  const statusOptions = ['All', 'active', 'consultation', 'draft', 'superseded'];
+  const STATUS_TABS = [
+    { value: 'All', label: 'All Statuses' },
+    { value: 'active', label: 'Active Statutory' },
+    { value: 'consultation', label: 'Consultation' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'superseded', label: 'Superseded' },
+  ];
 
   useEffect(() => {
     let isMounted = true;
@@ -251,11 +257,12 @@ export default function PoliciesPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full w-fit">
-            <Scale className="w-3.5 h-3.5" aria-hidden="true" />
-            Statutory Registry
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/85 shadow-card space-y-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500" />
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-full w-fit">
+            <Scale className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+            <span>Statutory Registry</span>
           </div>
           {apiItems.length > 0 ? (
             <Badge variant="outline" className="border-emerald-400 text-emerald-900 bg-emerald-50 font-semibold">
@@ -268,15 +275,15 @@ export default function PoliciesPage() {
           )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Land Policy Documents & Legal Frameworks
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight font-heading">
+          Land Policy Documents &amp; Legal Frameworks
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
+        <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
           Authoritative state and national land governance policies, revenue codes, survey mandates, and tenure rights frameworks.
         </p>
 
         {/* Search, Status & Sort Filters */}
-        <div className="pt-4 flex flex-col md:flex-row gap-3">
+        <div className="pt-2 flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
             <input
@@ -287,7 +294,7 @@ export default function PoliciesPage() {
                 setCurrentPage(1);
               }}
               placeholder="Search by policy number, title, jurisdiction, or legal basis..."
-              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white transition-all shadow-sm"
             />
             {searchQuery && (
               <button
@@ -302,40 +309,42 @@ export default function PoliciesPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
-              {statusOptions.map((status) => (
+            {/* Status Filter */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {STATUS_TABS.map((tab) => (
                 <motion.button
-                  key={status}
+                  key={tab.value}
                   type="button"
-                  whileHover={prefersReduced ? undefined : { scale: 1.05 }}
-                  whileTap={prefersReduced ? undefined : { scale: 0.95 }}
+                  whileHover={prefersReduced ? undefined : { scale: 1.04 }}
+                  whileTap={prefersReduced ? undefined : { scale: 0.96 }}
                   transition={{ duration: 0.12 }}
                   onClick={() => {
-                    setStatusFilter(status);
+                    setStatusFilter(tab.value);
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-2 text-xs font-semibold rounded-xl capitalize whitespace-nowrap transition-colors ${
-                    statusFilter === status
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  className={`px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
+                    statusFilter === tab.value
+                      ? 'bg-gradient-to-r from-emerald-800 to-teal-700 text-white shadow-sm'
+                      : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/90'
                   }`}
                 >
-                  {status === 'All' ? 'All Statuses' : status}
+                  {tab.label}
                 </motion.button>
               ))}
             </div>
 
-            <div className="flex items-center gap-1.5 border border-slate-300 rounded-xl px-2.5 py-1.5 bg-white text-xs text-slate-700">
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-1.5 border border-slate-300 rounded-xl px-3 py-2 bg-white text-xs text-slate-700 shadow-sm">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-transparent focus:outline-none cursor-pointer"
-                aria-label="Sort policies"
+                className="bg-transparent focus:outline-none cursor-pointer font-medium"
+                aria-label="Sort policy documents"
               >
-                <option value="date_desc">Newest First</option>
-                <option value="date_asc">Oldest First</option>
-                <option value="jurisdiction_asc">Jurisdiction (A-Z)</option>
+                <option value="effective_desc">Newest Effective Date</option>
+                <option value="effective_asc">Oldest Effective Date</option>
+                <option value="title_asc">Title (A-Z)</option>
               </select>
             </div>
           </div>
@@ -343,11 +352,11 @@ export default function PoliciesPage() {
       </div>
 
       {/* Item Count & Page Info */}
-      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+      <div className="flex items-center justify-between text-xs text-slate-500 px-1 font-medium">
         <span>
           Showing {filteredAndSortedPolicies.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
           {Math.min(currentPage * pageSize, filteredAndSortedPolicies.length)} of{' '}
-          {filteredAndSortedPolicies.length} policy documents
+          {filteredAndSortedPolicies.length} policies
         </span>
         <span>
           Page {currentPage} of {totalPages}
@@ -356,7 +365,7 @@ export default function PoliciesPage() {
 
       {/* API Warning/Status Banner if offline */}
       {apiError && (
-        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
+        <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
           <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
           <span>{apiError}</span>
         </div>
@@ -366,10 +375,10 @@ export default function PoliciesPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 space-y-4">
+            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-card space-y-4">
               <div className="flex gap-2">
                 <Skeleton className="h-5 w-24 rounded-full" />
-                <Skeleton className="h-5 w-28 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
               </div>
               <Skeleton className="h-7 w-3/4" />
               <Skeleton className="h-4 w-1/3" />
@@ -397,11 +406,11 @@ export default function PoliciesPage() {
           {paginatedPolicies.map((policy) => (
             <StaggerItem key={policy.id}>
               <MotionCard
-                className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4"
+                className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/85 shadow-card hover:shadow-card-hover hover:border-emerald-300/80 transition-all space-y-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                    <span className="font-mono text-xs font-bold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80">
                       {policy.policyNumber}
                     </span>
                     {getStatusBadge(policy.lifecycleStatus)}
@@ -415,13 +424,13 @@ export default function PoliciesPage() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="font-medium text-slate-700">{policy.jurisdictionName}</span> ({policy.jurisdictionCode})
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                    <span className="font-semibold text-slate-700">{policy.jurisdictionName}</span> ({policy.jurisdictionCode})
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+                <div className="space-y-1.5">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug font-heading">
                     <Link
                       href={`/policies/${policy.id}`}
                       className="hover:text-emerald-700 hover:underline transition-colors"
@@ -429,22 +438,22 @@ export default function PoliciesPage() {
                       {policy.title}
                     </Link>
                   </h2>
-                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5">
                     <Building className="w-3.5 h-3.5 text-slate-400" /> {policy.issuingAuthority}
                   </p>
                 </div>
 
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
                   {policy.summary}
                 </p>
 
-                <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 text-xs">
+                <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 text-xs">
                   <div className="text-slate-500">
                     <span className="font-semibold text-slate-700">Legal Basis:</span> {policy.legalBasis}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" /> Effective: {policy.effectiveFrom}
+                    <span className="text-slate-400 flex items-center gap-1.5 font-medium">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" /> Effective: {policy.effectiveFrom}
                     </span>
                     <motion.div
                       whileHover={prefersReduced ? undefined : { scale: 1.03 }}
@@ -453,7 +462,7 @@ export default function PoliciesPage() {
                     >
                       <Link
                         href={`/policies/${policy.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                        className="inline-flex items-center gap-1 px-3.5 py-1.5 font-semibold text-slate-800 hover:text-emerald-800 bg-white hover:bg-slate-50 rounded-xl transition-colors border border-slate-300 shadow-sm"
                       >
                         View Policy
                       </Link>
@@ -464,7 +473,7 @@ export default function PoliciesPage() {
                       whileTap={prefersReduced ? undefined : { scale: 0.97 }}
                       transition={{ duration: 0.12 }}
                       onClick={() => handleDownload(policy)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-slate-700 hover:text-emerald-800 hover:bg-slate-100 rounded-xl transition-colors"
                     >
                       <Download className="w-3.5 h-3.5" /> Download Gazette
                     </motion.button>

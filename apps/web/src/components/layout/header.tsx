@@ -36,8 +36,8 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-6 lg:px-8 w-full">
-        <div className="header-inner flex items-center justify-between gap-2 sm:gap-4 w-full min-h-[4rem] flex-nowrap min-w-0">
+      <div className="max-w-[1536px] mx-auto px-3 sm:px-4 xl:px-6 2xl:px-8 w-full">
+        <div className="header-inner flex items-center justify-between gap-2 sm:gap-3 w-full min-h-[4rem] flex-nowrap min-w-0">
           {/* Section 1 (far left): Logo ("LandGov"), non-shrinking */}
           <motion.a
             href="/"
@@ -58,7 +58,7 @@ export function Header() {
           {/* Section 2 (left-center, next to logo): Primary navigation links in exact order */}
           <nav
             aria-label="Primary Navigation"
-            className="main-navigation hidden min-[1150px]:flex items-center flex-1 justify-start gap-0.5 xl:gap-1 2xl:gap-2 ml-2 xl:ml-3 min-w-0"
+            className="main-navigation hidden min-[1150px]:flex items-center flex-1 justify-start gap-0.5 min-[1350px]:gap-1 2xl:gap-2 ml-1 min-[1250px]:ml-2 min-[1400px]:ml-3 min-w-0"
           >
             {navLinks.map((link) => (
               <motion.a
@@ -67,7 +67,7 @@ export function Header() {
                 whileHover={prefersReduced ? undefined : { scale: 1.04, y: -1 }}
                 whileTap={prefersReduced ? undefined : { scale: 0.96 }}
                 transition={{ duration: 0.15 }}
-                className="px-2 xl:px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="px-1.5 min-[1220px]:px-2 2xl:px-2.5 py-1.5 rounded-lg text-xs 2xl:text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 {link.label}
               </motion.a>
@@ -94,14 +94,14 @@ export function Header() {
           </div>
 
           {/* Section 3 (far right): Authentication actions in exact order: Dashboard, Sign In, Register */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 min-[1220px]:gap-1.5 sm:gap-2 shrink-0">
             <motion.a
               href="/dashboard"
               whileHover={prefersReduced ? undefined : { scale: 1.03 }}
               whileTap={prefersReduced ? undefined : { scale: 0.97 }}
               transition={{ duration: 0.15 }}
               title="Dashboard"
-              className="flex items-center gap-1.5 px-2 sm:px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 px-1.5 min-[1220px]:px-2 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
             >
               <ShieldCheck className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-emerald-600 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -111,7 +111,7 @@ export function Header() {
               whileHover={prefersReduced ? undefined : { scale: 1.03 }}
               whileTap={prefersReduced ? undefined : { scale: 0.97 }}
               transition={{ duration: 0.15 }}
-              className="flex items-center gap-1 px-2 sm:px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
+              className="flex items-center gap-1 px-1.5 min-[1220px]:px-2 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
             >
               <LogIn className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 shrink-0 text-slate-500" aria-hidden="true" />
               <span>Sign In</span>
@@ -121,7 +121,7 @@ export function Header() {
               whileHover={prefersReduced ? undefined : { scale: 1.03, boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
               whileTap={prefersReduced ? undefined : { scale: 0.97 }}
               transition={{ duration: 0.15 }}
-              className="flex items-center gap-1 px-2.5 sm:px-3 2xl:px-3.5 py-1.5 text-xs 2xl:text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
+              className="flex items-center gap-1 px-2 min-[1220px]:px-2.5 2xl:px-3.5 py-1.5 text-xs 2xl:text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
             >
               <span>Register</span>
             </motion.a>

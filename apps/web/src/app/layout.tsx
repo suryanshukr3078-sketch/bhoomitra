@@ -1,8 +1,23 @@
 import type { Metadata, Viewport } from 'next';
+import { Plus_Jakarta_Sans, Inter } from 'next/font/google';
 import './globals.css';
 import { Header } from '@/components/layout/header';
 import { PageTransition } from '@/components/layout/page-transition';
 import { Toaster } from '@/components/ui/toast';
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-heading',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -56,7 +71,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full scroll-smooth overflow-x-hidden">
+    <html lang="en" className={`${plusJakartaSans.variable} ${inter.variable} h-full scroll-smooth overflow-x-hidden`}>
       <body className="min-h-full flex flex-col bg-slate-50/50 text-slate-900 font-sans antialiased overflow-x-hidden w-full max-w-full">
         <Header />
         <main className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col">

@@ -7,6 +7,7 @@ import {
   HTMLMotionProps,
   Variants,
 } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 /**
  * Custom hook returning whether the user prefers reduced motion.
@@ -114,9 +115,9 @@ export function MotionCard({
         prefersReduced
           ? undefined
           : {
-              scale: 1.01,
-              y: -2,
-              transition: { duration: 0.18, ease: 'easeOut' },
+              y: -3,
+              boxShadow: '0 8px 24px -4px rgba(15, 23, 42, 0.08), 0 16px 32px -4px rgba(6, 95, 70, 0.12)',
+              transition: { duration: 0.2, ease: 'easeOut' },
             }
       }
       whileTap={
@@ -127,7 +128,10 @@ export function MotionCard({
               transition: { duration: 0.1, ease: 'easeOut' },
             }
       }
-      className={className}
+      className={cn(
+        'rounded-2xl border border-slate-200/80 bg-white shadow-card transition-colors duration-200',
+        className
+      )}
       {...props}
     >
       {children}

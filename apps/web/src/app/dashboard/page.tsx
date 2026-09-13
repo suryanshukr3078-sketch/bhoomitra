@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldCheck,
   UploadCloud,
@@ -41,7 +41,7 @@ export default function DashboardPage() {
   const [hasLiveStats, setHasLiveStats] = useState(false);
   const { toast } = useToast();
 
-  const fetchStats = () => {
+  const fetchStats = useCallback(() => {
     setIsLoadingStats(true);
     apiRequest<typeof stats>('/dashboard/stats')
       .then((data) => {
@@ -54,11 +54,11 @@ export default function DashboardPage() {
       .finally(() => {
         setIsLoadingStats(false);
       });
-  };
+  }, []);
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   const {
     register,
@@ -163,15 +163,16 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Top Banner with Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/85 shadow-card relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500" />
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-heading">
               Cadastral Governance Dashboard
             </h1>
             <Badge variant="success">Active Node</Badge>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
             Real-time cadastral mutation audit trails, spatial polygon inspections, and policy records
           </p>
         </div>
@@ -179,10 +180,10 @@ export default function DashboardPage() {
         <button
           type="button"
           onClick={() => setIsContributeOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-sm font-bold rounded-xl shadow-md shadow-amber-950/15 border border-amber-300/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer"
         >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          Contribute Record
+          <Plus className="w-4 h-4 text-slate-950 shrink-0" aria-hidden="true" />
+          <span>Contribute Record</span>
         </button>
       </div>
 
@@ -190,7 +191,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {isLoadingStats ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="p-6 bg-white rounded-2xl border border-slate-200/80 space-y-3">
+            <div key={i} className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-card space-y-3">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-8 w-16" />
               <Skeleton className="h-3 w-32" />
@@ -198,47 +199,55 @@ export default function DashboardPage() {
           ))
         ) : (
           <>
-            <div className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-2">
+            <div className="p-6 bg-white rounded-2xl border border-slate-200/85 shadow-card hover:shadow-card-hover hover:border-emerald-300/80 transition-all space-y-3">
               <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
                 <span>Spatial Parcels</span>
-                <MapPin className="w-4 h-4 text-emerald-600" />
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                  <MapPin className="w-4 h-4" />
+                </div>
               </div>
-              <div className="text-3xl font-extrabold text-slate-900">
+              <div className="text-3xl font-extrabold text-slate-900 font-heading">
                 {stats.total_spatial_features > 0 ? stats.total_spatial_features.toLocaleString() : '142,500'}
               </div>
-              <p className="text-xs text-emerald-700 flex items-center gap-1 font-medium">
+              <p className="text-xs text-emerald-700 flex items-center gap-1 font-semibold">
                 <TrendingUp className="w-3.5 h-3.5" /> {hasLiveStats ? 'PostGIS Live' : '+3.4% this month'}
               </p>
             </div>
 
-            <div className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-2">
+            <div className="p-6 bg-white rounded-2xl border border-slate-200/85 shadow-card hover:shadow-card-hover hover:border-emerald-300/80 transition-all space-y-3">
               <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
                 <span>Policy Records</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
               </div>
-              <div className="text-3xl font-extrabold text-slate-900">
+              <div className="text-3xl font-extrabold text-slate-900 font-heading">
                 {stats.total_policies > 0 ? stats.total_policies.toLocaleString() : '3,200'}
               </div>
               <p className="text-xs text-slate-500">{hasLiveStats ? 'Indexed Statutes' : 'PostGIS geometric integrity'}</p>
             </div>
 
-            <div className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-2">
+            <div className="p-6 bg-white rounded-2xl border border-slate-200/85 shadow-card hover:shadow-card-hover hover:border-amber-300/80 transition-all space-y-3">
               <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
                 <span>Research Papers</span>
-                <Clock className="w-4 h-4 text-amber-600" />
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-100">
+                  <Clock className="w-4 h-4" />
+                </div>
               </div>
-              <div className="text-3xl font-extrabold text-slate-900">
+              <div className="text-3xl font-extrabold text-slate-900 font-heading">
                 {stats.total_research_papers > 0 ? stats.total_research_papers.toLocaleString() : '1,280'}
               </div>
-              <p className="text-xs text-amber-700 font-medium">Peer-reviewed publications</p>
+              <p className="text-xs text-amber-700 font-semibold">Peer-reviewed publications</p>
             </div>
 
-            <div className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-2">
+            <div className="p-6 bg-white rounded-2xl border border-slate-200/85 shadow-card hover:shadow-card-hover hover:border-emerald-300/80 transition-all space-y-3">
               <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider">
                 <span>Platform Resources</span>
-                <FileText className="w-4 h-4 text-emerald-600" />
+                <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center border border-sky-100">
+                  <FileText className="w-4 h-4" />
+                </div>
               </div>
-              <div className="text-3xl font-extrabold text-slate-900">
+              <div className="text-3xl font-extrabold text-slate-900 font-heading">
                 {stats.total_resources > 0 ? stats.total_resources.toLocaleString() : '48'}
               </div>
               <p className="text-xs text-slate-500">Active participating nodes</p>

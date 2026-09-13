@@ -236,11 +236,12 @@ export default function ResearchPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full w-fit">
-            <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
-            Peer-Reviewed Repository
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/85 shadow-card space-y-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500" />
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-full w-fit">
+            <BookOpen className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+            <span>Peer-Reviewed Repository</span>
           </div>
           {apiItems.length > 0 ? (
             <Badge variant="outline" className="border-emerald-400 text-emerald-900 bg-emerald-50">
@@ -253,15 +254,15 @@ export default function ResearchPage() {
           )}
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Land Governance & Spatial Research Papers
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight font-heading">
+          Land Governance &amp; Spatial Research Papers
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
+        <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
           Search indexed research papers, methodological frameworks, and empirical studies supporting evidence-based land administration.
         </p>
 
         {/* Search, Filter & Sort Controls */}
-        <div className="pt-4 flex flex-col md:flex-row gap-3">
+        <div className="pt-2 flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
             <input
@@ -272,7 +273,7 @@ export default function ResearchPage() {
                 setCurrentPage(1);
               }}
               placeholder="Search by title, author, keyword, or methodology..."
-              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white transition-all shadow-sm"
             />
             {searchQuery && (
               <button
@@ -288,22 +289,22 @@ export default function ResearchPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Category Filter */}
-            <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
               {categories.map((cat) => (
                 <motion.button
                   key={cat}
                   type="button"
-                  whileHover={prefersReduced ? undefined : { scale: 1.05 }}
-                  whileTap={prefersReduced ? undefined : { scale: 0.95 }}
+                  whileHover={prefersReduced ? undefined : { scale: 1.04 }}
+                  whileTap={prefersReduced ? undefined : { scale: 0.96 }}
                   transition={{ duration: 0.12 }}
                   onClick={() => {
                     setSelectedCategory(cat);
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
+                  className={`px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
                     selectedCategory === cat
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'bg-gradient-to-r from-emerald-800 to-teal-700 text-white shadow-sm'
+                      : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/90'
                   }`}
                 >
                   {cat}
@@ -312,12 +313,12 @@ export default function ResearchPage() {
             </div>
 
             {/* Sort Dropdown */}
-            <div className="flex items-center gap-1.5 border border-slate-300 rounded-xl px-2.5 py-1.5 bg-white text-xs text-slate-700">
+            <div className="flex items-center gap-1.5 border border-slate-300 rounded-xl px-3 py-2 bg-white text-xs text-slate-700 shadow-sm">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-transparent focus:outline-none cursor-pointer"
+                className="bg-transparent focus:outline-none cursor-pointer font-medium"
                 aria-label="Sort research papers"
               >
                 <option value="date_desc">Newest First</option>
@@ -330,7 +331,7 @@ export default function ResearchPage() {
       </div>
 
       {/* Item Count & Page Info */}
-      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+      <div className="flex items-center justify-between text-xs text-slate-500 px-1 font-medium">
         <span>
           Showing {filteredAndSortedPapers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
           {Math.min(currentPage * pageSize, filteredAndSortedPapers.length)} of{' '}
@@ -343,7 +344,7 @@ export default function ResearchPage() {
 
       {/* API Warning/Status Banner if offline */}
       {apiError && (
-        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
+        <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-center gap-2 shadow-sm" role="status">
           <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
           <span>{apiError}</span>
         </div>
@@ -353,7 +354,7 @@ export default function ResearchPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 space-y-4">
+            <div key={i} className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-card space-y-4">
               <div className="flex gap-2">
                 <Skeleton className="h-5 w-24 rounded-full" />
                 <Skeleton className="h-5 w-28 rounded-full" />
@@ -384,7 +385,7 @@ export default function ResearchPage() {
           {paginatedPapers.map((paper) => (
             <StaggerItem key={paper.id}>
               <MotionCard
-                className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-4"
+                className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/85 shadow-card hover:shadow-card-hover hover:border-emerald-300/80 transition-all space-y-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -404,13 +405,13 @@ export default function ResearchPage() {
                       </Badge>
                     )}
                   </div>
-                  <span className="text-xs text-slate-400 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" /> {paper.publicationDate}
+                  <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> {paper.publicationDate}
                   </span>
                 </div>
 
-                <div className="space-y-1">
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+                <div className="space-y-1.5">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug font-heading">
                     <Link
                       href={`/research/${paper.id}`}
                       className="hover:text-emerald-700 hover:underline transition-colors"
@@ -424,11 +425,11 @@ export default function ResearchPage() {
                   <p className="text-xs text-slate-500 italic">{paper.journal}</p>
                 </div>
 
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
                   {paper.abstract}
                 </p>
 
-                <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
+                <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
                   <div className="text-xs font-mono text-slate-500">
                     DOI: <span className="text-slate-700 font-medium">{paper.doi}</span>
                   </div>
@@ -440,7 +441,7 @@ export default function ResearchPage() {
                     >
                       <Link
                         href={`/research/${paper.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                        className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold text-slate-800 hover:text-emerald-800 bg-white hover:bg-slate-50 rounded-xl transition-colors border border-slate-300 shadow-sm"
                       >
                         View Details
                       </Link>
@@ -451,20 +452,21 @@ export default function ResearchPage() {
                       whileTap={prefersReduced ? undefined : { scale: 0.97 }}
                       transition={{ duration: 0.12 }}
                       onClick={() => handleDownload(paper)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-slate-100 rounded-xl transition-colors"
                     >
-                      <Download className="w-3.5 h-3.5" /> Citation & BibTeX
+                      <Download className="w-3.5 h-3.5" /> Citation &amp; BibTeX
                     </motion.button>
                     <motion.div
-                      whileHover={prefersReduced ? undefined : { scale: 1.03, boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
                       whileTap={prefersReduced ? undefined : { scale: 0.97 }}
                       className="inline-flex"
                     >
                       <Link
                         href={`/research/${paper.id}`}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-700 hover:to-teal-600 rounded-xl transition-all shadow-sm shadow-emerald-950/20"
                       >
-                        Full Text <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Full Text</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
                       </Link>
                     </motion.div>
                   </div>
