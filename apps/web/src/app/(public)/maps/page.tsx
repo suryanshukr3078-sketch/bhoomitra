@@ -15,10 +15,13 @@ import {
   SlidersHorizontal,
   X,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/api/client';
+import { downloadFile } from '@/lib/download';
+import { SEED_SPATIAL_FEATURES } from '@/components/maps/MapView';
 
 import dynamic from 'next/dynamic';
 
@@ -201,7 +204,7 @@ export default function MapsPage() {
           />
         </form>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setShowLayerPanel(!showLayerPanel)}
@@ -210,8 +213,37 @@ export default function MapsPage() {
             <Layers className="w-3.5 h-3.5 text-emerald-400" />
             Layers ({Object.values(activeLayers).filter(Boolean).length})
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              const allFeats = spatialFeatures.length > 0 ? spatialFeatures : SEED_SPATIAL_FEATURES;
+              const collection = {
+                type: 'FeatureCollection',
+                features: allFeats,
+                metadata: {
+                  srid: 4326,
+                  datum: 'WGS 84',
+                  exportedAt: new Date().toISOString(),
+                  totalFeatures: allFeats.length,
+                  platform: 'Bhoomitra Cadastral GIS Engine',
+                },
+              };
+              const filename = 'bhoomitra-map-export.geojson';
+              downloadFile(JSON.stringify(collection, null, 2), filename, 'application/geo+json;charset=utf-8;');
+              toast({
+                title: 'GeoJSON Downloaded',
+                description: `Saved ${filename} (${allFeats.length} cadastral features) to your device.`,
+                variant: 'success',
+              });
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-emerald-400 hover:text-emerald-300 backdrop-blur shadow-md transition-colors"
+            title="Download full map GeoJSON"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export Map GeoJSON
+          </button>
           <div className="flex items-center gap-1 px-3 py-2 text-xs font-mono bg-slate-900/90 border border-slate-700 rounded-lg text-emerald-400 backdrop-blur">
-            SRID: 4326 (WGS 84)
+            SRID: 4326
           </div>
         </div>
 
@@ -421,40 +453,61 @@ export default function MapsPage() {
           <button
             type="button"
             onClick={() => {
+              const cleanId = selectedParcel.id.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+              const matchedFeature =
+                spatialFeatures.find((f: any) => f.id === selectedParcelId || f.id === selectedParcel.id) ||
+                SEED_SPATIAL_FEATURES.find((f: any) => f.id === selectedParcelId || f.id === selectedParcel.id);
+
+              const geometry = matchedFeature?.geometry || {
+                type: 'Polygon',
+                coordinates: [
+                  [
+                    [mapCenter[0] - 0.005, mapCenter[1] - 0.003],
+                    [mapCenter[0] + 0.005, mapCenter[1] - 0.003],
+                    [mapCenter[0] + 0.005, mapCenter[1] + 0.003],
+                    [mapCenter[0] - 0.005, mapCenter[1] + 0.003],
+                    [mapCenter[0] - 0.005, mapCenter[1] - 0.003],
+                  ],
+                ],
+              };
+
               const feature = {
                 type: 'Feature',
                 id: selectedParcel.id,
-                geometry: {
-                  type: 'Polygon',
-                  coordinates: [
-                    [
-                      [73.8567, 18.5204],
-                      [73.8577, 18.5214],
-                      [73.8587, 18.5194],
-                      [73.8567, 18.5204],
-                    ],
-                  ],
-                },
+                geometry,
                 properties: {
+                  parcelId: selectedParcel.id,
                   surveyNumber: selectedParcel.surveyNumber,
                   owner: selectedParcel.owner,
                   areaHa: selectedParcel.areaHa,
                   tenureType: selectedParcel.tenureType,
                   jurisdiction: selectedParcel.jurisdiction,
                   mutationDate: selectedParcel.mutationDate,
+                  coordinates: selectedParcel.coordinates,
+                  srid: 4326,
+                  datum: 'WGS 84',
+                  exportedAt: new Date().toISOString(),
+                  provenance: 'Bhoomitra Immutable Cadastral Ledger',
                 },
               };
+
+              const filename = `bhoomitra-parcel-${cleanId}.geojson`;
+              downloadFile(JSON.stringify(feature, null, 2), filename, 'application/geo+json;charset=utf-8;');
+
+              // Also copy to clipboard for convenience
               if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                navigator.clipboard.writeText(JSON.stringify(feature, null, 2));
+                navigator.clipboard.writeText(JSON.stringify(feature, null, 2)).catch(() => {});
               }
+
               toast({
-                title: 'GeoJSON Exported',
-                description: `Feature definition for ${selectedParcel.id} copied to clipboard.`,
+                title: 'GeoJSON Downloaded',
+                description: `Saved ${filename} to your device.`,
                 variant: 'success',
               });
             }}
-            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 shadow-md transition-colors"
+            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 shadow-md transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
+            <Download className="w-4 h-4" />
             Export Parcel GeoJSON
           </button>
         </div>
