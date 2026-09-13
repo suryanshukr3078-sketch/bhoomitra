@@ -36,9 +36,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="header-inner flex items-center justify-between gap-2 sm:gap-3 w-full min-h-[4rem] flex-nowrap lg:flex-wrap min-w-0">
-          {/* Logo / Brand */}
+      <div className="max-w-[1536px] mx-auto px-3 sm:px-6 lg:px-8 w-full">
+        <div className="header-inner flex items-center justify-between gap-2 sm:gap-4 w-full min-h-[4rem] flex-nowrap min-w-0">
+          {/* Section 1 (far left): Logo ("LandGov"), non-shrinking */}
           <motion.a
             href="/"
             whileHover={prefersReduced ? undefined : { scale: 1.02 }}
@@ -55,64 +55,27 @@ export function Header() {
             </span>
           </motion.a>
 
-          {/* Desktop Navigation Links (>= 1024px) */}
+          {/* Section 2 (left-center, next to logo): Primary navigation links in exact order */}
           <nav
             aria-label="Primary Navigation"
-            className="main-navigation hidden lg:flex items-center flex-wrap gap-1 2xl:gap-1.5 min-w-0"
+            className="main-navigation hidden min-[1150px]:flex items-center flex-1 justify-start gap-0.5 xl:gap-1 2xl:gap-2 ml-2 xl:ml-3 min-w-0"
           >
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <motion.a
-                  key={link.href}
-                  href={link.href}
-                  whileHover={prefersReduced ? undefined : { scale: 1.04, y: -1 }}
-                  whileTap={prefersReduced ? undefined : { scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  className="flex items-center gap-1.5 px-2 py-1.5 2xl:px-2.5 rounded-lg text-xs 2xl:text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/60 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                >
-                  <Icon className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-slate-400 group-hover:text-emerald-600 shrink-0" aria-hidden="true" />
-                  {link.label}
-                </motion.a>
-              );
-            })}
+            {navLinks.map((link) => (
+              <motion.a
+                key={link.href}
+                href={link.href}
+                whileHover={prefersReduced ? undefined : { scale: 1.04, y: -1 }}
+                whileTap={prefersReduced ? undefined : { scale: 0.96 }}
+                transition={{ duration: 0.15 }}
+                className="px-2 xl:px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                {link.label}
+              </motion.a>
+            ))}
           </nav>
 
-          {/* Desktop Auth Buttons (>= 1024px) */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
-            <motion.a
-              href="/dashboard"
-              whileHover={prefersReduced ? undefined : { scale: 1.03 }}
-              whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 2xl:px-3 text-xs 2xl:text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-              Dashboard
-            </motion.a>
-            <motion.a
-              href="/login"
-              whileHover={prefersReduced ? undefined : { scale: 1.03 }}
-              whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 2xl:px-3 text-xs 2xl:text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
-            >
-              <LogIn className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 shrink-0" aria-hidden="true" />
-              Sign In
-            </motion.a>
-            <motion.a
-              href="/register"
-              whileHover={prefersReduced ? undefined : { scale: 1.03, boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
-              whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-              transition={{ duration: 0.15 }}
-              className="flex items-center gap-1.5 px-3 py-1.5 2xl:px-3.5 text-xs 2xl:text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
-            >
-              Register
-            </motion.a>
-          </div>
-
-          {/* Mobile / Narrow Viewport Controls (< 1024px) */}
-          <div className="flex lg:hidden items-center gap-2 shrink-0">
+          {/* Responsive Hamburger Menu Trigger (< 1150px): Positioned cleanly between Section 1 and Section 3 */}
+          <div className="mobile-menu-trigger flex min-[1150px]:hidden items-center shrink-0">
             <motion.button
               type="button"
               whileTap={prefersReduced ? undefined : { scale: 0.92 }}
@@ -129,13 +92,47 @@ export function Header() {
               )}
             </motion.button>
           </div>
+
+          {/* Section 3 (far right): Authentication actions in exact order: Dashboard, Sign In, Register */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <motion.a
+              href="/dashboard"
+              whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+              whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              title="Dashboard"
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-emerald-600 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </motion.a>
+            <motion.a
+              href="/login"
+              whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+              whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center gap-1 px-2 sm:px-2.5 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
+            >
+              <LogIn className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 shrink-0 text-slate-500" aria-hidden="true" />
+              <span>Sign In</span>
+            </motion.a>
+            <motion.a
+              href="/register"
+              whileHover={prefersReduced ? undefined : { scale: 1.03, boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
+              whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center gap-1 px-2.5 sm:px-3 2xl:px-3.5 py-1.5 text-xs 2xl:text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
+            >
+              <span>Register</span>
+            </motion.a>
+          </div>
         </div>
       </div>
 
-      {/* Mobile/Tablet Slide-down Menu Drawer (< 1024px) */}
+      {/* Mobile/Tablet Slide-down Menu Drawer (< 1150px) */}
       {mobileMenuOpen && (
         <div
-          className="lg:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2 shadow-lg"
+          className="min-[1150px]:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2 shadow-lg"
           role="dialog"
           aria-modal="true"
           aria-label="Mobile Navigation"
@@ -153,7 +150,7 @@ export function Header() {
                   className="min-h-[44px] flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
                 >
                   <Icon className="w-5 h-5 text-slate-400 shrink-0" aria-hidden="true" />
-                  {link.label}
+                  <span>{link.label}</span>
                 </motion.a>
               );
             })}
