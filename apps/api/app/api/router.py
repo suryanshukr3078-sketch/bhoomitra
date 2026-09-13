@@ -10,5 +10,10 @@ api_router.include_router(
     prefix=settings.api_v1_prefix,
 )
 
+# Also mount at root level to ensure routes match whether Vercel strips /api/v1 or not
+api_router.include_router(
+    v1_router,
+)
+
 # Alias for backwards compatibility
 root_api_router = api_router
