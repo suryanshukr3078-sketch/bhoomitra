@@ -31,6 +31,9 @@ class QueryPathRewriteMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             query_string: bytes = scope.get("query_string", b"")
+            path_rewritten = False
+
+            # 1. Check if 'path=' query parameter is passed (e.g. ?path=api/v1/...)
             if b"path=" in query_string:
                 try:
                     qs_str = query_string.decode("latin-1")
@@ -63,8 +66,24 @@ class QueryPathRewriteMiddleware:
                             scope["query_string"] = urllib.parse.urlencode(remaining_params).encode("latin-1")
                         else:
                             scope["query_string"] = b""
+                        path_rewritten = True
                 except Exception as exc:
                     logger.warning("QueryPathRewriteMiddleware failed to rewrite path", error=str(exc))
+
+            # 2. If not rewritten by query param and scope['path'] is handler path (/api/index.py),
+            # check headers set by Vercel for the original matched path
+            if not path_rewritten and scope.get("path") in ("/api/index.py", "/api/index"):
+                headers_dict = {k.lower(): v for k, v in scope.get("headers", [])}
+                for h_name in (b"x-matched-path", b"x-forwarded-uri", b"x-real-path"):
+                    if h_name in headers_dict:
+                        raw_val = headers_dict[h_name].decode("latin-1")
+                        if raw_val and not raw_val.startswith("/api/index.py") and not raw_val.startswith("/api/index"):
+                            if "?" in raw_val:
+                                raw_val = raw_val.split("?", 1)[0]
+                            clean_matched = "/" + raw_val.lstrip("/")
+                            scope["path"] = clean_matched
+                            scope["raw_path"] = clean_matched.encode("latin-1")
+                            break
 
         await self.app(scope, receive, send)
 
