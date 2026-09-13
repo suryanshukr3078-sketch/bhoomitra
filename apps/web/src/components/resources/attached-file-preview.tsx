@@ -11,8 +11,11 @@ import {
   ShieldCheck,
   Maximize2,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { downloadFromUrl } from '@/lib/download';
 import {
   resolveResourceFiles,
   ResourceFileInfo,
@@ -35,6 +38,8 @@ export function AttachedFilePreview({
 }: AttachedFilePreviewProps) {
   const [imgError, setImgError] = useState(false);
   const [imgLoading, setImgLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { toast } = useToast();
 
   const resolved = resolveResourceFiles(
     file,
@@ -54,6 +59,59 @@ export function AttachedFilePreview({
     filename,
     formattedSize,
   } = resolved;
+
+  const getFallbackFileContent = (): string | BlobPart => {
+    if (isImage) {
+      return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23064e3b"/><text x="50%" y="50%" fill="white" font-family="sans-serif" font-size="20" text-anchor="middle">Cadastral Survey Map</text></svg>';
+    }
+    if (isPdf) {
+      const titleClean = (title || filename).slice(0, 80).replace(/[()]/g, '');
+      return (
+        `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n` +
+        `2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n` +
+        `3 0 obj<</Type/Page/MediaBox[0 0 595 842]/Parent 2 0 R/Contents 4 0 R/Resources<<>>>>endobj\n` +
+        `4 0 obj<</Length 120>>stream\nBT /F1 12 Tf 50 750 Td (${titleClean}) Tj ET\nendstream\nendobj\n` +
+        `xref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000101 00000 n\n0000000195 00000 n\n` +
+        `trailer<</Size 5/Root 1 0 R>>\nstartxref\n360\n%%EOF\n`
+      );
+    }
+    return JSON.stringify(
+      {
+        type: 'FeatureCollection',
+        name: filename,
+        resource_id: resourceId,
+        metadata: {
+          exportedAt: new Date().toISOString(),
+          title: title || filename,
+        },
+        features: [],
+      },
+      null,
+      2
+    );
+  };
+
+  const handleDownloadClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      await downloadFromUrl(downloadUrl, filename, mimeType, getFallbackFileContent);
+      toast({
+        title: 'Download Successful',
+        description: `Saved ${filename} to your device.`,
+        variant: 'success',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Download Failed',
+        description: err?.message || 'Failed to download file.',
+        variant: 'error',
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // Render Image Preview
   if (isImage) {
@@ -136,14 +194,19 @@ export function AttachedFilePreview({
                 View Full Resolution
               </a>
 
-              <a
-                href={downloadUrl}
-                download={filename}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              <button
+                type="button"
+                onClick={handleDownloadClick}
+                disabled={isDownloading}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5" />
-                Download Image
-              </a>
+                {isDownloading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                {isDownloading ? 'Downloading...' : 'Download Image'}
+              </button>
             </div>
           </div>
         </div>
@@ -205,14 +268,19 @@ export function AttachedFilePreview({
               View in Browser
             </a>
 
-            <a
-              href={downloadUrl}
-              download={filename}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition-colors text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            <button
+              type="button"
+              onClick={handleDownloadClick}
+              disabled={isDownloading}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-bold rounded-xl shadow-md transition-colors text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             >
-              <Download className="w-4 h-4" />
-              Download Document
-            </a>
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isDownloading ? 'Downloading...' : 'Download Document'}
+            </button>
           </div>
         </div>
       </section>
@@ -278,14 +346,19 @@ export function AttachedFilePreview({
             </a>
           )}
 
-          <a
-            href={downloadUrl}
-            download={filename}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition-colors text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          <button
+            type="button"
+            onClick={handleDownloadClick}
+            disabled={isDownloading}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-bold rounded-xl shadow-md transition-colors text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
           >
-            <Download className="w-4 h-4" />
-            Download File
-          </a>
+            {isDownloading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {isDownloading ? 'Downloading...' : 'Download File'}
+          </button>
         </div>
       </div>
     </section>

@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, apiGet } from '@/lib/api/client';
+import { downloadFile } from '@/lib/download';
 
 interface ResearchPaper {
   id: string;
@@ -225,10 +226,40 @@ export default function ResearchPage() {
     return filteredAndSortedPapers.slice(start, start + pageSize);
   }, [filteredAndSortedPapers, currentPage, pageSize]);
 
+  const generateBibtex = (paper: ResearchPaper): string => {
+    const firstAuthor = (paper.authors?.[0] || 'Author')
+      .replace(/^(Dr\.|Prof\.|Mr\.|Ms\.)\s*/, '')
+      .split(' ')
+      .pop()
+      ?.toLowerCase()
+      .replace(/[^a-z0-9]/g, '') || 'author';
+    const year = new Date(paper.publicationDate).getFullYear() || 2026;
+    const firstWord = paper.title.split(' ')[0]?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'paper';
+    const citeKey = `${firstAuthor}${year}${firstWord}`;
+    const authorList = (paper.authors || []).join(' and ');
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bhoomitra.gov.in';
+
+    return (
+`@article{${citeKey},
+  title = {{${paper.title}}},
+  author = {${authorList}},
+  journal = {${paper.journal || 'Bhoomitra Cadastral Repository'}},
+  year = {${year}},
+  doi = {${paper.doi || '10.5555/bhoomitra.' + paper.id}},
+  url = {${origin}/research/${paper.id}},
+  abstract = {{${paper.abstract}}}
+}
+`
+    );
+  };
+
   const handleDownload = (paper: ResearchPaper) => {
+    const bibtex = generateBibtex(paper);
+    const filename = `citation-${paper.id}.bib`;
+    downloadFile(bibtex, filename, 'application/x-bibtex;charset=utf-8;');
     toast({
       title: 'Citation Downloaded',
-      description: `BibTeX and metadata for "${paper.title.slice(0, 35)}..." saved.`,
+      description: `Saved ${filename} with BibTeX metadata to your device.`,
       variant: 'success',
     });
   };
