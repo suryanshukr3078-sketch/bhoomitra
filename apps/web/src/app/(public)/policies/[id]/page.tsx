@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { env } from '@/lib/environment';
+import { AttachedFilePreview } from '@/components/resources/attached-file-preview';
 
 interface PolicyDetail {
   id: string;
@@ -41,6 +42,7 @@ interface PolicyDetail {
     filename: string;
     storage_uri?: string;
     download_url: string;
+    view_url?: string;
     mime_type?: string;
     size_bytes?: number | null;
     checksum_sha256?: string | null;
@@ -53,6 +55,7 @@ interface PolicyDetail {
     checksum_sha256?: string | null;
     created_at: string;
     download_url?: string;
+    view_url?: string;
   }>;
 }
 
@@ -249,14 +252,6 @@ export default function PolicyDetailPage() {
     );
   }
 
-  const baseUrl = env.apiUrl.replace(/\/$/, '');
-  const downloadUrl =
-    policy.file?.download_url
-      ? policy.file.download_url.startsWith('http')
-        ? policy.file.download_url
-        : `${baseUrl}${policy.file.download_url.startsWith('/') ? '' : '/'}${policy.file.download_url}`
-      : `${baseUrl}/resources/${policy.id}/download`;
-
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Navigation Breadcrumb */}
@@ -346,50 +341,14 @@ export default function PolicyDetailPage() {
           </div>
         </div>
 
-        {/* Prominent File Attachment & Download Card */}
-        <section aria-labelledby="attachment-heading" className="space-y-3 pt-2">
-          <h2 id="attachment-heading" className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Statutory Enactment Document & Certified Binary
-          </h2>
-
-          <div className="p-5 bg-emerald-50/50 rounded-2xl border-2 border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 shadow-xs">
-                <FileText className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <div className="font-bold text-slate-900 text-sm break-all">
-                  {policy.file?.filename || `${policy.slug || 'policy'}.pdf`}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="font-mono uppercase text-emerald-800 font-semibold">
-                    {policy.file?.mime_type || 'application/pdf'}
-                  </span>
-                  {policy.file?.size_bytes ? (
-                    <span>• {(policy.file.size_bytes / 1024).toFixed(1)} KB</span>
-                  ) : null}
-                  <span>• Certified Gazette Text</span>
-                </div>
-                {policy.file?.checksum_sha256 && (
-                  <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1 break-all">
-                    <Hash className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span>SHA-256: {policy.file.checksum_sha256}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Clearly Visible Download Button */}
-            <a
-              href={downloadUrl}
-              download={policy.file?.filename || `${policy.slug}.pdf`}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition-colors w-full sm:w-auto text-sm shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-            >
-              <Download className="w-4 h-4" />
-              Download Policy PDF
-            </a>
-          </div>
-        </section>
+        {/* Attached Document / Image / File Preview */}
+        <AttachedFilePreview
+          file={policy.file}
+          resourceId={policy.id}
+          fallbackFilename={`${policy.slug || 'policy'}.pdf`}
+          fallbackMime="application/pdf"
+          title={policy.title}
+        />
 
         {/* Provenance & Ledger Notice */}
         <div className="pt-4 border-t border-slate-100 space-y-2 text-xs text-slate-500">

@@ -295,6 +295,7 @@ async def get_resource(
             "filename": latest_version.original_filename or f"{resource.slug}.pdf",
             "storage_uri": latest_version.storage_uri,
             "download_url": f"/api/v1/resources/{resource.id}/download",
+            "view_url": f"/api/v1/resources/{resource.id}/view",
             "mime_type": latest_version.mime_type or "application/pdf",
             "size_bytes": latest_version.file_size_bytes,
             "checksum_sha256": latest_version.checksum_sha256,
@@ -304,6 +305,7 @@ async def get_resource(
             "filename": f"{resource.slug}.pdf",
             "storage_uri": resource.source_url,
             "download_url": f"/api/v1/resources/{resource.id}/download",
+            "view_url": f"/api/v1/resources/{resource.id}/view",
             "mime_type": "application/pdf",
             "size_bytes": None,
             "checksum_sha256": None,
@@ -357,6 +359,7 @@ async def get_resource(
                 "checksum_sha256": v.checksum_sha256,
                 "created_at": v.created_at.isoformat(),
                 "download_url": f"/api/v1/resources/{resource.id}/download",
+                "view_url": f"/api/v1/resources/{resource.id}/view",
             }
             for v in resource.versions
         ],
@@ -364,13 +367,10 @@ async def get_resource(
     }
 
 
-@router.get(
-    "/{resource_id}/download",
-    summary="Download the binary file attached to a resource",
-)
-async def download_resource_file(
+async def _serve_resource_file(
     resource_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession,
+    inline: bool = False,
 ):
     from sqlalchemy.orm import selectinload
     from fastapi.responses import Response, RedirectResponse
@@ -397,6 +397,7 @@ async def download_resource_file(
     storage_uri = (latest_version.storage_uri if latest_version else None) or resource.source_url
     filename = (latest_version.original_filename if latest_version else None) or f"{resource.slug}.pdf"
     mime_type = (latest_version.mime_type if latest_version else None) or "application/pdf"
+    disposition_type = "inline" if inline else "attachment"
 
     if storage_uri:
         if storage_uri.startswith("data:"):
@@ -407,8 +408,9 @@ async def download_resource_file(
                 content=content,
                 media_type=resolved_mime or mime_type,
                 headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Disposition": f'{disposition_type}; filename="{filename}"',
                     "Content-Length": str(len(content)),
+                    "Cache-Control": "public, max-age=3600",
                 },
             )
         elif storage_uri.startswith("http://") or storage_uri.startswith("https://"):
@@ -422,12 +424,17 @@ async def download_resource_file(
                     content=content,
                     media_type=resolved_mime or mime_type,
                     headers={
-                        "Content-Disposition": f'attachment; filename="{filename}"',
+                        "Content-Disposition": f'{disposition_type}; filename="{filename}"',
                         "Content-Length": str(len(content)),
+                        "Cache-Control": "public, max-age=3600",
                     },
                 )
             except Exception:
-                pass
+                from app.core.storage import storage_service
+
+                presigned = storage_service.generate_presigned_url(storage_uri)
+                if presigned:
+                    return RedirectResponse(url=presigned)
 
     # 2. If no storage_uri (e.g. synthetic seed paper), generate a valid PDF on the fly
     title_escaped = resource.title[:80].replace("(", "[").replace(")", "]")
@@ -444,8 +451,31 @@ async def download_resource_file(
         content=synthetic_pdf,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": f'{disposition_type}; filename="{filename}"',
             "Content-Length": str(len(synthetic_pdf)),
+            "Cache-Control": "public, max-age=3600",
         },
     )
+
+
+@router.get(
+    "/{resource_id}/view",
+    summary="View the binary file attached to a resource inline in browser",
+)
+async def view_resource_file(
+    resource_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await _serve_resource_file(resource_id, db, inline=True)
+
+
+@router.get(
+    "/{resource_id}/download",
+    summary="Download the binary file attached to a resource",
+)
+async def download_resource_file(
+    resource_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await _serve_resource_file(resource_id, db, inline=False)
 

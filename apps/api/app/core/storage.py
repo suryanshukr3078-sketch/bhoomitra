@@ -169,5 +169,22 @@ class StorageService:
 
         raise ValueError(f"Unsupported storage URI scheme: {storage_uri[:30]}")
 
+    def generate_presigned_url(self, storage_uri: str, expires_in: int = 3600) -> str | None:
+        if not storage_uri.startswith("s3://"):
+            return None
+        try:
+            parts = storage_uri[5:].split("/", 1)
+            bucket = parts[0]
+            key = parts[1]
+            client = self._get_client()
+            return client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": bucket, "Key": key},
+                ExpiresIn=expires_in,
+            )
+        except Exception as e:
+            logger.warning("Failed to generate presigned S3 URL", error=str(e))
+            return None
+
 
 storage_service = StorageService()
