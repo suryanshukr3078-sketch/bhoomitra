@@ -3,10 +3,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.email import send_welcome_email
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.db import get_db
@@ -71,12 +73,26 @@ class LoginRequest(BaseModel):
     password: str
 
 
+CATEGORY_DISPLAY_TITLES = {
+    "academic": "Academic Institution / University / College",
+    "research": "Scientific Research Institute / GIS Lab",
+    "government": "Government Agency & Revenue Authority",
+    "policy_maker": "Policy Maker & Statutory Advisory Body",
+    "civil_society": "Civil Society Organization / NGO",
+    "community": "Community, Tribal Council & Gram Sabha",
+    "private": "Private Enterprise / Geomatics Industry",
+    "international": "International / Multilateral Agency",
+    "other": "Custom Autonomous Institution",
+}
+
+
 class AuthResponse(BaseModel):
     token: Token | None = None
     user: UserRead
     status: str = "success"
     message: str | None = None
     requires_verification: bool = False
+    email_sent: bool = True
 
 
 @router.post(
@@ -90,6 +106,7 @@ async def register(
     request: Request,
     response: Response,
     body: RegisterRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     # Check for existing user
@@ -157,6 +174,18 @@ async def register(
         raise
 
     resolved_created_at = getattr(user, "created_at", None) or user_created_at
+    category_title = CATEGORY_DISPLAY_TITLES.get(category_raw, category_raw.replace("_", " ").title())
+
+    # Dispatch welcome email asynchronously in background
+    background_tasks.add_task(
+        send_welcome_email,
+        to_email=user.email,
+        full_name=user.full_name,
+        org_name=org.name,
+        category_title=category_title,
+        role_title=role_title,
+        is_pending=is_pending,
+    )
 
     if is_pending:
         # Pending verification: do NOT issue access token cookie

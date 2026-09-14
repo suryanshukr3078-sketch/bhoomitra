@@ -209,8 +209,8 @@ export default function RegisterPage() {
         });
 
         toast({
-          title: 'Verification Pending',
-          description: 'Registration submitted for verification, you will be notified once approved.',
+          title: 'Verification Pending & Receipt Dispatched',
+          description: `Receipt sent to ${data.email.trim()}. You will be notified once approved.`,
           variant: 'default',
         });
       } else {
@@ -230,8 +230,8 @@ export default function RegisterPage() {
         });
 
         toast({
-          title: 'Registration Successful',
-          description: 'Registration successful, you can now log in',
+          title: 'Registration Successful & Welcome Email Sent',
+          description: `Welcome onboarding email dispatched to ${data.email.trim()}.`,
           variant: 'success',
         });
       }
@@ -308,6 +308,18 @@ export default function RegisterPage() {
                 </p>
               </div>
 
+              <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-left text-xs text-amber-900 leading-relaxed flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-950">Welcome &amp; Verification Receipt Dispatched</p>
+                  <p className="text-amber-800 mt-0.5">
+                    A formal verification receipt with your institutional registration summary has been sent to your registered address (<strong className="font-semibold text-slate-900">{registeredResult.email}</strong>). Please check your Gmail / mail inbox and spam folder.
+                  </p>
+                </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Link
                   href="/"
@@ -352,6 +364,18 @@ export default function RegisterPage() {
                 <div className="flex justify-between pt-2">
                   <span className="text-slate-500 font-medium">Category:</span>
                   <span className="font-semibold text-emerald-800">{registeredResult.categoryTitle}</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 text-left text-xs text-emerald-900 leading-relaxed flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700 shrink-0 mt-0.5">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-emerald-950">Welcome Email Dispatched</p>
+                  <p className="text-emerald-800 mt-0.5">
+                    A welcome confirmation and platform onboarding briefing has been sent to your registered address (<strong className="font-semibold text-slate-900">{registeredResult.email}</strong>). Please check your Gmail / mail inbox and spam folder.
+                  </p>
                 </div>
               </div>
 

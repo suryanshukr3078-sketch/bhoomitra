@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     max_upload_size_bytes: int = 50 * 1024 * 1024
 
+    # SMTP Email Configuration (e.g. Gmail SMTP or custom relays)
+    smtp_host: str = Field(default="smtp.gmail.com", validation_alias=AliasChoices("smtp_host", "mail_server"))
+    smtp_port: int = Field(default=587, validation_alias=AliasChoices("smtp_port", "mail_port"))
+    smtp_user: str | None = Field(default=None, validation_alias=AliasChoices("smtp_user", "smtp_username", "mail_username"))
+    smtp_password: str | None = Field(default=None, validation_alias=AliasChoices("smtp_password", "mail_password"))
+    smtp_from_email: str | None = Field(default=None, validation_alias=AliasChoices("smtp_from_email", "mail_from"))
+    smtp_from_name: str = Field(default="Bhoomitra Land Governance Platform", validation_alias=AliasChoices("smtp_from_name", "mail_from_name"))
+    smtp_tls: bool = Field(default=True, validation_alias=AliasChoices("smtp_tls", "mail_starttls"))
+    smtp_ssl: bool = Field(default=False, validation_alias=AliasChoices("smtp_ssl", "mail_ssl_tls"))
+
     db_pool_size: int = Field(default=1, ge=1)
     db_max_overflow: int = Field(default=1, ge=0)
     db_pool_timeout_seconds: int = Field(default=30, ge=1)
