@@ -69,6 +69,16 @@ const PORTAL_SHORTCUTS = [
     borderColor: 'hover:border-teal-500 hover:bg-teal-50/50',
     iconColor: 'text-teal-700 bg-teal-100',
   },
+  {
+    id: 'admin',
+    title: 'Platform Administrator',
+    desc: 'Privileged console for user approvals, security audits & node control',
+    href: '/login/admin',
+    icon: ShieldAlert,
+    badge: 'Superuser',
+    borderColor: 'hover:border-purple-500 hover:bg-purple-50/50',
+    iconColor: 'text-purple-700 bg-purple-100',
+  },
 ];
 
 export default function CentralLoginPage() {
@@ -181,7 +191,7 @@ export default function CentralLoginPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {PORTAL_SHORTCUTS.map((portal) => {
             const Icon = portal.icon;
             return (
