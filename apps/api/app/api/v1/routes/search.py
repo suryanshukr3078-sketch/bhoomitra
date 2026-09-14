@@ -104,17 +104,19 @@ async def semantic_search(
 ) -> dict[str, Any]:
     # Resolve search text from JSON body or GET query parameter
     search_text = ""
-    effective_type = resource_type
-    effective_limit = limit
+    effective_type = (
+        resource_type
+        if isinstance(resource_type, ResourceType)
+        else (payload.resource_type if payload and isinstance(payload.resource_type, ResourceType) else None)
+    )
+    effective_limit = limit if isinstance(limit, int) else (payload.limit if payload and payload.limit else 10)
 
     if payload:
         search_text = (payload.query or payload.q or "").strip()
-        if payload.resource_type:
-            effective_type = payload.resource_type
         if payload.limit:
             effective_limit = payload.limit
 
-    if not search_text:
+    if not search_text and isinstance(q, str):
         search_text = q.strip()
 
     if not search_text:
@@ -313,14 +315,20 @@ async def assistant_evidence_search(
         }
 
     # 1. Retrieve top 5 relevant published resources via semantic vector search
-    semantic_result = await semantic_search(
-        request=request,
-        response=response,
-        payload=SemanticSearchRequest(query=question_text, limit=effective_limit),
-        db=db,
-    )
-
-    retrieved_items = semantic_result.get("items", [])[:effective_limit]
+    try:
+        semantic_result = await semantic_search(
+            request=request,
+            response=response,
+            payload=SemanticSearchRequest(query=question_text, limit=effective_limit),
+            resource_type=None,
+            limit=effective_limit,
+            db=db,
+        )
+        retrieved_items = semantic_result.get("items", [])[:effective_limit]
+    except Exception as search_err:
+        import structlog
+        structlog.get_logger(__name__).warning("Semantic search inside assistant failed", error=str(search_err))
+        retrieved_items = []
 
     # 2. Synthesize grounded answer with citations using Gemini RAG
     from app.services.assistant_service import generate_rag_answer
