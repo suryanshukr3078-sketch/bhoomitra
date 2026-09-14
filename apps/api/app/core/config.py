@@ -71,6 +71,16 @@ class Settings(BaseSettings):
     smtp_tls: bool = Field(default=True, validation_alias=AliasChoices("smtp_tls", "mail_starttls"))
     smtp_ssl: bool = Field(default=False, validation_alias=AliasChoices("smtp_ssl", "mail_ssl_tls"))
 
+    # Google Gemini AI & Vector Embeddings Configuration
+    gemini_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("gemini_api_key", "google_api_key", "google_gemini_api_key"),
+    )
+    gemini_embedding_model: str = Field(
+        default="text-embedding-004",
+        validation_alias=AliasChoices("gemini_embedding_model", "embedding_model"),
+    )
+
     db_pool_size: int = Field(default=1, ge=1)
     db_max_overflow: int = Field(default=1, ge=0)
     db_pool_timeout_seconds: int = Field(default=30, ge=1)

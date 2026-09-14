@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from geoalchemy2 import Geometry
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -284,6 +285,11 @@ class ResourceVersion(
 
     extracted_text: Mapped[str | None] = mapped_column(
         Text,
+        nullable=True,
+    )
+
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(768),
         nullable=True,
     )
 

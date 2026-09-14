@@ -8,6 +8,8 @@ annotated-types==0.8.0
     # via pydantic
 anyio==4.15.1
     # via
+    #   google-genai
+    #   httpx
     #   starlette
     #   watchfiles
 bcrypt==5.0.0
@@ -20,10 +22,23 @@ botocore==1.43.92
     #   s3transfer
 botocore-stubs==1.43.67
     # via types-boto3
+certifi==2026.7.22
+    # via
+    #   httpcore
+    #   httpx
+    #   requests
+cffi==2.1.1
+    # via cryptography
+charset-normalizer==3.5.1
+    # via requests
 click==8.5.0
     # via uvicorn
+cryptography==50.0.1
+    # via google-auth
 deprecated==1.3.1
     # via limits
+distro==1.9.0
+    # via google-genai
 dnspython==2.8.0
     # via email-validator
 email-validator==2.3.0
@@ -32,16 +47,28 @@ fastapi==0.141.1
     # via land-governance-api (pyproject.toml)
 geoalchemy2==0.20.0
     # via land-governance-api (pyproject.toml)
+google-auth==2.58.0
+    # via google-genai
+google-genai==2.23.0
+    # via land-governance-api (pyproject.toml)
 greenlet==3.5.5
     # via sqlalchemy
 h11==0.16.0
-    # via uvicorn
+    # via
+    #   httpcore
+    #   uvicorn
+httpcore==1.0.9
+    # via httpx
 httptools==0.8.0
     # via uvicorn
+httpx==0.28.1
+    # via google-genai
 idna==3.19
     # via
     #   anyio
     #   email-validator
+    #   httpx
+    #   requests
 jmespath==1.1.0
     # via
     #   boto3
@@ -60,13 +87,22 @@ packaging==26.3
     # via
     #   geoalchemy2
     #   limits
+pgvector==0.5.0
+    # via land-governance-api (pyproject.toml)
 psycopg==3.3.5
     # via land-governance-api (pyproject.toml)
 psycopg-binary==3.3.5
     # via psycopg
+pyasn1==0.6.4
+    # via pyasn1-modules
+pyasn1-modules==0.4.2
+    # via google-auth
+pycparser==3.0
+    # via cffi
 pydantic==2.13.5
     # via
     #   fastapi
+    #   google-genai
     #   pydantic-settings
 pydantic-core==2.46.5
     # via pydantic
@@ -86,6 +122,10 @@ pyyaml==6.0.3
     # via uvicorn
 redis==8.1.0
     # via land-governance-api (pyproject.toml)
+requests==2.34.2
+    # via
+    #   google-auth
+    #   google-genai
 s3transfer==0.19.2
     # via boto3
 shapely==2.1.2
@@ -94,6 +134,8 @@ six==1.17.0
     # via python-dateutil
 slowapi==0.1.10
     # via land-governance-api (pyproject.toml)
+sniffio==1.3.1
+    # via google-genai
 sqlalchemy==2.0.52
     # via
     #   land-governance-api (pyproject.toml)
@@ -103,6 +145,8 @@ starlette==1.6.0
     # via fastapi
 structlog==25.5.0
     # via land-governance-api (pyproject.toml)
+tenacity==9.1.4
+    # via google-genai
 types-boto3==1.43.92
     # via land-governance-api (pyproject.toml)
 types-cryptography==3.3.23.2
@@ -116,6 +160,7 @@ typing-extensions==4.16.0
     #   alembic
     #   anyio
     #   fastapi
+    #   google-genai
     #   limits
     #   pydantic
     #   pydantic-core
@@ -129,12 +174,16 @@ typing-inspection==0.4.4
 tzdata==2026.3
     # via psycopg
 urllib3==2.7.0
-    # via botocore
+    # via
+    #   botocore
+    #   requests
 uvicorn==0.52.4
     # via land-governance-api (pyproject.toml)
 watchfiles==1.2.0
     # via uvicorn
-websockets==17.1
-    # via uvicorn
+websockets==16.1.1
+    # via
+    #   google-genai
+    #   uvicorn
 wrapt==2.4.1
     # via deprecated

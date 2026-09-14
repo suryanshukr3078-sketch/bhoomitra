@@ -173,24 +173,28 @@ async def create_resource(
             )
             db.add(layer)
 
-        # 5. Create ResourceVersion if a file was uploaded
-        if payload.storage_uri or payload.original_filename or payload.source_url:
-            from app.models.resources import ResourceVersion
+        # 5. Generate AI semantic embedding and create ResourceVersion
+        from app.models.resources import ResourceVersion
+        from app.services.embedding_service import generate_embedding
 
-            raw_uri = payload.storage_uri or payload.source_url
-            version = ResourceVersion(
-                resource_id=resource.id,
-                version_number=1,
-                version_label="v1.0",
-                original_filename=payload.original_filename or f"{slug}.pdf",
-                storage_uri=raw_uri,
-                mime_type=payload.mime_type or "application/pdf",
-                file_size_bytes=payload.file_size_bytes,
-                checksum_sha256=payload.checksum_sha256,
-                extracted_text=raw_uri if raw_uri and raw_uri.startswith("data:") else None,
-                created_by_id=user_id,
-            )
-            db.add(version)
+        embedding_text = f"{payload.title}\n\n{payload.abstract or ''}".strip()
+        embedding_vector = generate_embedding(embedding_text)
+
+        raw_uri = payload.storage_uri or payload.source_url
+        version = ResourceVersion(
+            resource_id=resource.id,
+            version_number=1,
+            version_label="v1.0",
+            original_filename=payload.original_filename or f"{slug}.pdf",
+            storage_uri=raw_uri,
+            mime_type=payload.mime_type or "application/pdf",
+            file_size_bytes=payload.file_size_bytes,
+            checksum_sha256=payload.checksum_sha256,
+            extracted_text=raw_uri if raw_uri and raw_uri.startswith("data:") else None,
+            embedding=embedding_vector,
+            created_by_id=user_id,
+        )
+        db.add(version)
 
         await db.commit()
         await db.refresh(resource)
