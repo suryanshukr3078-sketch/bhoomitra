@@ -21,6 +21,10 @@ export const contributeSchema = z.object({
     .string()
     .min(1, { message: 'Abstract / Summary is required' })
     .min(20, { message: 'Abstract must be at least 20 characters' }),
+  publisher: z
+    .string()
+    .max(300, { message: 'Publisher cannot exceed 300 characters' })
+    .optional(),
   jurisdiction: z
     .string()
     .min(1, { message: 'Jurisdiction or Region is required' }),

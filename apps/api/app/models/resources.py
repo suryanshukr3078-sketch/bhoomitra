@@ -122,6 +122,11 @@ class Resource(
         nullable=True,
     )
 
+    publisher: Mapped[str | None] = mapped_column(
+        String(300),
+        nullable=True,
+    )
+
     published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -351,6 +356,11 @@ class ResearchPaper(TimestampMixin, Base):
     )
 
     journal: Mapped[str | None] = mapped_column(
+        String(300),
+        nullable=True,
+    )
+
+    publisher: Mapped[str | None] = mapped_column(
         String(300),
         nullable=True,
     )

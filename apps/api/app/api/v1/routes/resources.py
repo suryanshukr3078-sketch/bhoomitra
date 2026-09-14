@@ -52,6 +52,7 @@ class ResourceSubmission(BaseModel):
     jurisdiction: str | None = None
     journal: str | None = None
     doi: str | None = None
+    publisher: str | None = None
     publication_year: int | None = None
     source_url: str | None = None
     storage_uri: str | None = None
@@ -117,7 +118,9 @@ async def create_resource(
         # 3. Create Resource
         slug = generate_slug(payload.title)
         effective_source_url = payload.storage_uri or payload.source_url
+        default_publisher = payload.publisher or "National Land Records Modernization Directorate"
         resource = Resource(
+            id=uuid4(),
             title=payload.title,
             slug=slug,
             abstract=payload.abstract,
@@ -127,7 +130,10 @@ async def create_resource(
             owner_organization_id=org_id,
             created_by_id=user_id,
             source_url=effective_source_url,
+            publisher=default_publisher,
             published_at=datetime.now(timezone.utc) if payload.status == ResourceStatus.PUBLISHED else None,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
             is_demo=False,
         )
         db.add(resource)
@@ -139,6 +145,7 @@ async def create_resource(
                 resource_id=resource.id,
                 journal=payload.journal or "Land Governance Journal",
                 doi=payload.doi,
+                publisher=default_publisher,
                 publication_date=date(
                     payload.publication_year or datetime.now(timezone.utc).year,
                     1,
@@ -195,7 +202,8 @@ async def create_resource(
             "resource_type": resource.resource_type.value,
             "status": resource.status.value,
             "visibility": resource.visibility.value,
-            "created_at": resource.created_at.isoformat(),
+            "publisher": resource.publisher,
+            "created_at": resource.created_at.isoformat() if resource.created_at else datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         import structlog
@@ -257,6 +265,7 @@ async def list_resources(
                 "resource_type": item.resource_type.value,
                 "status": item.status.value,
                 "visibility": item.visibility.value,
+                "publisher": getattr(item, "publisher", None) or "National Land Records Modernization Directorate",
                 "created_at": item.created_at.isoformat(),
                 "is_demo": item.is_demo,
             }
@@ -351,6 +360,7 @@ async def get_resource(
         child_meta = {
             "journal": rp.journal,
             "doi": rp.doi,
+            "publisher": getattr(rp, "publisher", None) or getattr(resource, "publisher", None) or "National Land Records Modernization Directorate",
             "authors": rp.authors,
             "peer_reviewed": rp.peer_reviewed,
             "publication_date": rp.publication_date.isoformat() if rp.publication_date else None,
@@ -378,6 +388,7 @@ async def get_resource(
         "resource_type": resource.resource_type.value,
         "status": resource.status.value,
         "visibility": resource.visibility.value,
+        "publisher": getattr(resource, "publisher", None) or "National Land Records Modernization Directorate",
         "created_at": resource.created_at.isoformat(),
         "published_at": resource.published_at.isoformat() if resource.published_at else None,
         "is_demo": resource.is_demo,

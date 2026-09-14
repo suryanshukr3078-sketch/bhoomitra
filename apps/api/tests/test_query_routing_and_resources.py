@@ -30,6 +30,7 @@ def mock_target_resource() -> Resource:
         resource_type=ResourceType.RESEARCH_PAPER,
         status=ResourceStatus.PUBLISHED,
         visibility=ResourceVisibility.PUBLIC,
+        publisher="Indian Council of Agricultural Research (ICAR)",
         source_url="local://land-governance-documents/uploads/c0be4fd8-f7d6-4fe2-8e8c-7147d56dcc05/Gold_Crown_Name_Wallpaper_Suryanshu.jpeg",
         created_at=datetime.now(timezone.utc),
         is_demo=False,
@@ -176,4 +177,35 @@ def test_datasets_router_download_and_view(test_client_with_resource: TestClient
     )
     assert resp_view.status_code == 200
     assert resp_view.headers["content-disposition"].startswith("inline;")
+
+
+def test_publisher_field_in_research_and_report_resources(test_client_with_resource: TestClient) -> None:
+    # 1. Create a research paper with a publisher
+    create_payload = {
+        "title": "Geospatial Tenure Study 2026",
+        "abstract": "In-depth study on spatial land rights and cadastral surveying.",
+        "resource_type": "research_paper",
+        "visibility": "public",
+        "status": "published",
+        "publisher": "Indian Council of Agricultural Research (ICAR)",
+        "journal": "Indian Journal of Land Governance",
+    }
+    create_resp = test_client_with_resource.post("/api/v1/resources", json=create_payload)
+    assert create_resp.status_code == 201
+    created_id = create_resp.json()["id"]
+
+    # 2. Get resource details and verify publisher
+    get_resp = test_client_with_resource.get(f"/api/v1/resources/{created_id}")
+    assert get_resp.status_code == 200
+    data = get_resp.json()
+    assert "publisher" in data
+    assert data["publisher"] == "Indian Council of Agricultural Research (ICAR)"
+
+    # 3. List resources and verify publisher is present
+    list_resp = test_client_with_resource.get("/api/v1/resources?resource_type=research_paper")
+    assert list_resp.status_code == 200
+    items = list_resp.json()["items"]
+    assert len(items) > 0
+    assert any("publisher" in item and item["publisher"] is not None for item in items)
+
 

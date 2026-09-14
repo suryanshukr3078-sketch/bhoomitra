@@ -22,6 +22,7 @@ class ResourceBase(BaseModel):
     status: ResourceStatus = ResourceStatus.DRAFT
     visibility: ResourceVisibility = ResourceVisibility.PUBLIC
     organization_id: UUID | None = None
+    publisher: str | None = Field(default=None, max_length=300)
     metadata_fields: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -43,6 +44,7 @@ class ResourceRead(ResourceBase):
 class ResearchPaperBase(BaseModel):
     doi: str | None = Field(default=None, max_length=255)
     journal_name: str | None = Field(default=None, max_length=255)
+    publisher: str | None = Field(default=None, max_length=300)
     abstract: str | None = None
     peer_reviewed: bool = False
     publication_year: int | None = Field(default=None, ge=1800, le=2100)

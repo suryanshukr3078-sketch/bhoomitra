@@ -79,63 +79,68 @@ export default function RootLayout({
           <main className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col">
             <PageTransition>{children}</PageTransition>
           </main>
-        <footer className="border-t border-slate-200 bg-white pt-12 pb-8 text-xs text-slate-500 w-full max-w-full overflow-x-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-left">
-              {/* Col 1 */}
-              <div className="space-y-3">
-                <div className="font-bold text-slate-900 text-sm">Platform</div>
-                <ul className="space-y-2">
-                  <li><a href="/" className="hover:text-emerald-700">Home</a></li>
-                  <li><a href="/maps" className="hover:text-emerald-700">Cadastral Maps</a></li>
-                  <li><a href="/policies" className="hover:text-emerald-700">Policies Registry</a></li>
-                  <li><a href="/research" className="hover:text-emerald-700">Research Papers</a></li>
-                  <li><a href="/datasets" className="hover:text-emerald-700">Open GIS Datasets</a></li>
-                </ul>
+          <footer className="border-t border-slate-200 bg-white pt-12 pb-8 text-xs text-slate-500 w-full max-w-full overflow-x-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-left">
+                {/* Col 1 */}
+                <div className="space-y-3">
+                  <div className="font-bold text-slate-900 text-sm">Platform</div>
+                  <ul className="space-y-2">
+                    <li><a href="/" className="hover:text-emerald-700">Home</a></li>
+                    <li><a href="/maps" className="hover:text-emerald-700">Cadastral Maps</a></li>
+                    <li><a href="/policies" className="hover:text-emerald-700">Policies Registry</a></li>
+                    <li><a href="/research" className="hover:text-emerald-700">Research Papers</a></li>
+                    <li><a href="/datasets" className="hover:text-emerald-700">Open GIS Datasets</a></li>
+                  </ul>
+                </div>
+
+                {/* Col 2 */}
+                <div className="space-y-3">
+                  <div className="font-bold text-slate-900 text-sm">Trust & Provenance</div>
+                  <ul className="space-y-2">
+                    <li><a href="/evidence" className="hover:text-emerald-700">Evidence & DAG Trail</a></li>
+                    <li><a href="/contribute" className="hover:text-emerald-700">Contribute Record</a></li>
+                    <li><a href="/assistant" className="hover:text-emerald-700">AI Policy Assistant</a></li>
+                    <li><a href="/dashboard" className="hover:text-emerald-700">Governance Dashboard</a></li>
+                  </ul>
+                </div>
+
+                {/* Col 3 */}
+                <div className="space-y-3">
+                  <div className="font-bold text-slate-900 text-sm">Information</div>
+                  <ul className="space-y-2">
+                    <li><a href="/about" className="hover:text-emerald-700">About Platform</a></li>
+                    <li><a href="/faq" className="hover:text-emerald-700">Frequently Asked Questions</a></li>
+                    <li><a href="/contact" className="hover:text-emerald-700">Contact & Partnerships</a></li>
+                  </ul>
+                </div>
+
+                {/* Col 4 */}
+                <div className="space-y-3">
+                  <div className="font-bold text-slate-900 text-sm">Category Portals</div>
+                  <ul className="space-y-1.5 text-[11px]">
+                    <li><a href="/login" className="hover:text-emerald-700 font-medium">Authentication Hub</a></li>
+                    <li><a href="/login/researcher" className="hover:text-emerald-700">Researcher &amp; Academic</a></li>
+                    <li><a href="/login/policymaker" className="hover:text-emerald-700">Policy Maker &amp; Analyst</a></li>
+                    <li><a href="/login/government" className="hover:text-emerald-700">Government Agency</a></li>
+                    <li><a href="/login/civil-society" className="hover:text-emerald-700">Civil Society &amp; Advocate</a></li>
+                    <li><a href="/login/admin" className="hover:text-purple-700 font-medium">Platform Admin</a></li>
+                    <li className="pt-1"><a href="/register" className="text-emerald-700 font-semibold hover:underline">Institutional Registration</a></li>
+                  </ul>
+                </div>
               </div>
 
-              {/* Col 2 */}
-              <div className="space-y-3">
-                <div className="font-bold text-slate-900 text-sm">Trust & Provenance</div>
-                <ul className="space-y-2">
-                  <li><a href="/evidence" className="hover:text-emerald-700">Evidence & DAG Trail</a></li>
-                  <li><a href="/contribute" className="hover:text-emerald-700">Contribute Record</a></li>
-                  <li><a href="/assistant" className="hover:text-emerald-700">AI Policy Assistant</a></li>
-                  <li><a href="/dashboard" className="hover:text-emerald-700">Governance Dashboard</a></li>
-                </ul>
+              {/* Disclaimer Banner */}
+              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-[11px] leading-relaxed text-left">
+                <strong>Notice of Non-Official Synthetic Demonstration Data:</strong> This platform demonstrates open cadastral technology and automated PostGIS topological validation. All sample parcels, boundary polygons, policy drafts, and mutation entries are synthetic test records. Official statutory land rights are governed exclusively by jurisdictional state revenue departments.
               </div>
 
-              {/* Col 3 */}
-              <div className="space-y-3">
-                <div className="font-bold text-slate-900 text-sm">Information</div>
-                <ul className="space-y-2">
-                  <li><a href="/about" className="hover:text-emerald-700">About Platform</a></li>
-                  <li><a href="/faq" className="hover:text-emerald-700">Frequently Asked Questions</a></li>
-                  <li><a href="/contact" className="hover:text-emerald-700">Contact & Partnerships</a></li>
-                </ul>
-              </div>
-
-              {/* Col 4 */}
-              <div className="space-y-3">
-                <div className="font-bold text-slate-900 text-sm">Account & Access</div>
-                <ul className="space-y-2">
-                  <li><a href="/login" className="hover:text-emerald-700">Sign In</a></li>
-                  <li><a href="/register" className="hover:text-emerald-700">Surveyor Registration</a></li>
-                </ul>
+              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 text-center sm:text-left">
+                <p>© {new Date().getFullYear()} LandGov Cadastral Administration. All rights reserved.</p>
+                <p>PostGIS 3.6 & Append-Only Cryptographic Ledger</p>
               </div>
             </div>
-
-            {/* Disclaimer Banner */}
-            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-[11px] leading-relaxed text-left">
-              <strong>Notice of Non-Official Synthetic Demonstration Data:</strong> This platform demonstrates open cadastral technology and automated PostGIS topological validation. All sample parcels, boundary polygons, policy drafts, and mutation entries are synthetic test records. Official statutory land rights are governed exclusively by jurisdictional state revenue departments.
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 text-center sm:text-left">
-              <p>© {new Date().getFullYear()} LandGov Cadastral Administration. All rights reserved.</p>
-              <p>PostGIS 3.6 & Append-Only Cryptographic Ledger</p>
-            </div>
-          </div>
-        </footer>
+          </footer>
           <Toaster />
         </AuthProvider>
       </body>

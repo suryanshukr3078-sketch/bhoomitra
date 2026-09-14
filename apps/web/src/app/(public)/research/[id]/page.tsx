@@ -17,6 +17,7 @@ import {
   FileCode,
   Hash,
   Share2,
+  Building2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,6 +38,7 @@ interface ResourceDetail {
   is_demo?: boolean;
   source_url?: string | null;
   journal?: string;
+  publisher?: string;
   doi?: string;
   authors?: Array<{ name: string; affiliation?: string }> | string[];
   peer_reviewed?: boolean;
@@ -70,6 +72,7 @@ const SEED_PAPERS: Record<string, Partial<ResourceDetail>> = {
     abstract:
       'We demonstrate an automated PostGIS topological validation pipeline enforcing zero-overlap boundary invariants across 45,000 communal land parcels. By employing spatial indices and topology geometry data structures, boundary errors are identified before legal deeds are formalized.',
     journal: 'International Journal of Land Administration & Spatial Science',
+    publisher: 'National Remote Sensing Centre (NRSC) & ISRO',
     doi: '10.1016/j.landuse.2026.108420',
     authors: [{ name: 'Dr. Aisha Sharma' }, { name: 'K. V. Raman' }],
     peer_reviewed: true,
@@ -82,6 +85,7 @@ const SEED_PAPERS: Record<string, Partial<ResourceDetail>> = {
     abstract:
       'Empirical analysis of land registry corruption mitigation through cryptographic append-only DAG provenance trees. Every surveyor verification, boundary mutation, and deed transfer forms an immutable audit chain verifiable by citizen stakeholders.',
     journal: 'Land Economics & Tenure Quarterly',
+    publisher: 'Digital India Land Records Modernization Consortium',
     doi: '10.1080/01436597.2026.220199',
     authors: [{ name: 'Prof. David Chen' }, { name: 'Elena Rostova' }],
     peer_reviewed: true,
@@ -94,6 +98,7 @@ const SEED_PAPERS: Record<string, Partial<ResourceDetail>> = {
     abstract:
       'Examines the legal interface between customary village chiefs and centralized statutory GIS registries. Highlights institutional friction points and proposes hybrid titling architectures that respect community ownership.',
     journal: 'African Land Governance Review',
+    publisher: 'African Land Policy Centre & UN-Habitat',
     doi: '10.1111/j.1477-8947.2026.01289',
     authors: [{ name: 'Kwame Mensah' }, { name: 'Dr. Sarah Ndlovu' }],
     peer_reviewed: false,
@@ -106,6 +111,7 @@ const SEED_PAPERS: Record<string, Partial<ResourceDetail>> = {
     abstract:
       'Centimeter-accuracy orthomosaic processing with Cloud-Optimized GeoTIFFs for informal settlement formalization. Evaluates cost-effectiveness and administrative velocity compared to conventional ground survey methods.',
     journal: 'Urban Land Information Systems',
+    publisher: 'Survey of India Cadastral Directorate',
     doi: '10.1007/s10901-026-09874-x',
     authors: [{ name: 'Carlos Mendez' }, { name: 'Maria Santos' }],
     peer_reviewed: true,
@@ -163,6 +169,7 @@ export default function ResearchDetailPage() {
               created_at: seed.created_at || new Date().toISOString(),
               is_demo: true,
               journal: seed.journal,
+              publisher: seed.publisher || 'National Land Records Modernization Directorate',
               doi: seed.doi,
               authors: seed.authors,
               peer_reviewed: seed.peer_reviewed,
@@ -331,9 +338,17 @@ export default function ResearchDetailPage() {
             {resource.title}
           </h1>
           <p className="text-sm font-semibold text-emerald-800">{authorDisplay}</p>
-          {resource.journal && (
-            <p className="text-xs text-slate-500 italic font-serif">Published in: {resource.journal}</p>
-          )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
+            {resource.journal && (
+              <p className="text-xs text-slate-500 italic font-serif">Published in: {resource.journal}</p>
+            )}
+            {resource.publisher && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200">
+                <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+                Publisher: <span className="text-slate-900">{resource.publisher}</span>
+              </div>
+            )}
+          </div>
           {resource.doi && (
             <div className="text-xs font-mono text-slate-500 pt-1">
               DOI:{' '}

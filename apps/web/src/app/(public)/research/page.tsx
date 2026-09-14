@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Loader2,
   AlertCircle,
+  Building2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,6 +31,7 @@ interface ResearchPaper {
   title: string;
   authors: string[];
   journal: string;
+  publisher?: string;
   doi: string;
   publicationDate: string;
   publicationTimestamp: number;
@@ -45,6 +47,7 @@ const PAPERS: ResearchPaper[] = [
     title: 'PostGIS Cadastral Polygon Topology: Preventing Boundary Disputes in Communal Forests',
     authors: ['Dr. Aisha Sharma', 'K. V. Raman'],
     journal: 'International Journal of Land Administration & Spatial Science',
+    publisher: 'National Remote Sensing Centre (NRSC) & ISRO',
     doi: '10.1016/j.landuse.2026.108420',
     publicationDate: 'August 2026',
     publicationTimestamp: 1785600000000,
@@ -58,6 +61,7 @@ const PAPERS: ResearchPaper[] = [
     title: 'Immutable Mutation Provenance: Cryptographic Land Registration in Developing Economies',
     authors: ['Prof. David Chen', 'Elena Rostova'],
     journal: 'Land Economics & Tenure Quarterly',
+    publisher: 'Digital India Land Records Modernization Consortium',
     doi: '10.1080/01436597.2026.220199',
     publicationDate: 'July 2026',
     publicationTimestamp: 1782921600000,
@@ -71,6 +75,7 @@ const PAPERS: ResearchPaper[] = [
     title: 'Comparative Analysis of Customary and Statutory Land Rights in Sub-Saharan Agrosystems',
     authors: ['Kwame Mensah', 'Dr. Sarah Ndlovu'],
     journal: 'African Land Governance Review',
+    publisher: 'African Land Policy Centre & UN-Habitat',
     doi: '10.1111/j.1477-8947.2026.01289',
     publicationDate: 'June 2026',
     publicationTimestamp: 1780243200000,
@@ -84,6 +89,7 @@ const PAPERS: ResearchPaper[] = [
     title: 'Drone Photogrammetry and High-Resolution Orthomosaics for Rapid Informal Settlement Mapping',
     authors: ['Carlos Mendez', 'Maria Santos'],
     journal: 'Urban Land Information Systems',
+    publisher: 'Survey of India Cadastral Directorate',
     doi: '10.1007/s10901-026-09874-x',
     publicationDate: 'May 2026',
     publicationTimestamp: 1777564800000,
@@ -161,6 +167,7 @@ export default function ResearchPage() {
               title: item.title,
               authors: ['Accredited Registry Contributor'],
               journal: 'Land Governance Open Repository',
+              publisher: item.publisher || 'National Land Records Modernization Directorate',
               doi: `10.1016/landgov.${item.slug || item.id.slice(0, 8)}`,
               publicationDate: new Date(item.created_at).toLocaleDateString('en-US', {
                 month: 'short',
@@ -244,6 +251,7 @@ export default function ResearchPage() {
   title = {{${paper.title}}},
   author = {${authorList}},
   journal = {${paper.journal || 'Bhoomitra Cadastral Repository'}},
+  publisher = {${paper.publisher || 'National Land Records Modernization Directorate'}},
   year = {${year}},
   doi = {${paper.doi || '10.5555/bhoomitra.' + paper.id}},
   url = {${origin}/research/${paper.id}},
@@ -453,7 +461,15 @@ export default function ResearchPage() {
                   <p className="text-xs sm:text-sm font-medium text-emerald-800">
                     {paper.authors.join(', ')}
                   </p>
-                  <p className="text-xs text-slate-500 italic">{paper.journal}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <span className="text-slate-500 italic">{paper.journal}</span>
+                    {paper.publisher && (
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-700 bg-slate-100/90 px-2 py-0.5 rounded-md border border-slate-200">
+                        <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+                        Publisher: <span className="text-slate-900 font-semibold">{paper.publisher}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">

@@ -17,6 +17,7 @@ import {
   FileCode,
   Sparkles,
   Layers,
+  Building2,
 } from 'lucide-react';
 import { env } from '@/lib/environment';
 import { getAuthToken } from '@/lib/api/client';
@@ -49,6 +50,7 @@ export default function ContributePage() {
     resolver: zodResolver(contributeSchema),
     defaultValues: {
       title: '',
+      publisher: '',
       resourceType: 'research_paper',
       abstract: '',
       jurisdiction: 'IN-MH',
@@ -112,6 +114,7 @@ export default function ContributePage() {
         credentials: 'include',
         body: JSON.stringify({
           title: data.title,
+          publisher: data.publisher?.trim() || undefined,
           abstract: data.abstract,
           resource_type: data.resourceType,
           visibility: data.visibility,
@@ -207,6 +210,23 @@ export default function ContributePage() {
                 {errors.title.message}
               </p>
             )}
+          </div>
+
+          {/* Publisher / Publishing Organization */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+              Publisher / Issuing Organization
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Survey of India, Indian Council of Agricultural Research, or Ministry of Rural Development"
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
+              {...register('publisher')}
+            />
+            <p className="text-[11px] text-slate-500">
+              Institutional publisher credited on public research citations, gazette reports, and metadata exports.
+            </p>
           </div>
 
           {/* Resource Type & Jurisdiction */}

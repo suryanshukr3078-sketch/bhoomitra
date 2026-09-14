@@ -8,10 +8,70 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginFormData } from '@/schemas/auth';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Landmark, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
+import {
+  GraduationCap,
+  Scale,
+  Landmark,
+  Users,
+  ShieldAlert,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  Loader2,
+  ArrowRight,
+  AlertCircle,
+  ShieldCheck,
+  ChevronRight,
+  ExternalLink,
+  Sparkles,
+} from 'lucide-react';
 import { apiRequest } from '@/lib/api/client';
 
-export default function LoginPage() {
+const PORTAL_SHORTCUTS = [
+  {
+    id: 'researcher',
+    title: 'Researcher & Academic',
+    desc: 'Cadastral GIS data, BibTeX citations, peer-reviewed research papers',
+    href: '/login/researcher',
+    icon: GraduationCap,
+    badge: 'Academic',
+    borderColor: 'hover:border-emerald-500 hover:bg-emerald-50/50',
+    iconColor: 'text-emerald-700 bg-emerald-100',
+  },
+  {
+    id: 'policymaker',
+    title: 'Policy Maker & Analyst',
+    desc: 'Statutory compliance tracking, state indicators, legislative drafts',
+    href: '/login/policymaker',
+    icon: Scale,
+    badge: 'Policy',
+    borderColor: 'hover:border-blue-500 hover:bg-blue-50/50',
+    iconColor: 'text-blue-700 bg-blue-100',
+  },
+  {
+    id: 'government',
+    title: 'Government Agency',
+    desc: 'Cadastral registry, title mutations, boundary verification & disputes',
+    href: '/login/government',
+    icon: Landmark,
+    badge: 'Official',
+    borderColor: 'hover:border-amber-500 hover:bg-amber-50/50',
+    iconColor: 'text-amber-700 bg-amber-100',
+  },
+  {
+    id: 'civil-society',
+    title: 'Civil Society & Advocate',
+    desc: 'Community tenure mapping, public interest watchdog, rights monitoring',
+    href: '/login/civil-society',
+    icon: Users,
+    badge: 'Advocacy',
+    borderColor: 'hover:border-teal-500 hover:bg-teal-50/50',
+    iconColor: 'text-teal-700 bg-teal-100',
+  },
+];
+
+export default function CentralLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -36,11 +96,9 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
-      // Calls backend POST /api/v1/auth/login endpoint.
-      // The backend sets the secure, HttpOnly access_token cookie in the Set-Cookie response header.
       const response = await apiRequest<{
         token: { access_token: string; token_type: string };
-        user: { id: string; email: string; full_name: string; role: string; is_active: boolean };
+        user: { id: string; email: string; full_name: string; role: string; is_active: boolean; is_superuser?: boolean };
       }>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,7 +120,11 @@ export default function LoginPage() {
         variant: 'success',
       });
 
-      router.push('/dashboard');
+      if (response.user?.is_superuser) {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       let friendlyError = 'Invalid email or password. Please verify your credentials and try again.';
       const rawError = err?.message || '';
@@ -88,21 +150,90 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 sm:p-10 rounded-2xl border border-slate-200/80 shadow-xl">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shadow-inner">
+    <div className="min-h-[85vh] py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-10">
+      {/* Page Title & Category Callout */}
+      <div className="text-center space-y-3 max-w-2xl mx-auto">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          Role-Based Institutional Access
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          Land Governance Authentication Hub
+        </h1>
+        <p className="text-sm text-slate-600">
+          Sign in directly via the unified portal below, or select your dedicated institutional category portal for tailored workflows.
+        </p>
+      </div>
+
+      {/* Dedicated Category Cards */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Dedicated Category Login Portals
+          </h2>
+          <Link
+            href="/login/admin"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 transition-colors"
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            Administrator Portal
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {PORTAL_SHORTCUTS.map((portal) => {
+            const Icon = portal.icon;
+            return (
+              <Link
+                key={portal.id}
+                href={portal.href}
+                className={`group p-5 rounded-2xl bg-white border border-slate-200 shadow-sm transition-all duration-200 flex flex-col justify-between ${portal.borderColor} hover:shadow-md hover:-translate-y-0.5`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${portal.iconColor}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/80">
+                      {portal.badge}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-slate-950">
+                      {portal.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                      {portal.desc}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-700 group-hover:text-slate-950">
+                  <span>Enter Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Central Unified Form */}
+      <div className="max-w-md mx-auto bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/90 shadow-xl space-y-6">
+        <div className="text-center space-y-1.5">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-inner border border-slate-200">
             <Landmark className="w-6 h-6" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Sign In to LandGov
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Access cadastral administration, deed mutations, and policy records
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">
+            Universal Sign In
+          </h2>
+          <p className="text-xs text-slate-500">
+            Valid across all registered organizations, researchers, and departments
           </p>
         </div>
 
-        {/* Specific Error Message Alert */}
+        {/* Error Message Alert */}
         {errorMessage && (
           <div
             role="alert"
@@ -113,7 +244,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           {/* Email field */}
           <div className="space-y-1.5">
             <label
@@ -132,7 +263,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 aria-invalid={!!errors.email}
                 aria-describedby={errors.email ? 'email-error' : undefined}
-                placeholder="surveyor@registry.gov"
+                placeholder="registered.user@agency.gov"
                 className={`w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   errors.email
                     ? 'border-rose-400 bg-rose-50/30 text-rose-900'
@@ -162,8 +293,8 @@ export default function LoginPage() {
                 onClick={(e) => {
                   e.preventDefault();
                   toast({
-                    title: 'Password Reset',
-                    description: 'Please contact your cadastral jurisdiction administrator.',
+                    title: 'Password Reset Assistance',
+                    description: 'Please contact your jurisdictional administrator or node manager.',
                     variant: 'default',
                   });
                 }}
@@ -193,7 +324,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
@@ -214,7 +345,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 active:bg-black shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
               <>
@@ -223,22 +354,22 @@ export default function LoginPage() {
               </>
             ) : (
               <>
-                Sign In
+                Sign In to LandGov
                 <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </>
             )}
           </button>
         </form>
 
-        {/* Visible link to Register page */}
+        {/* Registration link */}
         <div className="pt-4 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-500">
-            Don&apos;t have an authenticated account?{' '}
+            Don&apos;t have an account yet?{' '}
             <Link
               href="/register"
               className="font-semibold text-emerald-700 hover:text-emerald-800 transition-colors underline-offset-2 hover:underline"
             >
-              Register here
+              Register your organization here
             </Link>
           </p>
         </div>
