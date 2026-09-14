@@ -113,25 +113,8 @@ def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str
             "5. **Admin Management** ([/admin](/admin)): Institutional approvals, role assignments, security telemetry, and cryptographic ledger inspection."
         )
 
-    # 4. Maps & GIS inquiries
-    if any(k in q for k in ["map", "spatial", "gis", "cadastral map", "layer", "geojson", "shapefile"]):
-        return (
-            "### Cadastral Maps & Spatial Datasets\n\n"
-            "- **Interactive Cadastral Maps** ([/maps](/maps)): High-performance spatial parcel viewer powered by MapLibre GL. Visualizes boundary polygons, topological vertices, and land classifications in real time.\n"
-            "- **Open GIS Datasets** ([/datasets](/datasets)): Access downloadable GeoJSON and Shapefile boundaries validated against PostGIS topological invariants."
-        )
-
-    # 5. Evidence & Provenance inquiries
-    if any(k in q for k in ["evidence", "dag", "provenance", "hash", "sha256", "ledger"]):
-        return (
-            "### Cryptographic Evidence & Provenance Trail\n\n"
-            "Bhoomitra maintains an immutable Directed Acyclic Graph (DAG) provenance trail at [/evidence](/evidence).\n"
-            "Every cadastral parcel mutation deed and policy is anchored with an immutable SHA-256 cryptographic hash, "
-            "tracking upstream survey dependencies and downstream automated PostGIS topological verification (0.00% boundary overlap tolerance)."
-        )
-
-    # 6. PostGIS & Boundary Invariants
-    if any(k in q for k in ["postgis", "boundary", "topology", "overlap", "dispute", "polygon"]):
+    # 4. PostGIS & Boundary Invariants
+    if any(k in q for k in ["postgis", "boundary", "topology", "overlap", "dispute", "polygon", "st_overlaps", "st_isvalid"]):
         resp = [
             "### PostGIS Cadastral Topological Verification Standards\n\n"
             "Bhoomitra utilizes an automated PostGIS topological validation pipeline to eliminate boundary disputes:\n"
@@ -144,6 +127,23 @@ def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str
             for idx, r in enumerate(resources[:3], 1):
                 resp.append(f"- [{idx}] **{r.get('title')}** ({r.get('resource_type')}): {r.get('abstract')}")
         return "\n".join(resp)
+
+    # 5. Maps & GIS inquiries
+    if any(k in q for k in ["map", "maps", "spatial", " cadastral map", "layer", "geojson", "shapefile"]) or " gis" in f" {q} ":
+        return (
+            "### Cadastral Maps & Spatial Datasets\n\n"
+            "- **Interactive Cadastral Maps** ([/maps](/maps)): High-performance spatial parcel viewer powered by MapLibre GL. Visualizes boundary polygons, topological vertices, and land classifications in real time.\n"
+            "- **Open GIS Datasets** ([/datasets](/datasets)): Access downloadable GeoJSON and Shapefile boundaries validated against PostGIS topological invariants."
+        )
+
+    # 6. Evidence & Provenance inquiries
+    if any(k in q for k in ["evidence", "dag", "provenance", "hash", "sha256", "ledger"]):
+        return (
+            "### Cryptographic Evidence & Provenance Trail\n\n"
+            "Bhoomitra maintains an immutable Directed Acyclic Graph (DAG) provenance trail at [/evidence](/evidence).\n"
+            "Every cadastral parcel mutation deed and policy is anchored with an immutable SHA-256 cryptographic hash, "
+            "tracking upstream survey dependencies and downstream automated PostGIS topological verification (0.00% boundary overlap tolerance)."
+        )
 
     # 7. Generic inquiry with resources
     if resources:
