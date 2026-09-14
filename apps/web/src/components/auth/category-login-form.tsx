@@ -66,7 +66,7 @@ export const PORTAL_CONFIGS: Record<PortalCategory, PortalConfig> = {
       'Peer-reviewed land tenure research repository',
       'Direct BibTeX citation metadata & full-text download',
     ],
-    redirectPath: '/dashboard',
+    redirectPath: '/workspace/researcher',
   },
   policymaker: {
     id: 'policymaker',
@@ -86,7 +86,7 @@ export const PORTAL_CONFIGS: Record<PortalCategory, PortalConfig> = {
       'Statutory gazette enactments & legislative drafts',
       'Inter-jurisdictional policy impact tracking',
     ],
-    redirectPath: '/dashboard',
+    redirectPath: '/workspace/policymaker',
   },
   government: {
     id: 'government',
@@ -106,7 +106,7 @@ export const PORTAL_CONFIGS: Record<PortalCategory, PortalConfig> = {
       'Deed mutation & title verification audit pipelines',
       'Unmasked high-priority land dispute hotspots',
     ],
-    redirectPath: '/dashboard',
+    redirectPath: '/workspace/government',
   },
   'civil-society': {
     id: 'civil-society',
@@ -126,7 +126,7 @@ export const PORTAL_CONFIGS: Record<PortalCategory, PortalConfig> = {
       'Public land governance watchdog alerts',
       'Grassroots grievance escalation tracking',
     ],
-    redirectPath: '/dashboard',
+    redirectPath: '/workspace/civil-society',
   },
   admin: {
     id: 'admin',

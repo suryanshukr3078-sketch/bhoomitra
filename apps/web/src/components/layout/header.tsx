@@ -22,6 +22,7 @@ import {
   Scale,
   Users,
   ShieldAlert,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
@@ -34,6 +35,7 @@ export function Header() {
 
   const navLinks = [
     { href: '/', label: 'Home', icon: Landmark },
+    { href: '/workspace', label: 'Workspaces', icon: Building2 },
     { href: '/maps', label: 'Cadastral Maps', icon: MapPin },
     { href: '/policies', label: 'Policies', icon: FileText },
     { href: '/research', label: 'Research', icon: BookOpen },
@@ -273,8 +275,17 @@ export function Header() {
 
           {/* Mobile Category Portals Section */}
           <div className="pt-3 border-t border-slate-100 space-y-2">
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">
-              Category Portals
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Category Portals
+              </span>
+              <Link
+                href="/workspace"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-[11px] font-bold text-emerald-700 hover:underline"
+              >
+                All Workspaces &rarr;
+              </Link>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <Link

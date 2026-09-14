@@ -81,12 +81,13 @@ export default function RootLayout({
           </main>
           <footer className="border-t border-slate-200 bg-white pt-12 pb-8 text-xs text-slate-500 w-full max-w-full overflow-x-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-left">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 text-left">
                 {/* Col 1 */}
                 <div className="space-y-3">
                   <div className="font-bold text-slate-900 text-sm">Platform</div>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 text-[11px]">
                     <li><a href="/" className="hover:text-emerald-700">Home</a></li>
+                    <li><a href="/workspace" className="hover:text-emerald-700 font-bold text-emerald-800">All Workspaces</a></li>
                     <li><a href="/maps" className="hover:text-emerald-700">Cadastral Maps</a></li>
                     <li><a href="/policies" className="hover:text-emerald-700">Policies Registry</a></li>
                     <li><a href="/research" className="hover:text-emerald-700">Research Papers</a></li>
@@ -96,8 +97,20 @@ export default function RootLayout({
 
                 {/* Col 2 */}
                 <div className="space-y-3">
+                  <div className="font-bold text-slate-900 text-sm">Official Workspaces</div>
+                  <ul className="space-y-1.5 text-[11px]">
+                    <li><a href="/workspace/government" className="hover:text-amber-800 text-amber-700 font-medium">Government Agency</a></li>
+                    <li><a href="/workspace/researcher" className="hover:text-emerald-800 text-emerald-700 font-medium">Researcher GIS Lab</a></li>
+                    <li><a href="/workspace/policymaker" className="hover:text-blue-800 text-blue-700 font-medium">Policy Directorate</a></li>
+                    <li><a href="/workspace/civil-society" className="hover:text-teal-800 text-teal-700 font-medium">Civil Society Desk</a></li>
+                    <li><a href="/admin" className="hover:text-purple-800 text-purple-700 font-medium">Admin Management</a></li>
+                  </ul>
+                </div>
+
+                {/* Col 3 */}
+                <div className="space-y-3">
                   <div className="font-bold text-slate-900 text-sm">Trust & Provenance</div>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 text-[11px]">
                     <li><a href="/evidence" className="hover:text-emerald-700">Evidence & DAG Trail</a></li>
                     <li><a href="/contribute" className="hover:text-emerald-700">Contribute Record</a></li>
                     <li><a href="/assistant" className="hover:text-emerald-700">AI Policy Assistant</a></li>
@@ -105,27 +118,27 @@ export default function RootLayout({
                   </ul>
                 </div>
 
-                {/* Col 3 */}
+                {/* Col 4 */}
                 <div className="space-y-3">
                   <div className="font-bold text-slate-900 text-sm">Information</div>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 text-[11px]">
                     <li><a href="/about" className="hover:text-emerald-700">About Platform</a></li>
-                    <li><a href="/faq" className="hover:text-emerald-700">Frequently Asked Questions</a></li>
-                    <li><a href="/contact" className="hover:text-emerald-700">Contact & Partnerships</a></li>
+                    <li><a href="/faq" className="hover:text-emerald-700">Frequently Asked</a></li>
+                    <li><a href="/contact" className="hover:text-emerald-700">Contact & Support</a></li>
                   </ul>
                 </div>
 
-                {/* Col 4 */}
+                {/* Col 5 */}
                 <div className="space-y-3">
                   <div className="font-bold text-slate-900 text-sm">Category Portals</div>
                   <ul className="space-y-1.5 text-[11px]">
-                    <li><a href="/login" className="hover:text-emerald-700 font-medium">Authentication Hub</a></li>
-                    <li><a href="/login/researcher" className="hover:text-emerald-700">Researcher &amp; Academic</a></li>
-                    <li><a href="/login/policymaker" className="hover:text-emerald-700">Policy Maker &amp; Analyst</a></li>
-                    <li><a href="/login/government" className="hover:text-emerald-700">Government Agency</a></li>
-                    <li><a href="/login/civil-society" className="hover:text-emerald-700">Civil Society &amp; Advocate</a></li>
-                    <li><a href="/login/admin" className="hover:text-purple-700 font-medium">Platform Admin</a></li>
-                    <li className="pt-1"><a href="/register" className="text-emerald-700 font-semibold hover:underline">Institutional Registration</a></li>
+                    <li><a href="/login" className="hover:text-emerald-700 font-semibold">Universal Sign In Hub</a></li>
+                    <li><a href="/login/government" className="hover:text-amber-700">Government Login</a></li>
+                    <li><a href="/login/researcher" className="hover:text-emerald-700">Researcher Login</a></li>
+                    <li><a href="/login/policymaker" className="hover:text-blue-700">Policy Maker Login</a></li>
+                    <li><a href="/login/civil-society" className="hover:text-teal-700">Civil Society Login</a></li>
+                    <li><a href="/login/admin" className="hover:text-purple-700">Admin Login</a></li>
+                    <li className="pt-1"><a href="/register" className="text-emerald-700 font-bold hover:underline">Register Official Account</a></li>
                   </ul>
                 </div>
               </div>
