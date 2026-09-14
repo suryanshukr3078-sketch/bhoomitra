@@ -80,6 +80,10 @@ class Settings(BaseSettings):
         default="text-embedding-004",
         validation_alias=AliasChoices("gemini_embedding_model", "embedding_model"),
     )
+    gemini_text_model: str = Field(
+        default="gemini-2.5-flash",
+        validation_alias=AliasChoices("gemini_text_model", "gemini_model"),
+    )
 
     @field_validator("gemini_api_key", mode="before")
     @classmethod

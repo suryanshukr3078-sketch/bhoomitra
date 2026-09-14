@@ -248,3 +248,85 @@ async def semantic_search(
             for item in fallback_items
         ],
     }
+
+
+class AssistantSearchRequest(BaseModel):
+    question: str = Field(..., min_length=2, description="User question to answer using platform evidence")
+    limit: int = Field(default=5, ge=1, le=10, description="Maximum number of context resources to retrieve")
+
+
+class AssistantCitation(BaseModel):
+    id: str
+    title: str
+    resource_type: str
+    slug: str | None = None
+    abstract: str | None = None
+    publisher: str | None = None
+    similarity_score: float | None = None
+
+
+class AssistantSearchResponse(BaseModel):
+    question: str
+    answer: str
+    sources: list[AssistantCitation]
+    disclaimer: str
+    provider: str
+
+
+@router.post(
+    "/assistant",
+    summary="Evidence Search Assistant RAG endpoint with grounded citations & rate limiting",
+)
+@router.get(
+    "/assistant",
+    summary="Evidence Search Assistant RAG endpoint (GET alias)",
+)
+@limiter.limit("10/minute")
+async def assistant_evidence_search(
+    request: Request,
+    response: Response,
+    payload: AssistantSearchRequest | None = None,
+    q: str = Query(default="", description="Question string for GET requests"),
+    limit: int = Query(default=5, ge=1, le=10),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    question_text = ""
+    effective_limit = limit
+
+    if payload:
+        question_text = (payload.question or "").strip()
+        if payload.limit:
+            effective_limit = payload.limit
+
+    if not question_text:
+        question_text = q.strip()
+
+    if not question_text:
+        from app.services.assistant_service import DISCLAIMER_TEXT, INSUFFICIENT_INFO_ANSWER
+
+        return {
+            "question": "",
+            "answer": INSUFFICIENT_INFO_ANSWER,
+            "sources": [],
+            "disclaimer": DISCLAIMER_TEXT,
+            "provider": "grounded_validation",
+        }
+
+    # 1. Retrieve top 5 relevant published resources via semantic vector search
+    semantic_result = await semantic_search(
+        request=request,
+        response=response,
+        payload=SemanticSearchRequest(query=question_text, limit=effective_limit),
+        db=db,
+    )
+
+    retrieved_items = semantic_result.get("items", [])[:effective_limit]
+
+    # 2. Synthesize grounded answer with citations using Gemini RAG
+    from app.services.assistant_service import generate_rag_answer
+
+    return generate_rag_answer(
+        question=question_text,
+        resources=retrieved_items,
+    )
+
