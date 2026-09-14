@@ -122,6 +122,7 @@ _DEMO_GRIEVANCES = [
 # ==========================================
 
 @router.get("/government", summary="Fetch government cadastral operational workspace")
+@router.get("/government/overview", summary="Fetch government cadastral operational workspace (overview alias)")
 async def get_government_workspace(
     user: User | None = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
@@ -242,6 +243,7 @@ async def action_government_mutation(
 # ==========================================
 
 @router.get("/researcher", summary="Fetch researcher & GIS lab workspace")
+@router.get("/researcher/overview", summary="Fetch researcher & GIS lab workspace (overview alias)")
 async def get_researcher_workspace(
     user: User | None = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
@@ -316,6 +318,7 @@ async def get_researcher_workspace(
 # ==========================================
 
 @router.get("/policymaker", summary="Fetch policy maker & legislative workspace")
+@router.get("/policymaker/overview", summary="Fetch policy maker & legislative workspace (overview alias)")
 async def get_policymaker_workspace(
     user: User | None = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
@@ -388,6 +391,7 @@ async def get_policymaker_workspace(
 # ==========================================
 
 @router.get("/civil-society", summary="Fetch civil society & grassroots advocate workspace")
+@router.get("/civil-society/overview", summary="Fetch civil society & grassroots advocate workspace (overview alias)")
 async def get_civil_society_workspace(
     user: User | None = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db),
