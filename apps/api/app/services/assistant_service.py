@@ -132,8 +132,16 @@ def generate_rag_answer(
     )
 
     api_key = get_effective_gemini_api_key()
-    primary_model = getattr(settings, "gemini_text_model", "gemini-2.5-flash") or "gemini-2.5-flash"
-    fallback_model = "gemini-1.5-flash"
+    primary_model = getattr(settings, "gemini_text_model", "gemini-3.6-flash") or "gemini-3.6-flash"
+    candidate_models = [
+        primary_model,
+        "gemini-3.6-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        "gemini-1.5-flash",
+    ]
+    seen = set()
+    unique_models = [m for m in candidate_models if m and not (m in seen or seen.add(m))]
 
     if api_key:
         try:
@@ -141,40 +149,26 @@ def generate_rag_answer(
 
             client = genai.Client(api_key=api_key)
 
-            # Attempt with configured primary model (e.g. gemini-2.5-flash)
-            try:
-                response = client.models.generate_content(
-                    model=primary_model,
-                    contents=prompt,
-                )
-                if response and response.text:
-                    return {
-                        "question": clean_question,
-                        "answer": response.text.strip(),
-                        "sources": sources,
-                        "disclaimer": DISCLAIMER_TEXT,
-                        "provider": "gemini",
-                    }
-            except Exception as model_err:
-                logger.warning(
-                    f"[AssistantService] Primary model {primary_model} generation error: {model_err}. "
-                    f"Retrying with fallback model {fallback_model}."
-                )
-                # Retry with stable fallback model
-                response = client.models.generate_content(
-                    model=fallback_model,
-                    contents=prompt,
-                )
-                if response and response.text:
-                    return {
-                        "question": clean_question,
-                        "answer": response.text.strip(),
-                        "sources": sources,
-                        "disclaimer": DISCLAIMER_TEXT,
-                        "provider": "gemini",
-                    }
+            for model_candidate in unique_models:
+                try:
+                    response = client.models.generate_content(
+                        model=model_candidate,
+                        contents=prompt,
+                    )
+                    if response and response.text:
+                        return {
+                            "question": clean_question,
+                            "answer": response.text.strip(),
+                            "sources": sources,
+                            "disclaimer": DISCLAIMER_TEXT,
+                            "provider": "gemini",
+                        }
+                except Exception as model_err:
+                    logger.warning(
+                        f"[AssistantService] Model {model_candidate} error: {model_err}. Trying next candidate."
+                    )
         except Exception as err:
-            logger.error(f"[AssistantService] Gemini text generation failed: {type(err).__name__}: {err}")
+            logger.error(f"[AssistantService] Gemini text generation client failed: {type(err).__name__}: {err}")
 
     # Fallback if Gemini is unconfigured, rate-limited, or failed
     fallback_answer = build_fallback_answer(clean_question, resources)

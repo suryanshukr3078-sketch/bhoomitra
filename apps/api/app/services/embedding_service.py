@@ -82,32 +82,42 @@ def generate_embedding(text: str, allow_fallback: bool = True) -> list[float] | 
 
     api_key = get_effective_gemini_api_key()
     model_name = getattr(settings, "gemini_embedding_model", DEFAULT_EMBEDDING_MODEL) or DEFAULT_EMBEDDING_MODEL
+    candidate_models = [
+        model_name,
+        "gemini-embedding-001",
+        "text-embedding-005",
+        "text-embedding-004",
+    ]
+    seen_embed = set()
+    unique_embed_models = [m for m in candidate_models if m and not (m in seen_embed or seen_embed.add(m))]
 
     if api_key:
         try:
             from google import genai
 
             client = genai.Client(api_key=api_key)
-            # Truncate clean_text if exceptionally long (Gemini supports up to ~2048 tokens for embeddings)
             truncated_text = clean_text[:8000]
 
-            response = client.models.embed_content(
-                model=model_name,
-                contents=truncated_text,
-            )
-
-            if response and response.embeddings and len(response.embeddings) > 0:
-                values = response.embeddings[0].values
-                if values and len(values) == EMBEDDING_DIMENSION:
-                    logger.info(f"[EmbeddingService] Successfully generated {len(values)}-dim Gemini embedding.")
-                    return list(values)
-                elif values:
-                    logger.warning(
-                        f"[EmbeddingService] Received embedding with dimension {len(values)}, expected {EMBEDDING_DIMENSION}."
+            for m in unique_embed_models:
+                try:
+                    response = client.models.embed_content(
+                        model=m,
+                        contents=truncated_text,
                     )
-                    return list(values)
+                    if response and response.embeddings and len(response.embeddings) > 0:
+                        values = response.embeddings[0].values
+                        if values:
+                            logger.info(f"[EmbeddingService] Successfully generated {len(values)}-dim embedding with {m}.")
+                            if len(values) == EMBEDDING_DIMENSION:
+                                return list(values)
+                            elif len(values) > EMBEDDING_DIMENSION:
+                                return list(values[:EMBEDDING_DIMENSION])
+                            else:
+                                return list(values) + [0.0] * (EMBEDDING_DIMENSION - len(values))
+                except Exception as m_err:
+                    logger.warning(f"[EmbeddingService] Embedding model {m} failed: {m_err}. Trying next candidate.")
         except Exception as err:
-            logger.error(f"[EmbeddingService] Gemini API call failed: {type(err).__name__}: {err}")
+            logger.error(f"[EmbeddingService] Gemini client initialization failed: {type(err).__name__}: {err}")
 
     # Fallback path
     if allow_fallback:

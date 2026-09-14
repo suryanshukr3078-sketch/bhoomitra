@@ -77,11 +77,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("gemini_api_key", "google_api_key", "google_gemini_api_key"),
     )
     gemini_embedding_model: str = Field(
-        default="text-embedding-004",
+        default="gemini-embedding-001",
         validation_alias=AliasChoices("gemini_embedding_model", "embedding_model"),
     )
     gemini_text_model: str = Field(
-        default="gemini-2.5-flash",
+        default="gemini-3.6-flash",
         validation_alias=AliasChoices("gemini_text_model", "gemini_model"),
     )
 
