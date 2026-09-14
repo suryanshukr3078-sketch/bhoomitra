@@ -23,9 +23,17 @@ export const registerSchema = z
       .string()
       .min(1, { message: 'Email address is required' })
       .email({ message: 'Please enter a valid email address' }),
-    organization: z
+    organizationCategory: z.enum(
+      ['academic', 'policy_maker', 'government', 'civil_society'],
+      {
+        errorMap: () => ({ message: 'Please select an organization category' }),
+      }
+    ),
+    organizationName: z
       .string()
-      .min(1, { message: 'Organization name is required' }),
+      .min(1, { message: 'Organization name is required' })
+      .min(2, { message: 'Organization name must be at least 2 characters' }),
+    organization: z.string().optional(),
     password: z
       .string()
       .min(8, { message: 'Password must be at least 8 characters' })

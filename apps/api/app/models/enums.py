@@ -13,6 +13,7 @@ class UserStatus(StrEnum):
 
 
 class MembershipStatus(StrEnum):
+    PENDING = "pending"
     INVITED = "invited"
     ACTIVE = "active"
     SUSPENDED = "suspended"
