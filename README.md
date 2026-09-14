@@ -127,6 +127,36 @@ Accessible at: `http://localhost:3000`.
 
 ---
 
+### Initial Administrator Setup & Safeguards (Bootstrap)
+
+To prevent privilege escalation and enforce least-privilege security standards, **no self-service UI or registration form allows a user to register as an administrator**. Access to the `/admin` portal and `/api/v1/admin/*` management APIs requires `is_superuser = true` or an admin role.
+
+To promote the first administrator account, register normally at `/register` (or via API) and then promote the account using either of the following methods:
+
+#### Method 1: Python CLI Utility
+From the `apps/api` directory, execute:
+```bash
+python scripts/promote_admin.py --email your_email@registry.gov
+```
+This utility automatically flags `is_superuser = True`, ensures `status = active`, and sets `profile.role = admin`.
+
+#### Method 2: Direct Database Update (PostgreSQL)
+Connect to your PostgreSQL database instance using `psql` or your database console and run:
+```sql
+UPDATE users
+SET is_superuser = true,
+    status = 'active',
+    profile = jsonb_set(
+        jsonb_set(coalesce(profile, '{}'::jsonb), '{role}', '"admin"'),
+        '{roles}', '["admin"]'::jsonb
+    )
+WHERE email = 'your_email@registry.gov';
+```
+
+Once promoted, log in at `/login`. The **Admin Portal** navigation link will appear in the top navbar, granting access to `/admin` for user auditing, organization oversight, and pending registration approvals.
+
+---
+
 ## Environment Variable Reference
 
 | Variable | Required | Default / Example | Purpose |

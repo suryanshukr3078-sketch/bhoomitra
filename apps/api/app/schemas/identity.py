@@ -16,6 +16,8 @@ class UserCreate(UserBase):
 class UserRead(UserBase):
     id: str
     is_active: bool
+    is_superuser: bool = False
+    status: str = "active"
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -10,6 +10,8 @@ export interface UserProfile {
   full_name: string;
   role: string;
   is_active: boolean;
+  is_superuser?: boolean;
+  status?: string;
   created_at?: string;
 }
 
@@ -17,6 +19,7 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   setUser: (user: UserProfile | null) => void;
   refreshUser: () => Promise<UserProfile | null>;
   logout: () => Promise<void>;
@@ -26,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  isAdmin: false,
   setUser: () => {},
   refreshUser: async () => null,
   logout: async () => {},
@@ -69,12 +73,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router]);
 
+  const isAdmin = Boolean(user?.is_superuser || user?.role?.toLowerCase() === 'admin');
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoading,
         isAuthenticated: !!user,
+        isAdmin,
         setUser,
         refreshUser,
         logout,

@@ -102,6 +102,20 @@ export function Header() {
           <div className="flex items-center gap-1 min-[1220px]:gap-1.5 sm:gap-2 shrink-0">
             {isAuthenticated && user ? (
               <>
+                {Boolean(user.is_superuser || user.role?.toLowerCase() === 'admin') && (
+                  <Link href="/admin" passHref legacyBehavior>
+                    <motion.a
+                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      title="Cadastral Administration Portal"
+                      className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 whitespace-nowrap shrink-0"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-600 shrink-0" aria-hidden="true" />
+                      <span>Admin Portal</span>
+                    </motion.a>
+                  </Link>
+                )}
                 <Link href="/dashboard" passHref legacyBehavior>
                   <motion.a
                     whileHover={prefersReduced ? undefined : { scale: 1.03 }}
@@ -210,6 +224,19 @@ export function Header() {
             </Link>
             {isAuthenticated && user ? (
               <div className="grid grid-cols-1 gap-2">
+                {Boolean(user.is_superuser || user.role?.toLowerCase() === 'admin') && (
+                  <Link href="/admin" passHref legacyBehavior>
+                    <motion.a
+                      whileTap={prefersReduced ? undefined : { scale: 0.98 }}
+                      transition={{ duration: 0.1 }}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="min-h-[44px] flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold text-purple-800 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" aria-hidden="true" />
+                      Cadastral Admin Portal
+                    </motion.a>
+                  </Link>
+                )}
                 <div className="flex items-center justify-center gap-2 py-2 px-3 bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-lg border border-emerald-200">
                   <User className="w-4 h-4 text-emerald-600" />
                   <span>Signed in as: {user.full_name || user.email}</span>

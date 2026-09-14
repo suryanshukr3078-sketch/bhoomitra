@@ -248,14 +248,18 @@ async def login(
         path="/",
     )
 
+    role_label = "admin" if user.is_superuser else "CITIZEN"
+
     return {
         "token": Token(access_token=access_token, token_type="bearer"),
         "user": UserRead(
             id=str(user.id),
             email=user.email,
             full_name=user.full_name,
-            role="CITIZEN",
-            is_active=True,
+            role=role_label,
+            is_active=user.status == UserStatus.ACTIVE,
+            is_superuser=user.is_superuser,
+            status=user.status.value,
             created_at=user.created_at,
         ),
     }
@@ -269,12 +273,15 @@ async def login(
 async def get_me(
     current_user: User = Depends(get_current_user),
 ) -> Any:
+    role_label = "admin" if current_user.is_superuser else "CITIZEN"
     return UserRead(
         id=str(current_user.id),
         email=current_user.email,
         full_name=current_user.full_name,
-        role="CITIZEN",
+        role=role_label,
         is_active=current_user.status == UserStatus.ACTIVE,
+        is_superuser=current_user.is_superuser,
+        status=current_user.status.value,
         created_at=current_user.created_at,
     )
 
