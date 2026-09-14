@@ -74,12 +74,11 @@ def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str
     """
     q = (question or "").lower()
 
-    # 1. Registration & Institute inquiries
-    if any(k in q for k in ["register", "institute", "signup", "institution", "academic", "onboard", "welcome"]):
+    # 1. Platform Registration inquiries
+    if any(k in q for k in ["register", "sign up", "onboard", "enroll", "academic institute", "registration procedure", "how to register"]):
         return (
             "### Institutional & User Registration on Bhoomitra\n\n"
-            "On the Bhoomitra platform, **any accredited academic institute, university, research laboratory, "
-            "government department, or civil society organization** can register without artificial limits.\n\n"
+            "On the Bhoomitra platform, **any accredited academic institute, university, research laboratory, government department, or civil society organization** can register without artificial limits.\n\n"
             "**Registration Procedure:**\n"
             "1. Visit the [Registration Portal](/register) from the main navigation.\n"
             "2. Select your institutional category (e.g. *Academic Institute*, *Government Body*, *Research Lab*, or *Civil Society*).\n"
@@ -89,7 +88,7 @@ def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str
         )
 
     # 2. Login pages inquiries
-    if any(k in q for k in ["login", "sign in", "portal", "log in"]):
+    if any(k in q for k in ["login url", "login link", "where to login", "sign in page", "login portal", "how to sign in"]) or q in ["login", "sign in", "log in"]:
         return (
             "### Official Login Portals on Bhoomitra\n\n"
             "Bhoomitra provides dedicated, secure login portals tailored for each official category:\n\n"
@@ -102,7 +101,7 @@ def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str
         )
 
     # 3. Workspaces inquiries
-    if any(k in q for k in ["workspace", "portal", "dashboard", "roles"]):
+    if any(k in q for k in ["workspace", "portal features", "dashboard roles", "official workspaces"]):
         return (
             "### Bhoomitra Official Workspaces\n\n"
             "Stakeholders have role-specific workspaces equipped with domain tools:\n\n"
@@ -113,50 +112,54 @@ def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str
             "5. **Admin Management** ([/admin](/admin)): Institutional approvals, role assignments, security telemetry, and cryptographic ledger inspection."
         )
 
-    # 4. PostGIS & Boundary Invariants
-    if any(k in q for k in ["postgis", "boundary", "topology", "overlap", "dispute", "polygon", "st_overlaps", "st_isvalid"]):
-        resp = [
-            "### PostGIS Cadastral Topological Verification Standards\n\n"
-            "Bhoomitra utilizes an automated PostGIS topological validation pipeline to eliminate boundary disputes:\n"
-            "- **Zero-Overlap Invariant**: Enforces strict mathematical disjointness (`ST_Overlaps = FALSE`) across adjoining cadastral parcels.\n"
-            "- **Geometric Integrity**: Validates polygon closure and vertex ordering (`ST_IsValid = TRUE`).\n"
-            "- **Spatial Coordinates**: Standardized on EPSG:4326 (WGS 84) coordinate submission with DGPS and drone photogrammetry verification.\n"
-        ]
-        if resources:
-            resp.append("\n**Supporting Platform Evidence:**")
-            for idx, r in enumerate(resources[:3], 1):
-                resp.append(f"- [{idx}] **{r.get('title')}** ({r.get('resource_type')}): {r.get('abstract')}")
-        return "\n".join(resp)
-
-    # 5. Maps & GIS inquiries
-    if any(k in q for k in ["map", "maps", "spatial", " cadastral map", "layer", "geojson", "shapefile"]) or " gis" in f" {q} ":
-        return (
-            "### Cadastral Maps & Spatial Datasets\n\n"
-            "- **Interactive Cadastral Maps** ([/maps](/maps)): High-performance spatial parcel viewer powered by MapLibre GL. Visualizes boundary polygons, topological vertices, and land classifications in real time.\n"
-            "- **Open GIS Datasets** ([/datasets](/datasets)): Access downloadable GeoJSON and Shapefile boundaries validated against PostGIS topological invariants."
-        )
-
-    # 6. Evidence & Provenance inquiries
-    if any(k in q for k in ["evidence", "dag", "provenance", "hash", "sha256", "ledger"]):
-        return (
-            "### Cryptographic Evidence & Provenance Trail\n\n"
-            "Bhoomitra maintains an immutable Directed Acyclic Graph (DAG) provenance trail at [/evidence](/evidence).\n"
-            "Every cadastral parcel mutation deed and policy is anchored with an immutable SHA-256 cryptographic hash, "
-            "tracking upstream survey dependencies and downstream automated PostGIS topological verification (0.00% boundary overlap tolerance)."
-        )
-
-    # 7. Generic inquiry with resources
+    # 4. If relevant resources exist in the platform repository, dynamically synthesize a detailed answer
     if resources:
+        topic_title = question.rstrip("?").strip()
         lines = [
-            f"Based on the Bhoomitra platform repository, {len(resources)} relevant source(s) were identified for your inquiry:\n"
+            f"### Platform Evidence Analysis: {topic_title}\n",
+            f"Based on Bhoomitra's indexed cadastral repositories and statutory archives, **{len(resources)} evidence source(s)** directly address this inquiry:\n"
         ]
+
+        # Check for PostGIS / topological context
+        is_cadastral = any(k in q for k in ["postgis", "boundary", "topology", "overlap", "dispute", "polygon", "survey", "mutation"])
+        if is_cadastral:
+            lines.append(
+                "**Cadastral Verification Invariants:**\n"
+                "All parcel mutations and boundary deeds indexed in Bhoomitra undergo automated PostGIS topological validation "
+                "enforcing mathematical disjointness (`ST_Overlaps = FALSE`), polygon closure validity (`ST_IsValid = TRUE`), "
+                "and EPSG:4326 coordinate alignment before gazetting or state revenue approval.\n"
+            )
+
+        lines.append("**Key Evidence Findings:**")
         for idx, res in enumerate(resources, 1):
             title = res.get("title", "Untitled")
+            res_type = (res.get("resource_type") or "resource").replace("_", " ").title()
             abstract = (res.get("abstract") or "").strip()
-            lines.append(f"- [{idx}] **{title}**: {abstract}")
+            publisher = res.get("publisher")
+            pub_info = f" *(Publisher: {publisher})*" if publisher else ""
+            lines.append(f"- [{idx}] **{title}** ({res_type}){pub_info}: {abstract}")
+
+        lines.append(
+            "\n**Platform Navigation:**\n"
+            "- Inspect spatial layers and parcel boundaries: [/maps](/maps)\n"
+            "- Verify cryptographic SHA-256 provenance hashes: [/evidence](/evidence)\n"
+            "- Download raw GeoJSON and shapefile datasets: [/datasets](/datasets)"
+        )
         return "\n".join(lines)
 
-    # 8. Unrelated inquiry
+    # 5. General land governance or platform fallback when no specific records matched
+    if any(k in q for k in ["land", "cadastr", "survey", "mutation", "policy", "forest", "tenure", "title", "deed", "revenue", "gram sabha", "fra", "postgis"]):
+        return (
+            "### Land Governance & Cadastral Administration Overview\n\n"
+            "Bhoomitra manages sovereign land records, cadastral surveys, statutory policies, and spatial boundary validations:\n\n"
+            "- **Cadastral Boundary Invariants**: Automated PostGIS geometric validation prevents overlapping parcel boundaries (`ST_Overlaps = FALSE`).\n"
+            "- **Statutory Policies**: State and national land legislation and revenue gazettes are searchable under [/policies](/policies).\n"
+            "- **Peer-Reviewed Research**: Cadastral science and tenure security studies are indexed under [/research](/research).\n"
+            "- **Cryptographic DAG Provenance**: Every survey token and deed is anchored via SHA-256 ledger records at [/evidence](/evidence).\n\n"
+            "Try searching for specific terms like *'mutation'*, *'drone photogrammetry'*, *'Western Ghats'*, or *'forest rights'* to inspect indexed records."
+        )
+
+    # 6. Unrelated inquiry
     return INSUFFICIENT_INFO_ANSWER
 
 
@@ -200,12 +203,14 @@ def generate_rag_answer(
     )
 
     api_key = get_effective_gemini_api_key()
-    primary_model = getattr(settings, "gemini_text_model", "gemini-3.6-flash") or "gemini-3.6-flash"
+    primary_model = getattr(settings, "gemini_text_model", "gemini-3.7-flash") or "gemini-3.7-flash"
     candidate_models = [
         primary_model,
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
         "gemini-3.6-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
     ]
     seen = set()
     unique_models = [m for m in candidate_models if m and not (m in seen or seen.add(m))]

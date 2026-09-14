@@ -81,7 +81,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("gemini_embedding_model", "embedding_model"),
     )
     gemini_text_model: str = Field(
-        default="gemini-3.6-flash",
+        default="gemini-3.7-flash",
         validation_alias=AliasChoices("gemini_text_model", "gemini_model"),
     )
 
