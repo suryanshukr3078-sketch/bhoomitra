@@ -81,3 +81,42 @@ async def list_gemini_models() -> dict[str, Any]:
     except Exception as e:
         return {"configured": True, "error": f"{type(e).__name__}: {e}"}
 
+
+@router.get(
+    "/test-generate",
+    summary="Test generate_content across model candidates",
+)
+async def test_generate() -> dict[str, Any]:
+    from app.services.embedding_service import get_effective_gemini_api_key
+    from google import genai
+
+    key = get_effective_gemini_api_key()
+    if not key:
+        return {"configured": False, "results": {}}
+
+    client = genai.Client(api_key=key)
+    candidates = [
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+        "gemini-flash-lite-latest",
+        "gemini-pro-latest",
+        "gemini-3.6-flash",
+    ]
+    results = {}
+    for model in candidates:
+        try:
+            resp = client.models.generate_content(
+                model=model,
+                contents="Say 'Bhoomitra AI is active' in 5 words or less.",
+            )
+            results[model] = {"status": "ok", "text": resp.text.strip()}
+        except Exception as err:
+            results[model] = {"status": "error", "message": f"{type(err).__name__}: {err}"}
+
+    return {"results": results}
+
+
