@@ -10,6 +10,17 @@ export function middleware(request: NextRequest) {
     url.searchParams.delete('path');
     return NextResponse.rewrite(url);
   }
+
+  // Protect /dashboard route: redirect unauthenticated visits to /login
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    const token = request.cookies.get('access_token')?.value;
+    if (!token || token.trim() === '') {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/login';
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   return NextResponse.next();
 }
 

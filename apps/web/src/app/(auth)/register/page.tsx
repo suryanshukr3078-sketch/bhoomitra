@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, RegisterFormData } from '@/schemas/auth';
+import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import {
   Landmark,
@@ -17,13 +19,17 @@ import {
   Loader2,
   Check,
   ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
-import { apiRequest, setAuthToken } from '@/lib/api/client';
+import { apiRequest } from '@/lib/api/client';
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
+  const { setUser, refreshUser } = useAuth();
+  const router = useRouter();
 
   const {
     register,
@@ -51,10 +57,12 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
+    setErrorMessage(null);
+
     try {
       const response = await apiRequest<{
         token: { access_token: string; token_type: string };
-        user: { id: string; email: string; full_name: string; role: string };
+        user: { id: string; email: string; full_name: string; role: string; is_active: boolean };
       }>('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,20 +73,36 @@ export default function RegisterPage() {
         }),
       });
 
-      setAuthToken(response.token.access_token);
+      if (response.user) {
+        setUser(response.user);
+      } else {
+        await refreshUser();
+      }
 
       toast({
         title: 'Registration Successful',
-        description: `Account created for ${response.user.full_name || data.fullName}. Redirecting to dashboard...`,
+        description: `Account created for ${response.user?.full_name || data.fullName}. Redirecting to dashboard...`,
         variant: 'success',
       });
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 800);
+
+      router.push('/dashboard');
     } catch (err: any) {
+      let friendlyError = 'Failed to create account. Please check your data and try again.';
+      const rawError = err?.message || '';
+
+      if (rawError.toLowerCase().includes('already exists') || rawError.includes('409')) {
+        friendlyError = 'A user with this email address already exists. Please sign in instead.';
+      } else if (rawError.toLowerCase().includes('rate limit') || rawError.includes('429')) {
+        friendlyError = 'Too many registration attempts. Please wait a minute before trying again.';
+      } else if (rawError) {
+        friendlyError = rawError;
+      }
+
+      setErrorMessage(friendlyError);
+
       toast({
         title: 'Registration Error',
-        description: err.message || 'Failed to create account. Please check your data and try again.',
+        description: friendlyError,
         variant: 'error',
       });
     } finally {
@@ -100,6 +124,17 @@ export default function RegisterPage() {
             Join the decentralized land governance and policy research network
           </p>
         </div>
+
+        {/* Specific Error Message Alert */}
+        {errorMessage && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm animate-in fade-in duration-200"
+          >
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex-1 font-medium">{errorMessage}</div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5" noValidate>
           {/* Full name field */}
@@ -319,7 +354,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
               <>
@@ -340,7 +375,7 @@ export default function RegisterPage() {
             Already registered with a land agency?{' '}
             <Link
               href="/login"
-              className="font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+              className="font-semibold text-emerald-700 hover:text-emerald-800 transition-colors underline-offset-2 hover:underline"
             >
               Sign in here
             </Link>

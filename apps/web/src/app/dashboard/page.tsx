@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   UploadCloud,
@@ -15,6 +16,8 @@ import {
   Loader2,
   ExternalLink,
   FileUp,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,8 +27,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest, getAuthToken } from '@/lib/api/client';
 import { env } from '@/lib/environment';
+import { useAuth } from '@/lib/auth-context';
 
 export default function DashboardPage() {
+  const { user, isLoading: isAuthLoading, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
   const [isContributeOpen, setIsContributeOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -59,6 +65,12 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
 
   const {
     register,
@@ -194,10 +206,23 @@ export default function DashboardPage() {
     },
   ];
 
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" aria-hidden="true" />
+        <p className="text-sm font-medium text-slate-600">Verifying authenticated session...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Top Banner with Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/85 shadow-card relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/85 shadow-card relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-amber-500" />
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
@@ -211,14 +236,36 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsContributeOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-sm font-bold rounded-xl shadow-md shadow-amber-950/15 border border-amber-300/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer"
-        >
-          <Plus className="w-4 h-4 text-slate-950 shrink-0" aria-hidden="true" />
-          <span>Contribute Record</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {user && (
+            <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
+                <User className="w-4 h-4 text-emerald-700" aria-hidden="true" />
+              </div>
+              <div className="text-left">
+                <p className="font-bold text-slate-900 leading-tight">{user.full_name || 'Cadastral User'}</p>
+                <p className="text-[11px] text-slate-500">{user.email}</p>
+              </div>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsContributeOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-sm font-bold rounded-xl shadow-md shadow-amber-950/15 border border-amber-300/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-slate-950 shrink-0" aria-hidden="true" />
+            <span>Contribute Record</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white hover:bg-rose-50 text-rose-700 hover:text-rose-800 border border-rose-200 text-sm font-semibold rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer"
+            title="Log out of current session"
+          >
+            <LogOut className="w-4 h-4 text-rose-600 shrink-0" aria-hidden="true" />
+            <span>Log Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Summary Cards */}

@@ -2,17 +2,22 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginFormData } from '@/schemas/auth';
+import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Landmark, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
-import { apiRequest, setAuthToken } from '@/lib/api/client';
+import { Landmark, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
+import { apiRequest } from '@/lib/api/client';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
+  const { setUser, refreshUser } = useAuth();
+  const router = useRouter();
 
   const {
     register,
@@ -28,10 +33,14 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setErrorMessage(null);
+
     try {
+      // Calls backend POST /api/v1/auth/login endpoint.
+      // The backend sets the secure, HttpOnly access_token cookie in the Set-Cookie response header.
       const response = await apiRequest<{
         token: { access_token: string; token_type: string };
-        user: { id: string; email: string; full_name: string; role: string };
+        user: { id: string; email: string; full_name: string; role: string; is_active: boolean };
       }>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,20 +50,36 @@ export default function LoginPage() {
         }),
       });
 
-      setAuthToken(response.token.access_token);
+      if (response.user) {
+        setUser(response.user);
+      } else {
+        await refreshUser();
+      }
 
       toast({
         title: 'Authentication Successful',
-        description: `Welcome back, ${response.user.full_name || data.email}. Redirecting to dashboard...`,
+        description: `Welcome back, ${response.user?.full_name || data.email}. Redirecting to dashboard...`,
         variant: 'success',
       });
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 800);
+
+      router.push('/dashboard');
     } catch (err: any) {
+      let friendlyError = 'Invalid email or password. Please verify your credentials and try again.';
+      const rawError = err?.message || '';
+
+      if (rawError.toLowerCase().includes('inactive') || rawError.toLowerCase().includes('suspended')) {
+        friendlyError = 'Your account is inactive or suspended. Please contact platform administrators.';
+      } else if (rawError.toLowerCase().includes('rate limit') || rawError.includes('429')) {
+        friendlyError = 'Too many sign-in attempts. Please wait a minute before trying again.';
+      } else if (rawError && !rawError.includes('status 401') && !rawError.includes('Invalid email')) {
+        friendlyError = rawError;
+      }
+
+      setErrorMessage(friendlyError);
+
       toast({
-        title: 'Authentication Failed',
-        description: err.message || 'Invalid credentials. Please verify your email and password.',
+        title: 'Sign In Failed',
+        description: friendlyError,
         variant: 'error',
       });
     } finally {
@@ -76,6 +101,17 @@ export default function LoginPage() {
             Access cadastral administration, deed mutations, and policy records
           </p>
         </div>
+
+        {/* Specific Error Message Alert */}
+        {errorMessage && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm animate-in fade-in duration-200"
+          >
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex-1 font-medium">{errorMessage}</div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
           {/* Email field */}
@@ -178,7 +214,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
               <>
@@ -194,12 +230,13 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Visible link to Register page */}
         <div className="pt-4 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-500">
             Don&apos;t have an authenticated account?{' '}
             <Link
               href="/register"
-              className="font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+              className="font-semibold text-emerald-700 hover:text-emerald-800 transition-colors underline-offset-2 hover:underline"
             >
               Register here
             </Link>

@@ -129,3 +129,13 @@ def test_rate_limiting_auth_routes(client: TestClient) -> None:
 
     # At least one request should be 429 Too Many Requests
     assert 429 in statuses
+
+
+def test_logout_clears_cookie(client: TestClient) -> None:
+    resp = client.post("/api/v1/auth/logout")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "success"
+    # Check that Set-Cookie header deletes access_token
+    set_cookie = resp.headers.get("set-cookie", "")
+    assert "access_token" in set_cookie
+

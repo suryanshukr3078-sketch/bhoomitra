@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.db import get_db
+from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.enums import UserStatus
@@ -76,9 +77,9 @@ async def register(
         key="access_token",
         value=access_token,
         max_age=86400,
-        httponly=False,
+        httponly=True,
         samesite="lax",
-        secure=True,
+        secure=settings.is_production,
         path="/",
     )
 
@@ -136,9 +137,9 @@ async def login(
         key="access_token",
         value=access_token,
         max_age=86400,
-        httponly=False,
+        httponly=True,
         samesite="lax",
-        secure=True,
+        secure=settings.is_production,
         path="/",
     )
 
@@ -171,3 +172,21 @@ async def get_me(
         is_active=current_user.status == UserStatus.ACTIVE,
         created_at=current_user.created_at,
     )
+
+
+@router.post(
+    "/logout",
+    summary="Logout user and clear session cookies",
+)
+async def logout(
+    response: Response,
+) -> dict[str, str]:
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=settings.is_production,
+    )
+    return {"status": "success", "message": "Successfully logged out."}
+
