@@ -192,10 +192,13 @@ export function MapView({
   // Combine provided features with seed features if features is empty
   const allFeatures = features.length > 0 ? features : SEED_SPATIAL_FEATURES;
 
-  const featureCollection: GeoJSON.FeatureCollection = {
-    type: 'FeatureCollection',
-    features: allFeatures as any,
-  };
+  const featureCollection = React.useMemo<GeoJSON.FeatureCollection>(
+    () => ({
+      type: 'FeatureCollection',
+      features: allFeatures as any,
+    }),
+    [allFeatures]
+  );
 
   // Initialize MapLibre GL Map
   useEffect(() => {
@@ -349,6 +352,8 @@ export function MapView({
       map.remove();
       mapRef.current = null;
     };
+    // Map instance is intentionally initialized once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update GeoJSON source when features change
@@ -358,7 +363,7 @@ export function MapView({
     if (source) {
       source.setData(featureCollection);
     }
-  }, [allFeatures, mapLoaded]);
+  }, [featureCollection, mapLoaded]);
 
   // Update layer visibility when activeLayers prop changes
   useEffect(() => {

@@ -101,6 +101,40 @@ export default function DashboardPage() {
         uploadInfo = await res.json();
       }
 
+      const baseUrl = env.apiUrl.replace(/\/$/, '');
+      const token = getAuthToken();
+      const resourceHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        resourceHeaders['Authorization'] = `Bearer ${token}`;
+      }
+
+      const resourceRes = await fetch(`${baseUrl}/resources`, {
+        method: 'POST',
+        headers: resourceHeaders,
+        credentials: 'include',
+        body: JSON.stringify({
+          title: data.title,
+          abstract: data.abstract,
+          resource_type: data.resourceType,
+          visibility: data.visibility,
+          status: 'published',
+          jurisdiction: data.jurisdiction,
+          source_url: uploadInfo?.storage_uri,
+          storage_uri: uploadInfo?.storage_uri,
+          original_filename: uploadInfo?.original_filename,
+          mime_type: uploadInfo?.mime_type,
+          file_size_bytes: uploadInfo?.file_size_bytes,
+          checksum_sha256: uploadInfo?.checksum_sha256,
+        }),
+      });
+
+      if (!resourceRes.ok) {
+        const errJson = await resourceRes.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Failed to create resource (Status: ${resourceRes.status})`);
+      }
+
       toast({
         title: 'Resource Published Successfully',
         description: `"${data.title}" was recorded${uploadInfo ? ` with verified SHA-256: ${uploadInfo.checksum_sha256.slice(0, 10)}...` : '.'}`,

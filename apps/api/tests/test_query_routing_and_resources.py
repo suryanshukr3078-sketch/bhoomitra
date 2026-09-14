@@ -144,3 +144,36 @@ def test_resource_details_mime_and_filename(test_client_with_resource: TestClien
     data_q = response_q.json()
     assert data_q["file"]["filename"] == "Gold_Crown_Name_Wallpaper_Suryanshu.jpeg"
     assert data_q["file"]["mime_type"] == "image/jpeg"
+
+
+def test_policies_router_download_and_view(test_client_with_resource: TestClient) -> None:
+    # Test /api/v1/policies/... download
+    resp_dl = test_client_with_resource.get(
+        "/api/v1/policies/23387c84-6f0b-4bce-9105-5e9103a459dd/download"
+    )
+    assert resp_dl.status_code == 200
+    assert resp_dl.headers["content-type"] == "image/jpeg"
+
+    # Test /api/v1/policies/... view
+    resp_view = test_client_with_resource.get(
+        "/api/v1/policies/23387c84-6f0b-4bce-9105-5e9103a459dd/view"
+    )
+    assert resp_view.status_code == 200
+    assert resp_view.headers["content-disposition"].startswith("inline;")
+
+
+def test_datasets_router_download_and_view(test_client_with_resource: TestClient) -> None:
+    # Test /api/v1/datasets/... download
+    resp_dl = test_client_with_resource.get(
+        "/api/v1/datasets/23387c84-6f0b-4bce-9105-5e9103a459dd/download"
+    )
+    assert resp_dl.status_code == 200
+    assert resp_dl.headers["content-type"] == "image/jpeg"
+
+    # Test /api/v1/datasets/... view
+    resp_view = test_client_with_resource.get(
+        "/api/v1/datasets/23387c84-6f0b-4bce-9105-5e9103a459dd/view"
+    )
+    assert resp_view.status_code == 200
+    assert resp_view.headers["content-disposition"].startswith("inline;")
+

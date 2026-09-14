@@ -36,7 +36,11 @@ def test_readiness_endpoint_success(client: TestClient) -> None:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ready"
-        assert data["database"] == fake_db_info
+        assert "database" in data
+        for key, val in fake_db_info.items():
+            assert data["database"][key] == val
+        assert "connection_source" in data["database"]
+        assert "database_url" in data["database"]
         assert "service" in data
 
 

@@ -90,3 +90,30 @@ async def get_dataset(
         db=db,
     )
 
+
+@router.get(
+    "/{dataset_id}/view",
+    summary="View dataset file inline in browser",
+)
+async def view_dataset_file(
+    dataset_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.api.v1.routes.resources import view_resource_file
+
+    return await view_resource_file(resource_id=dataset_id, db=db)
+
+
+@router.get(
+    "/{dataset_id}/download",
+    summary="Download the dataset file",
+)
+async def download_dataset_file(
+    dataset_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.api.v1.routes.resources import download_resource_file
+
+    return await download_resource_file(resource_id=dataset_id, db=db)
+
+

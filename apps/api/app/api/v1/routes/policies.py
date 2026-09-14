@@ -91,3 +91,30 @@ async def get_policy(
         db=db,
     )
 
+
+@router.get(
+    "/{policy_id}/view",
+    summary="View policy document file inline in browser",
+)
+async def view_policy_file(
+    policy_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.api.v1.routes.resources import view_resource_file
+
+    return await view_resource_file(resource_id=policy_id, db=db)
+
+
+@router.get(
+    "/{policy_id}/download",
+    summary="Download the policy document file",
+)
+async def download_policy_file(
+    policy_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.api.v1.routes.resources import download_resource_file
+
+    return await download_resource_file(resource_id=policy_id, db=db)
+
+

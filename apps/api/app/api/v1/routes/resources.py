@@ -567,7 +567,21 @@ async def _serve_resource_file(
             },
         )
 
-    title_escaped = resource.title[:80].replace("(", "[").replace(")", "]")
+    elif mime_type in ("application/geo+json", "application/json") or filename.lower().endswith((".geojson", ".json")):
+        title_escaped_json = resource.title.replace('"', '\\"')
+        synthetic_geojson = (
+            f'{{"type":"FeatureCollection","properties":{{"title":"{title_escaped_json}","resource_id":"{resource.id}"}},"features":[]}}'
+        ).encode("utf-8")
+        return Response(
+            content=synthetic_geojson,
+            media_type="application/geo+json",
+            headers={
+                "Content-Disposition": f'{disposition_type}; filename="{filename}"',
+                "Content-Length": str(len(synthetic_geojson)),
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+
     synthetic_pdf = (
         f"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
         f"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
