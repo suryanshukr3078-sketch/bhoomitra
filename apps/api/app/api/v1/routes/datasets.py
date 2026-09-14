@@ -62,7 +62,8 @@ async def list_datasets(
                 "resource_type": item.resource_type.value,
                 "status": item.status.value,
                 "visibility": item.visibility.value,
-                "created_at": item.created_at.isoformat(),
+                "publisher": item.publisher,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
                 "is_demo": item.is_demo,
             }
             for item in items

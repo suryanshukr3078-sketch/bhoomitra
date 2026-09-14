@@ -597,6 +597,7 @@ async def _serve_resource_file(
             },
         )
 
+    title_escaped = re.sub(r"[^\x20-\x7E]", "", resource.title or "Document").replace("(", "\\(").replace(")", "\\)")
     synthetic_pdf = (
         f"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
         f"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"

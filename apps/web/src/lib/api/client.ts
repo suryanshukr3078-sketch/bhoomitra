@@ -1,4 +1,5 @@
 import { env } from '@/lib/environment';
+import { resolveApiUrl } from '@/lib/api-url';
 
 export const API_URL = env.apiUrl;
 
@@ -28,9 +29,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const baseUrl = env.apiUrl.replace(/\/$/, '');
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  let url = path.startsWith('http') ? path : `${baseUrl}${cleanPath}`;
+  let url = resolveApiUrl(path);
 
   // If executing in SSR/Node.js environment, relative URLs must be converted to absolute
   if (typeof window === 'undefined' && url.startsWith('/')) {
