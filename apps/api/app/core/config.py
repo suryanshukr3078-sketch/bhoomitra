@@ -81,6 +81,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("gemini_embedding_model", "embedding_model"),
     )
 
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def clean_gemini_api_key(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        cleaned = str(v).strip().strip("'\"")
+        return cleaned if cleaned else None
+
     db_pool_size: int = Field(default=1, ge=1)
     db_max_overflow: int = Field(default=1, ge=0)
     db_pool_timeout_seconds: int = Field(default=30, ge=1)

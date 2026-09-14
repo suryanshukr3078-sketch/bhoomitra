@@ -47,6 +47,25 @@ def generate_pseudo_embedding(text: str, dimension: int = EMBEDDING_DIMENSION) -
     return vec
 
 
+def get_effective_gemini_api_key() -> str | None:
+    """
+    Resolves GEMINI_API_KEY from settings or environment variables,
+    stripping any accidental wrapping quotes or whitespace.
+    """
+    import os
+
+    raw = (
+        getattr(settings, "gemini_api_key", None)
+        or os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+        or os.environ.get("GOOGLE_GEMINI_API_KEY")
+    )
+    if not raw:
+        return None
+    cleaned = str(raw).strip().strip("'\"")
+    return cleaned if cleaned else None
+
+
 def generate_embedding(text: str, allow_fallback: bool = True) -> list[float] | None:
     """
     Takes combined text (e.g. title + abstract) and returns its 768-dimensional
@@ -61,7 +80,7 @@ def generate_embedding(text: str, allow_fallback: bool = True) -> list[float] | 
     if not clean_text:
         return None
 
-    api_key = settings.gemini_api_key
+    api_key = get_effective_gemini_api_key()
     model_name = getattr(settings, "gemini_embedding_model", DEFAULT_EMBEDDING_MODEL) or DEFAULT_EMBEDDING_MODEL
 
     if api_key:

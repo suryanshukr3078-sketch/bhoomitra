@@ -36,6 +36,10 @@ async def readiness() -> dict[str, Any]:
             detail="Database is not ready.",
         ) from error
 
+    from app.services.embedding_service import get_effective_gemini_api_key
+
+    has_gemini = bool(get_effective_gemini_api_key())
+
     return {
         "status": "ready",
         "service": settings.app_name,
@@ -43,5 +47,10 @@ async def readiness() -> dict[str, Any]:
             **database,
             "connection_source": settings.db_connection_source,
             "database_url": settings.masked_database_url,
+        },
+        "ai": {
+            "gemini_api_key_configured": has_gemini,
+            "embedding_model": settings.gemini_embedding_model,
+            "vector_dimension": 768,
         },
     }

@@ -185,11 +185,16 @@ async def semantic_search(
                     if len(items) >= effective_limit:
                         break
 
+            from app.services.embedding_service import get_effective_gemini_api_key
+
+            has_gemini = bool(get_effective_gemini_api_key())
+
             if len(items) > 0:
                 return {
                     "query": search_text,
                     "semantic": True,
                     "fallback": False,
+                    "provider": "gemini" if has_gemini else "vector_index",
                     "count": len(items),
                     "limit": effective_limit,
                     "items": items,
@@ -223,6 +228,7 @@ async def semantic_search(
         "query": search_text,
         "semantic": False,
         "fallback": True,
+        "provider": "keyword_fallback",
         "count": len(fallback_items),
         "limit": effective_limit,
         "items": [
