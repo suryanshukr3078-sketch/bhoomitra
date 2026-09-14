@@ -174,21 +174,37 @@ export default function PolicymakerLoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4 text-left">
-          {/* Ministry Authority */}
+          {/* Ministry Authority - Open to ANY Ministry or Policy Council */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-blue-400" /> Sponsoring Ministry / Department
-            </label>
-            <select
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-blue-400" /> Sponsoring Ministry / Department / Council
+              </label>
+              <Link
+                href="/register"
+                className="text-[11px] text-blue-400 hover:text-blue-300 underline font-semibold"
+              >
+                Register New Council &rarr;
+              </Link>
+            </div>
+            <input
+              type="text"
+              list="ministry-suggestions"
               value={ministry}
               onChange={(e) => setMinistry(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
-            >
-              <option value="Ministry of Rural Development (MoRD) & Department of Land Resources">Ministry of Rural Development (MoRD) &amp; Department of Land Resources</option>
-              <option value="NITI Aayog - Land Governance Reform Vertical">NITI Aayog - Land Governance Reform Vertical</option>
-              <option value="Ministry of Panchayati Raj (MoPR)">Ministry of Panchayati Raj (MoPR)</option>
-              <option value="State Revenue Reforms Commission">State Revenue Reforms Commission</option>
-            </select>
+              placeholder="Type or select ANY ministry, statutory commission, think tank, or directorate..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 placeholder-slate-500"
+            />
+            <datalist id="ministry-suggestions">
+              <option value="Ministry of Rural Development (MoRD) & Department of Land Resources" />
+              <option value="NITI Aayog - Land Governance Reform Vertical" />
+              <option value="Ministry of Panchayati Raj (MoPR)" />
+              <option value="Ministry of Housing and Urban Affairs (MoHUA)" />
+              <option value="State Revenue Reforms Commission" />
+              <option value="National Institute of Public Finance and Policy (NIPFP)" />
+              <option value="Centre for Policy Research (CPR) Land Rights Initiative" />
+              <option value="Parliamentary Standing Committee on Rural Development" />
+            </datalist>
           </div>
 
           {/* Role Title and Gazette Key */}
@@ -197,15 +213,21 @@ export default function PolicymakerLoginPage() {
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Gavel className="w-3.5 h-3.5 text-blue-400" /> Advisory Role
               </label>
-              <select
+              <input
+                type="text"
+                list="role-suggestions"
                 value={roleTitle}
                 onChange={(e) => setRoleTitle(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
-              >
-                <option value="Principal Policy Advisor">Principal Policy Advisor</option>
-                <option value="Statutory Legislative Drafter">Statutory Legislative Drafter</option>
-                <option value="Senior Benchmark Analyst">Senior Benchmark Analyst</option>
-              </select>
+                placeholder="Type or select role..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 placeholder-slate-500"
+              />
+              <datalist id="role-suggestions">
+                <option value="Principal Policy Advisor" />
+                <option value="Statutory Legislative Drafter" />
+                <option value="Senior Benchmark Analyst" />
+                <option value="Land Reform Commissioner" />
+                <option value="Public Consultation Officer" />
+              </datalist>
             </div>
 
             <div>

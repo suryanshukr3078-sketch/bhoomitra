@@ -27,11 +27,14 @@ import {
   Users,
   ShieldCheck,
   Briefcase,
+  TreePine,
+  Globe2,
+  Sparkles,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api/client';
 
 interface CategoryOption {
-  id: 'academic' | 'policy_maker' | 'government' | 'civil_society';
+  id: string;
   title: string;
   badge: string;
   isPending: boolean;
@@ -43,39 +46,84 @@ interface CategoryOption {
 const CATEGORIES: CategoryOption[] = [
   {
     id: 'academic',
-    title: 'Researcher / Academic Institution',
+    title: 'Academic Institution / University / College',
     badge: 'Instant Access',
     isPending: false,
-    description: 'Universities, research faculties, independent scientists, and GIS scholars',
+    description: 'Any university, college, educational faculty, polytechnic, or school',
     icon: GraduationCap,
-    placeholderOrg: 'e.g. National Institute of Cadastral Sciences',
+    placeholderOrg: 'e.g. National University of Technology, Delhi University, etc.',
   },
   {
-    id: 'policy_maker',
-    title: 'Policy Maker',
-    badge: 'Verification Required',
-    isPending: true,
-    description: 'Legislative committees, statutory policy drafters, and advisory councils',
-    icon: Scale,
-    placeholderOrg: 'e.g. State Land Governance Council',
+    id: 'research',
+    title: 'Scientific Research Institute / GIS Lab',
+    badge: 'Instant Access',
+    isPending: false,
+    description: 'Autonomous research centres, geomatics laboratories, and spatial observatories',
+    icon: Briefcase,
+    placeholderOrg: 'e.g. Centre for Geospatial & Cadastral Analytics',
   },
   {
     id: 'government',
-    title: 'Government Agency',
+    title: 'Government Agency & Revenue Authority',
     badge: 'Verification Required',
     isPending: true,
-    description: 'State revenue departments, cadastral survey directorates, and municipal authorities',
+    description: 'State revenue departments, land administration directorates, and municipal bodies',
     icon: Landmark,
     placeholderOrg: 'e.g. Directorate of Land Records & Revenue Surveys',
   },
   {
+    id: 'policy_maker',
+    title: 'Policy Maker, Statutory Body & Think Tank',
+    badge: 'Verification Required',
+    isPending: true,
+    description: 'Legislative committees, statutory policy advisory commissions, and governance councils',
+    icon: Scale,
+    placeholderOrg: 'e.g. State Land Governance Reform Commission',
+  },
+  {
     id: 'civil_society',
-    title: 'Civil Society / Independent Contributor',
+    title: 'Civil Society Organization / NGO',
     badge: 'Instant Access',
     isPending: false,
-    description: 'Public interest NGOs, legal aid foundations, and community surveyors',
+    description: 'Public interest NGOs, legal aid foundations, and community rights networks',
     icon: Users,
-    placeholderOrg: 'e.g. People’s Land Rights Foundation',
+    placeholderOrg: 'e.g. People’s Land Rights Action Network',
+  },
+  {
+    id: 'community',
+    title: 'Community, Tribal Council & Gram Sabha',
+    badge: 'Instant Access',
+    isPending: false,
+    description: 'Gram Sabhas, customary forest tenure collectives, pastoral panchayats',
+    icon: TreePine,
+    placeholderOrg: 'e.g. Mendha Lekha Gram Sabha Forest Rights Collective',
+  },
+  {
+    id: 'private',
+    title: 'Private Enterprise / Geomatics Industry',
+    badge: 'Instant Access',
+    isPending: false,
+    description: 'Drone survey firms, private GIS software providers, and agri-tech consultancies',
+    icon: Building2,
+    placeholderOrg: 'e.g. Apex Geomatics & Land Survey Solutions Pvt Ltd',
+  },
+  {
+    id: 'international',
+    title: 'International / Multilateral Agency',
+    badge: 'Instant Access',
+    isPending: false,
+    description: 'Global land governance networks, multilateral development partners, UN/FAO bodies',
+    icon: Globe2,
+    placeholderOrg: 'e.g. Global Land Governance & Tenure Initiative',
+  },
+  {
+    id: 'other',
+    title: 'Other Custom Institution / Autonomous Body',
+    badge: 'Instant Access',
+    isPending: false,
+    description: 'Any other custom institute, cooperative, or independent institution',
+    icon: Sparkles,
+    placeholderOrg: 'e.g. Independent Land Rights Cooperative',
   },
 ];
 
@@ -504,7 +552,7 @@ export default function RegisterPage() {
                   htmlFor="organizationName"
                   className="block text-xs font-semibold text-slate-700 uppercase tracking-wider"
                 >
-                  Organization / Department Name
+                  Institute / University / Organization Name
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -515,7 +563,7 @@ export default function RegisterPage() {
                     type="text"
                     aria-invalid={!!errors.organizationName}
                     placeholder={
-                      selectedCategoryObj?.placeholderOrg || 'e.g. Gujarat Cadastral Directorate'
+                      selectedCategoryObj?.placeholderOrg || 'Enter any university, college, research institute, or department...'
                     }
                     className={`w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       errors.organizationName
@@ -525,8 +573,9 @@ export default function RegisterPage() {
                     {...register('organizationName')}
                   />
                 </div>
-                <p className="text-[11px] text-slate-500">
-                  New organizations will be registered automatically; existing organizations will be linked.
+                <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1.5 pt-0.5">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  All types of new institutes can be registered. Any new university, department, or organization will be created automatically in the platform directory.
                 </p>
                 {errors.organizationName && (
                   <p role="alert" className="text-xs text-rose-600 font-medium">

@@ -178,40 +178,64 @@ export default function GovernmentLoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4 text-left">
-          {/* Jurisdiction Selector */}
+          {/* Jurisdiction - Open to ANY State or Municipal Department */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-amber-400" /> Revenue Jurisdiction
-            </label>
-            <select
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-amber-400" /> Revenue Jurisdiction / State Authority
+              </label>
+              <Link
+                href="/register"
+                className="text-[11px] text-amber-400 hover:text-amber-300 underline font-semibold"
+              >
+                Register New Agency &rarr;
+              </Link>
+            </div>
+            <input
+              type="text"
+              list="jurisdiction-suggestions"
               value={jurisdiction}
               onChange={(e) => setJurisdiction(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
-            >
-              <option value="IN-MH-PUN">Maharashtra - Pune Division (IN-MH-PUN)</option>
-              <option value="IN-AP-AMR">Andhra Pradesh - Amaravati Division (IN-AP-AMR)</option>
-              <option value="IN-KA-BLR">Karnataka - Bengaluru Urban (IN-KA-BLR)</option>
-              <option value="IN-OD-CTC">Odisha - Cuttack Division (IN-OD-CTC)</option>
-              <option value="IN-MP-BPL">Madhya Pradesh - Bhopal Division (IN-MP-BPL)</option>
-              <option value="IN-DL-NDL">National Capital Territory - New Delhi (IN-DL-NDL)</option>
-            </select>
+              placeholder="Type or select ANY state revenue department, district, or municipal corporation..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 placeholder-slate-500"
+            />
+            <datalist id="jurisdiction-suggestions">
+              <option value="Maharashtra - Pune Division (IN-MH-PUN)" />
+              <option value="Andhra Pradesh - Amaravati Division (IN-AP-AMR)" />
+              <option value="Karnataka - Bengaluru Urban (IN-KA-BLR)" />
+              <option value="Odisha - Cuttack Division (IN-OD-CTC)" />
+              <option value="Madhya Pradesh - Bhopal Division (IN-MP-BPL)" />
+              <option value="National Capital Territory - New Delhi (IN-DL-NDL)" />
+              <option value="Uttar Pradesh - Lucknow Directorate (IN-UP-LKO)" />
+              <option value="Gujarat - Gandhinagar Land Records (IN-GJ-GNR)" />
+              <option value="Tamil Nadu - Chennai Revenue Board (IN-TN-CHN)" />
+              <option value="Kerala - Thiruvananthapuram Survey (IN-KL-TVM)" />
+              <option value="West Bengal - Kolkata Directorate (IN-WB-KOL)" />
+            </datalist>
           </div>
 
-          {/* Cadre Designation */}
+          {/* Cadre Designation - Open to any official title */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-amber-400" /> Official Cadre &amp; Role
             </label>
-            <select
+            <input
+              type="text"
+              list="cadre-suggestions"
               value={cadre}
               onChange={(e) => setCadre(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
-            >
-              <option value="Sub-Divisional Magistrate / SDO">Sub-Divisional Magistrate / SDO</option>
-              <option value="Tahsildar / Executive Magistrate">Tahsildar / Executive Magistrate</option>
-              <option value="Cadastral Surveyor / GIS Officer">Cadastral Surveyor / GIS Officer</option>
-              <option value="Revenue Inspector / Circle Officer">Revenue Inspector / Circle Officer</option>
-            </select>
+              placeholder="Type or select ANY official cadre or designation..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 placeholder-slate-500"
+            />
+            <datalist id="cadre-suggestions">
+              <option value="Sub-Divisional Magistrate / SDO" />
+              <option value="Tahsildar / Executive Magistrate" />
+              <option value="District Collector / District Magistrate" />
+              <option value="Cadastral Surveyor / GIS Officer" />
+              <option value="Revenue Inspector / Circle Officer" />
+              <option value="Village Land Record Officer / Talathi" />
+              <option value="SVAMITVA Drone Operations Lead" />
+            </datalist>
           </div>
 
           {/* Official Email */}

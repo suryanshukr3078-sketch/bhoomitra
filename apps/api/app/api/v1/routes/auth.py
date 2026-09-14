@@ -33,21 +33,28 @@ def resolve_organization_category(
     """
     Resolves category to (OrganizationType, is_pending, role_title).
     Government Agency and Policy Maker categories require verification (is_pending = True).
-    Academic/Researcher and Civil Society are active immediately (is_pending = False).
+    All other institutes (Academic, Research, Civil Society, Community, Private, International, Other)
+    are active immediately (is_pending = False).
     """
     cat = (category_raw or "").lower().strip()
-    if cat in ("government", "govt", "government_agency"):
+    if cat in ("government", "govt", "government_agency", "state_department", "municipal"):
         return OrganizationType.GOVERNMENT, True, "Government Officer"
-    elif cat in ("policy_maker", "policymaker", "policy"):
+    elif cat in ("policy_maker", "policymaker", "policy", "legislative", "think_tank"):
         return OrganizationType.GOVERNMENT, True, "Policy Maker"
-    elif cat in ("academic", "academic_institution"):
+    elif cat in ("academic", "academic_institution", "university", "college", "higher_education"):
         return OrganizationType.ACADEMIC, False, "Academic Researcher"
-    elif cat in ("research", "researcher"):
-        return OrganizationType.RESEARCH, False, "Researcher"
-    elif cat in ("civil_society", "independent_contributor", "ngo"):
+    elif cat in ("research", "researcher", "scientific", "laboratory", "institute"):
+        return OrganizationType.RESEARCH, False, "Research Fellow"
+    elif cat in ("civil_society", "independent_contributor", "ngo", "advocacy"):
         return OrganizationType.CIVIL_SOCIETY, False, "Civil Society Contributor"
+    elif cat in ("community", "tribal", "gram_sabha", "panchayat", "customary"):
+        return OrganizationType.COMMUNITY, False, "Community Delegate"
+    elif cat in ("private", "corporate", "enterprise", "industry"):
+        return OrganizationType.PRIVATE, False, "Private Sector Participant"
+    elif cat in ("international", "global", "multilateral", "un_agency"):
+        return OrganizationType.INTERNATIONAL, False, "International Observer"
     else:
-        return OrganizationType.CIVIL_SOCIETY, False, "Contributor"
+        return OrganizationType.OTHER, False, "Institutional Contributor"
 
 
 class RegisterRequest(BaseModel):

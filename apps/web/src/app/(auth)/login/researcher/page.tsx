@@ -174,22 +174,50 @@ export default function ResearcherLoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4 text-left">
-          {/* Research Institute */}
+          {/* Research Institute - Open to ANY academic institute worldwide */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-emerald-400" /> Affiliated Institute / University
-            </label>
-            <select
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-emerald-400" /> Affiliated Institute / University / College
+              </label>
+              <Link
+                href="/register"
+                className="text-[11px] text-emerald-400 hover:text-emerald-300 underline font-semibold"
+              >
+                Register New Institute &rarr;
+              </Link>
+            </div>
+            <input
+              type="text"
+              list="institutes-suggestions"
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
-            >
-              <option value="Indian Institute of Remote Sensing (IIRS / ISRO)">Indian Institute of Remote Sensing (IIRS / ISRO)</option>
-              <option value="National Remote Sensing Centre (NRSC)">National Remote Sensing Centre (NRSC)</option>
-              <option value="IIT Bombay - Centre of Studies in Resource Engineering">IIT Bombay - Centre of Studies in Resource Engineering</option>
-              <option value="Tata Institute of Social Sciences (TISS)">Tata Institute of Social Sciences (TISS)</option>
-              <option value="Survey of India Academic Press">Survey of India Academic Press</option>
-            </select>
+              placeholder="Type or select ANY university, college, research lab, or faculty worldwide..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 placeholder-slate-500"
+            />
+            <datalist id="institutes-suggestions">
+              <option value="Indian Institute of Remote Sensing (IIRS / ISRO)" />
+              <option value="National Remote Sensing Centre (NRSC)" />
+              <option value="Indian Institute of Science (IISc Bengaluru)" />
+              <option value="IIT Bombay - Centre of Studies in Resource Engineering" />
+              <option value="IIT Delhi - School of Public Policy & Geomatics" />
+              <option value="IIT Roorkee - Geomatics Engineering Group" />
+              <option value="IIT Kharagpur - Department of Land Architecture" />
+              <option value="IIT Madras - Department of Civil & Geoinformatics" />
+              <option value="Tata Institute of Social Sciences (TISS)" />
+              <option value="Delhi University - Department of Geography & GIS" />
+              <option value="Jawaharlal Nehru University (JNU) - CSRD" />
+              <option value="Anna University - Institute of Remote Sensing (IRS)" />
+              <option value="Indian Council of Agricultural Research (ICAR)" />
+              <option value="Indian Council of Social Science Research (ICSSR)" />
+              <option value="Survey of India (SOI) Training Institute" />
+              <option value="Oxford University - Department of Land Economy" />
+              <option value="MIT Urban Studies and Planning" />
+              <option value="ITC Faculty of Geo-Information Science and Earth Observation" />
+            </datalist>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Supports any recognized university, college, autonomous laboratory, or independent research centre worldwide.
+            </p>
           </div>
 
           {/* ORCID iD and Scope */}

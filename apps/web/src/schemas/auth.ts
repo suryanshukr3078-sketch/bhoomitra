@@ -23,12 +23,9 @@ export const registerSchema = z
       .string()
       .min(1, { message: 'Email address is required' })
       .email({ message: 'Please enter a valid email address' }),
-    organizationCategory: z.enum(
-      ['academic', 'policy_maker', 'government', 'civil_society'],
-      {
-        errorMap: () => ({ message: 'Please select an organization category' }),
-      }
-    ),
+    organizationCategory: z
+      .string()
+      .min(1, { message: 'Please select an organization category' }),
     organizationName: z
       .string()
       .min(1, { message: 'Organization name is required' })

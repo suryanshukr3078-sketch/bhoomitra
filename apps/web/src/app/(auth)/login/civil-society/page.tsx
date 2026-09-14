@@ -174,21 +174,38 @@ export default function CivilSocietyLoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4 text-left">
-          {/* Organization */}
+          {/* Organization - Open to ANY NGO, Grassroots Collective, or Legal Aid Foundation */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-teal-400" /> Advocacy Collective / NGO Organization
-            </label>
-            <select
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-teal-400" /> Advocacy Collective / NGO / Grassroots Network
+              </label>
+              <Link
+                href="/register"
+                className="text-[11px] text-teal-400 hover:text-teal-300 underline font-semibold"
+              >
+                Register New Collective &rarr;
+              </Link>
+            </div>
+            <input
+              type="text"
+              list="cso-suggestions"
               value={organization}
               onChange={(e) => setOrganization(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
-            >
-              <option value="National Land Tenure Justice Network">National Land Tenure Justice Network</option>
-              <option value="Gram Sabha Rights Federation">Gram Sabha Rights Federation</option>
-              <option value="Centre for Pastoral &amp; Wetland Commons">Centre for Pastoral &amp; Wetland Commons</option>
-              <option value="Adivasi Land Rights Legal Aid Cell">Adivasi Land Rights Legal Aid Cell</option>
-            </select>
+              placeholder="Type or select ANY NGO, community federation, legal aid foundation, or grassroots network..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 placeholder-slate-500"
+            />
+            <datalist id="cso-suggestions">
+              <option value="National Land Tenure Justice Network" />
+              <option value="Gram Sabha Rights Federation" />
+              <option value="Centre for Pastoral & Wetland Commons" />
+              <option value="Adivasi Land Rights Legal Aid Cell" />
+              <option value="Ekta Parishad Grassroots Movement" />
+              <option value="Foundation for Ecological Security (FES)" />
+              <option value="Vasundhara Community Forest Rights Support Group" />
+              <option value="Landesa Rural Development Institute" />
+              <option value="ActionAid Land Rights Directorate" />
+            </datalist>
           </div>
 
           {/* Accreditation ID & Operational Area */}
