@@ -54,3 +54,30 @@ async def readiness() -> dict[str, Any]:
             "vector_dimension": 768,
         },
     }
+
+
+@router.get(
+    "/gemini-models",
+    summary="List available Gemini models for diagnosis",
+)
+async def list_gemini_models() -> dict[str, Any]:
+    from app.services.embedding_service import get_effective_gemini_api_key
+    from google import genai
+
+    key = get_effective_gemini_api_key()
+    if not key:
+        return {"configured": False, "models": []}
+
+    try:
+        client = genai.Client(api_key=key)
+        model_list = []
+        for m in client.models.list():
+            model_list.append({
+                "name": getattr(m, "name", ""),
+                "display_name": getattr(m, "display_name", ""),
+                "supported_actions": getattr(m, "supported_actions", []),
+            })
+        return {"configured": True, "count": len(model_list), "models": model_list}
+    except Exception as e:
+        return {"configured": True, "error": f"{type(e).__name__}: {e}"}
+
