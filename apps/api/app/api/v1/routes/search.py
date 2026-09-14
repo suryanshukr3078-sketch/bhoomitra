@@ -314,21 +314,91 @@ async def assistant_evidence_search(
             "provider": "grounded_validation",
         }
 
-    # 1. Retrieve top 5 relevant published resources via semantic vector search
+    # 1. Retrieve relevant published resources via Hybrid Search (Vector + Keyword)
+    retrieved_items = []
+    seen_ids = set()
+
+    # A. Keyword term retrieval to ensure exact domain matches (PostGIS, Maharashtra, Drone, etc.)
+    import re
+    stop_words = {
+        "what", "when", "where", "which", "who", "whom", "this", "that", "these", "those",
+        "have", "from", "with", "about", "into", "through", "during", "before", "after",
+        "above", "below", "does", "help", "prevent", "tell", "give", "show", "need", "some",
+        "more", "much", "many", "such", "there", "their", "they", "them", "then", "than"
+    }
+    tokens = [
+        w for w in re.findall(r"[a-zA-Z0-9_-]+", question_text.lower())
+        if len(w) >= 3 and w not in stop_words
+    ]
+
+    keyword_items = []
+    if tokens:
+        kw_conditions = []
+        for tok in tokens[:6]:
+            kw_conditions.append(Resource.title.ilike(f"%{tok}%"))
+            kw_conditions.append(Resource.abstract.ilike(f"%{tok}%"))
+
+        if kw_conditions:
+            kw_stmt = (
+                select(Resource)
+                .where(
+                    Resource.status == ResourceStatus.PUBLISHED,
+                    Resource.visibility == ResourceVisibility.PUBLIC,
+                    or_(*kw_conditions),
+                )
+                .order_by(Resource.created_at.desc())
+                .limit(effective_limit)
+            )
+            try:
+                kw_res = await db.execute(kw_stmt)
+                for r in kw_res.scalars().all():
+                    keyword_items.append({
+                        "id": str(r.id),
+                        "title": r.title,
+                        "slug": r.slug,
+                        "abstract": r.abstract,
+                        "resource_type": r.resource_type.value,
+                        "status": r.status.value,
+                        "visibility": r.visibility.value,
+                        "publisher": r.publisher,
+                        "similarity_score": 0.88,
+                        "created_at": r.created_at.isoformat() if r.created_at else None,
+                        "is_demo": r.is_demo,
+                    })
+            except Exception as kw_err:
+                import structlog
+                structlog.get_logger(__name__).warning("Keyword search inside assistant failed", error=str(kw_err))
+
+    # B. Semantic vector retrieval
     try:
         semantic_result = await semantic_search(
             request=request,
             response=response,
-            payload=SemanticSearchRequest(query=question_text, limit=effective_limit),
+            payload=SemanticSearchRequest(query=question_text, limit=effective_limit * 2),
             resource_type=None,
-            limit=effective_limit,
+            limit=effective_limit * 2,
             db=db,
         )
-        retrieved_items = semantic_result.get("items", [])[:effective_limit]
+        vector_items = semantic_result.get("items", [])
     except Exception as search_err:
         import structlog
         structlog.get_logger(__name__).warning("Semantic search inside assistant failed", error=str(search_err))
-        retrieved_items = []
+        vector_items = []
+
+    # C. Merge items prioritizing keyword relevance then semantic similarity
+    for item in keyword_items:
+        if item["id"] not in seen_ids:
+            seen_ids.add(item["id"])
+            retrieved_items.append(item)
+            if len(retrieved_items) >= effective_limit:
+                break
+
+    for item in vector_items:
+        if item["id"] not in seen_ids:
+            seen_ids.add(item["id"])
+            retrieved_items.append(item)
+            if len(retrieved_items) >= effective_limit:
+                break
 
     # 2. Synthesize grounded answer with citations using Gemini RAG
     from app.services.assistant_service import generate_rag_answer

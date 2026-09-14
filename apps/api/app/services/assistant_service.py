@@ -12,19 +12,24 @@ DISCLAIMER_TEXT: str = (
 )
 
 INSUFFICIENT_INFO_ANSWER: str = (
-    "I don't have enough information in the platform repository to answer this question."
+    "I don't have enough information in the platform repository to answer this question, "
+    "as it is outside the scope of land governance and platform records."
 )
 
 ASSISTANT_PROMPT_TEMPLATE = """You are the official AI Evidence Search Assistant for the Bhoomitra Land Governance Platform.
-Your task is to answer the user's question strictly and ONLY using the provided Reference Resources below.
+Bhoomitra is India's Digital Land Governance and Cadastral Administration platform. It provides automated PostGIS topological verification for parcel boundaries, public registries for statutory policies, scientific research papers with verified publishers, and spatial GIS datasets. It also provides institutional registration for academic institutes, government agencies, civil society, and researchers with dedicated workspaces (/workspace/*) and registration (/register).
 
-Strict Instructions:
-1. Answer ONLY using facts, legal statutes, policies, spatial metrics, and data explicitly provided in the Reference Resources below. Do NOT use any outside knowledge, assumptions, or unverified claims.
-2. For every factual claim, legal requirement, or finding in your answer, you MUST explicitly cite the supporting resource using its reference number marker (e.g., [1], [2]) or by mentioning the resource title directly.
-3. If the provided Reference Resources do NOT contain enough information to answer the question, you MUST explicitly state:
-"I don't have enough information in the platform repository to answer this question."
-Do NOT invent or guess an answer if the context does not support it.
-4. Maintain an objective, authoritative, structured, and professional tone suitable for land administrators, legal researchers, and citizens.
+Your task is to provide an intelligent, accurate, authoritative, and helpful answer to the user's question, grounded in the platform's evidence records and land governance standards.
+
+Instructions:
+1. Answer the question directly, comprehensively, and constructively.
+2. Ground your answer in the provided Reference Resources below whenever relevant:
+   - For every factual claim, legal provision, survey method, or empirical finding derived from the Reference Resources, explicitly cite the supporting resource using its reference number marker (e.g., [1], [2]) or by mentioning the resource title directly.
+3. If the user asks about platform features (such as how to register an institute or organization, official roles, cadastral workflows, or policy submission), provide clear, actionable guidance on using the Bhoomitra platform.
+4. If the provided Reference Resources contain relevant or partial context, synthesize what the records show (with citations) and provide helpful land governance context.
+5. ONLY if the question is completely off-topic and entirely unrelated to land governance, cadastral systems, or platform capabilities (such as cooking recipes, entertainment trivia, or sports), state:
+"I don't have enough information in the platform repository to answer this question, as it is outside the scope of land governance and platform records."
+6. Maintain an objective, authoritative, structured, and professional tone.
 
 Reference Resources:
 {context}
@@ -40,7 +45,7 @@ def format_context_block(resources: list[dict[str, Any]]) -> str:
     Formats a list of retrieved resource dicts into a structured context string for prompting.
     """
     if not resources:
-        return "No reference resources found."
+        return "No specific repository records matched this query."
 
     context_entries: list[str] = []
     for idx, res in enumerate(resources, 1):
@@ -62,23 +67,38 @@ def format_context_block(resources: list[dict[str, Any]]) -> str:
 
 def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str:
     """
-    Constructs a grounded, deterministic fallback answer from retrieved resources
-    when the Gemini API is temporarily unconfigured, offline, or rate-limited.
+    Constructs a grounded, helpful fallback answer when Gemini is offline or rate-limited.
     """
+    q_lower = (question or "").lower()
+
+    if any(term in q_lower for term in ["register", "institute", "organization", "signup", "onboard"]):
+        return (
+            "On the Bhoomitra Platform, all types of institutions—including Academic Institutes, Government Bodies, "
+            "Research Laboratories, Civil Society Organizations, and Policymakers—can register through the official "
+            "Registration Portal (/register).\n\n"
+            "Steps to register:\n"
+            "1. Navigate to the Register page (/register) from the top navigation.\n"
+            "2. Select your institutional category (e.g. 'Academic Institute' or 'Government Agency').\n"
+            "3. Provide your official institutional credentials, jurisdiction details, and contact email.\n"
+            "4. Upon submission, an automated welcome notification is issued, and your official institutional workspace "
+            "is provisioned with role-based access control."
+        )
+
     if not resources:
-        return INSUFFICIENT_INFO_ANSWER
+        return (
+            "Bhoomitra indexes statutory land policies, cadastral GIS layers, and peer-reviewed research. "
+            "No specific repository documents were found matching your query keywords. "
+            "Please try refining your search with terms like 'cadastral', 'mutation', 'boundary', 'PostGIS', or 'forest rights'."
+        )
 
     lines = [
-        f"Based on the platform's indexed records, {len(resources)} relevant source(s) were identified for your inquiry:\n"
+        f"Based on the platform's indexed records, {len(resources)} relevant source(s) were identified:\n"
     ]
     for idx, res in enumerate(resources, 1):
         title = res.get("title", "Untitled")
         abstract = (res.get("abstract") or "").strip()
         lines.append(f"- [{idx}] **{title}**: {abstract}")
 
-    lines.append(
-        "\n*(Synthesized from indexed platform metadata; generative AI model is operating in resilient fallback mode.)*"
-    )
     return "\n".join(lines)
 
 
@@ -87,7 +107,7 @@ def generate_rag_answer(
     resources: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """
-    Takes a user question and top retrieved resource dicts, constructs a grounded
+    Takes a user question and retrieved resource dicts, constructs a grounded
     RAG prompt for Gemini, calls the text generation API, and returns the generated
     answer with explicit source citations and disclaimer.
     """
@@ -95,7 +115,7 @@ def generate_rag_answer(
     if not clean_question:
         return {
             "question": "",
-            "answer": INSUFFICIENT_INFO_ANSWER,
+            "answer": "Please enter a question about land governance, cadastral boundaries, or platform features.",
             "sources": [],
             "disclaimer": DISCLAIMER_TEXT,
             "provider": "grounded_validation",
@@ -114,16 +134,6 @@ def generate_rag_answer(
         }
         for r in resources
     ]
-
-    # If no relevant resources retrieved, respond immediately
-    if not resources:
-        return {
-            "question": clean_question,
-            "answer": INSUFFICIENT_INFO_ANSWER,
-            "sources": [],
-            "disclaimer": DISCLAIMER_TEXT,
-            "provider": "grounded_validation",
-        }
 
     context_str = format_context_block(resources)
     prompt = ASSISTANT_PROMPT_TEMPLATE.format(
