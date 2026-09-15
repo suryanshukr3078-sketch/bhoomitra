@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -334,10 +334,15 @@ async def build_dashboard_data(
     summary="Get multi-dimensional interactive dashboard metrics with role-based visibility",
 )
 async def get_interactive_dashboard_metrics(
+    response: Response,
     db: AsyncSession = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> Any:
     permissions = resolve_role_and_permissions(user)
+    if not permissions.is_authenticated:
+        response.headers["Cache-Control"] = "public, s-maxage=30, stale-while-revalidate=60"
+    else:
+        response.headers["Cache-Control"] = "private, max-age=15"
 
     cache_key = f"dashboard:metrics:{permissions.role}"
     cached_payload = await cache.get_json(cache_key)

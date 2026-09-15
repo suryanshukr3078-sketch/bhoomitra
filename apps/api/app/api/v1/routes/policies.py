@@ -26,6 +26,7 @@ async def list_policies(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=300"
     query = (
         select(Resource)
         .where(
