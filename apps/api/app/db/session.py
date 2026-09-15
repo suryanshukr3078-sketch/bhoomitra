@@ -47,6 +47,7 @@ if settings.is_serverless:
             "application_name": settings.app_name,
             "options": serverless_options,
             "connect_timeout": 15,
+            "prepare_threshold": None,
         },
     )
 else:
@@ -64,6 +65,7 @@ else:
             "application_name": settings.app_name,
             "options": connection_options,
             "connect_timeout": 15,
+            "prepare_threshold": None,
         },
     )
 
