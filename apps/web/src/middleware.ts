@@ -11,12 +11,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Protect /dashboard route: redirect unauthenticated visits to /login
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    const token = request.cookies.get('access_token')?.value;
+  // Protect /dashboard and /contribute routes: redirect unauthenticated visits to /login
+  if (
+    request.nextUrl.pathname.startsWith('/dashboard') ||
+    request.nextUrl.pathname.startsWith('/contribute')
+  ) {
+    const token =
+      request.cookies.get('access_token')?.value ||
+      request.cookies.get('auth_token')?.value;
     if (!token || token.trim() === '') {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = '/login';
+      const redirectTarget = request.nextUrl.pathname + request.nextUrl.search;
+      loginUrl.search = '';
+      loginUrl.searchParams.set('redirect', redirectTarget);
       return NextResponse.redirect(loginUrl);
     }
   }

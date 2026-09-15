@@ -92,7 +92,17 @@ export default function PolicymakerLoginPage() {
         variant: 'success',
       });
 
-      router.push('/workspace/policymaker');
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('redirect') ||
+             new URLSearchParams(window.location.search).get('returnUrl'))
+          : null;
+
+      if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+        router.push(redirectUrl);
+      } else {
+        router.push('/workspace/policymaker');
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Policy maker sign-in failed. Please verify credentials.');
       toast({

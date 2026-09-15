@@ -85,9 +85,20 @@ export default function CentralLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [redirectParam, setRedirectParam] = useState<string | null>(null);
   const { toast } = useToast();
   const { setUser, refreshUser } = useAuth();
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const dest = sp.get('redirect') || sp.get('returnUrl');
+      if (dest && dest.startsWith('/') && !dest.startsWith('//')) {
+        setRedirectParam(dest);
+      }
+    }
+  }, []);
 
   const {
     register,
@@ -130,11 +141,20 @@ export default function CentralLoginPage() {
 
       toast({
         title: 'Authentication Successful',
-        description: `Welcome back, ${response.user?.full_name || data.email}. Redirecting to dashboard...`,
+        description: `Welcome back, ${response.user?.full_name || data.email}.`,
         variant: 'success',
       });
 
-      if (response.user?.is_superuser) {
+      const redirectUrl =
+        redirectParam ||
+        (typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('redirect') ||
+             new URLSearchParams(window.location.search).get('returnUrl'))
+          : null);
+
+      if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+        router.push(redirectUrl);
+      } else if (response.user?.is_superuser) {
         router.push('/admin');
       } else {
         router.push('/dashboard');
@@ -177,6 +197,14 @@ export default function CentralLoginPage() {
         <p className="text-sm text-slate-600">
           Sign in directly via the unified portal below, or select your dedicated institutional category portal for tailored workflows.
         </p>
+        {redirectParam && (
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-center gap-2 max-w-lg mx-auto shadow-xs">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              Authentication required to access <strong className="font-semibold">{redirectParam}</strong>. Please sign in below to continue.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Dedicated Category Cards */}
@@ -186,7 +214,7 @@ export default function CentralLoginPage() {
             Dedicated Category Login Portals
           </h2>
           <Link
-            href="/login/admin"
+            href={redirectParam ? `/login/admin?redirect=${encodeURIComponent(redirectParam)}` : "/login/admin"}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 transition-colors"
           >
             <ShieldAlert className="w-3.5 h-3.5" />
@@ -198,10 +226,11 @@ export default function CentralLoginPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {PORTAL_SHORTCUTS.map((portal) => {
             const Icon = portal.icon;
+            const targetHref = redirectParam ? `${portal.href}?redirect=${encodeURIComponent(redirectParam)}` : portal.href;
             return (
               <Link
                 key={portal.id}
-                href={portal.href}
+                href={targetHref}
                 className={`group p-5 rounded-2xl bg-white border border-slate-200 shadow-sm transition-all duration-200 flex flex-col justify-between ${portal.borderColor} hover:shadow-md hover:-translate-y-0.5`}
               >
                 <div className="space-y-3">

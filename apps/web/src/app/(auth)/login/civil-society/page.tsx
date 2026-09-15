@@ -92,7 +92,17 @@ export default function CivilSocietyLoginPage() {
         variant: 'success',
       });
 
-      router.push('/workspace/civil-society');
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('redirect') ||
+             new URLSearchParams(window.location.search).get('returnUrl'))
+          : null;
+
+      if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+        router.push(redirectUrl);
+      } else {
+        router.push('/workspace/civil-society');
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Civil society sign-in failed. Please verify credentials.');
       toast({

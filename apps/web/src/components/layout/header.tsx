@@ -33,7 +33,7 @@ export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const prefersReduced = useReducedMotion();
 
-  const navLinks = [
+  const baseNavLinks = [
     { href: '/', label: 'Home', icon: Landmark },
     { href: '/workspace', label: 'Workspaces', icon: Building2 },
     { href: '/maps', label: 'Cadastral Maps', icon: MapPin },
@@ -41,10 +41,12 @@ export function Header() {
     { href: '/research', label: 'Research', icon: BookOpen },
     { href: '/datasets', label: 'Datasets', icon: Database },
     { href: '/evidence', label: 'Provenance', icon: ShieldCheck },
-    { href: '/contribute', label: 'Contribute', icon: UploadCloud },
+    ...(isAuthenticated ? [{ href: '/contribute', label: 'Contribute', icon: UploadCloud }] : []),
     { href: '/assistant', label: 'AI Assistant', icon: Bot },
     { href: '/about', label: 'About', icon: Landmark },
   ];
+
+  const navLinks = baseNavLinks;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">

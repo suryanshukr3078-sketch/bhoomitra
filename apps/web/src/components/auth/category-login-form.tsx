@@ -217,7 +217,17 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
         variant: 'success',
       });
 
-      router.push(config.redirectPath);
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('redirect') ||
+             new URLSearchParams(window.location.search).get('returnUrl'))
+          : null;
+
+      if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+        router.push(redirectUrl);
+      } else {
+        router.push(config.redirectPath);
+      }
     } catch (err: any) {
       let friendlyError = 'Invalid email or password. Please verify your credentials and try again.';
       const rawError = err?.message || '';

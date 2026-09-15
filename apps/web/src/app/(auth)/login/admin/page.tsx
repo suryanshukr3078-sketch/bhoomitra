@@ -86,7 +86,17 @@ export default function AdminLoginPage() {
         variant: 'success',
       });
 
-      router.push('/admin');
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('redirect') ||
+             new URLSearchParams(window.location.search).get('returnUrl'))
+          : null;
+
+      if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+        router.push(redirectUrl);
+      } else {
+        router.push('/admin');
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Administrative login failed. Please check security token.');
       toast({

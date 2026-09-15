@@ -92,7 +92,17 @@ export default function ResearcherLoginPage() {
         variant: 'success',
       });
 
-      router.push('/workspace/researcher');
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('redirect') ||
+             new URLSearchParams(window.location.search).get('returnUrl'))
+          : null;
+
+      if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+        router.push(redirectUrl);
+      } else {
+        router.push('/workspace/researcher');
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Academic sign-in failed. Please verify credentials.');
       toast({

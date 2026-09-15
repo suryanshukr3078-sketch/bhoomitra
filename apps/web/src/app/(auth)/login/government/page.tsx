@@ -96,7 +96,17 @@ export default function GovernmentLoginPage() {
         variant: 'success',
       });
 
-      router.push('/workspace/government');
+      const redirectUrl =
+        typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('redirect') ||
+             new URLSearchParams(window.location.search).get('returnUrl'))
+          : null;
+
+      if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+        router.push(redirectUrl);
+      } else {
+        router.push('/workspace/government');
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Authentication failed. Please verify credentials.');
       toast({

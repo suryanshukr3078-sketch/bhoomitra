@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { contributeSchema, ContributeFormData } from '@/schemas/contribute';
@@ -18,13 +19,19 @@ import {
   Sparkles,
   Layers,
   Building2,
+  LogIn,
+  ArrowRight,
 } from 'lucide-react';
 import { env } from '@/lib/environment';
 import { getAuthToken } from '@/lib/api/client';
+import { useAuth } from '@/lib/auth-context';
 
 import Link from 'next/link';
 
 export default function ContributePage() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{
@@ -45,7 +52,8 @@ export default function ContributePage() {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    setValue,
+    formState: { errors, isDirty },
   } = useForm<ContributeFormData>({
     resolver: zodResolver(contributeSchema),
     defaultValues: {
@@ -57,6 +65,22 @@ export default function ContributePage() {
       visibility: 'public',
     },
   });
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login?redirect=/contribute');
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (user && !isDirty) {
+      if (user.organization_name) {
+        setValue('publisher', user.organization_name);
+      } else if (user.full_name) {
+        setValue('publisher', user.full_name);
+      }
+    }
+  }, [user, isDirty, setValue]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -168,6 +192,50 @@ export default function ContributePage() {
       setIsUploading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4 px-4">
+        <Loader2 className="w-10 h-10 animate-spin text-emerald-700" />
+        <p className="text-sm font-semibold text-slate-700">
+          Verifying security clearance and authentication...
+        </p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mx-auto flex items-center justify-center shadow-sm">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-slate-900">
+            Sign-in Required to Contribute
+          </h1>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            The decentralized contribution portal is restricted to authenticated institutional users, researchers, and administrators. Please log in with your credentials to submit cadastral records and research documents.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <Link
+            href="/login?redirect=/contribute"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-xl shadow-md transition-colors"
+          >
+            <LogIn className="w-4 h-4" />
+            Sign In to Contribute
+          </Link>
+          <Link
+            href="/"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
