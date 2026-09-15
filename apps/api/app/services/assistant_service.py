@@ -17,27 +17,24 @@ INSUFFICIENT_INFO_ANSWER: str = (
     "as it is outside the scope of land governance, cadastral systems, and Bhoomitra platform records."
 )
 
-ASSISTANT_PROMPT_TEMPLATE = """You are the official AI Evidence Search Assistant for the Bhoomitra Land Governance Platform.
+ASSISTANT_PROMPT_TEMPLATE = """You are the official AI assistant for the Bhoomitra Land Governance Platform. Answer questions about land governance, cadastral systems, platform features, and related research.
 
-=== BHOOMITRA PLATFORM KNOWLEDGE BASE ===
+=== PLATFORM KNOWLEDGE ===
 {platform_knowledge}
 
-=== RELEVANT REPOSITORY EVIDENCE & SOURCES ===
+=== RELEVANT EVIDENCE ===
 {context}
 
-=== INSTRUCTIONS ===
-1. Answer the user's question accurately, authoritatively, comprehensively, and helpfully based on the Bhoomitra Platform Knowledge Base and the Grounding Evidence Records above.
-2. For questions about the website, navigation, official workspaces, logins, institutional registration, evidence provenance, cadastral maps, or platform workflows:
-   - Provide exact page links (e.g. /workspace/government, /login/researcher, /register, /maps, /evidence, /policies).
-   - Explain the step-by-step workflow clearly and accurately.
-3. For questions about land policies, cadastral boundaries, survey standards, research findings, or spatial data:
-   - Synthesize the details clearly and cite the supporting Reference Resource(s) using their reference number marker (e.g., [1], [2]) or by mentioning the resource title directly.
-4. If the question is completely off-topic and entirely unrelated to land governance, cadastral systems, or platform capabilities (such as cooking recipes, entertainment trivia, or unrelated pop culture):
-   - State: "I don't have enough information in the platform repository to answer this question, as it is outside the scope of land governance, cadastral systems, and Bhoomitra platform records."
-5. Format your response cleanly using markdown headings, bullet points, and highlighted URLs for maximum readability.
+=== RESPONSE RULES ===
+- Be SHORT and DIRECT. Lead with the answer immediately — no preamble.
+- Simple questions: answer in 1–3 sentences max.
+- Complex questions: use a short bullet list (max 5 bullets), no verbose explanations.
+- Include a page link (e.g. /maps, /policies) only if directly relevant.
+- Cite sources with [1], [2] only when specific evidence is referenced.
+- Never repeat the question back. Never add fluff or sign-offs.
+- If off-topic (unrelated to land governance or this platform): reply with exactly "That's outside my scope. I only cover land governance and the Bhoomitra platform."
 
-User Question:
-{question}
+Question: {question}
 
 Answer:"""
 
@@ -68,99 +65,46 @@ def format_context_block(resources: list[dict[str, Any]]) -> str:
 
 
 def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str:
-    """
-    Constructs a deeply accurate, grounded fallback answer synced with the website
-    when Gemini API is temporarily offline or experiencing rate limits.
-    """
     q = (question or "").lower()
 
-    # 1. Platform Registration inquiries
-    if any(k in q for k in ["register", "sign up", "onboard", "enroll", "academic institute", "registration procedure", "how to register"]):
+    if any(k in q for k in ["register", "sign up", "onboard", "enroll", "registration"]):
         return (
-            "### Institutional & User Registration on Bhoomitra\n\n"
-            "On the Bhoomitra platform, **any accredited academic institute, university, research laboratory, government department, or civil society organization** can register without artificial limits.\n\n"
-            "**Registration Procedure:**\n"
-            "1. Visit the [Registration Portal](/register) from the main navigation.\n"
-            "2. Select your institutional category (e.g. *Academic Institute*, *Government Body*, *Research Lab*, or *Civil Society*).\n"
-            "3. Fill in your institutional credentials, registration number, official administrator name, and official email address.\n"
-            "4. **Automated Welcome Email**: Upon submission, a verified welcome email is instantly dispatched to your registered address with security verification credentials.\n"
-            "5. Your category-specific official workspace is provisioned immediately."
+            "Register at [/register](/register). Choose your category (Academic, Government, Research Lab, Civil Society), "
+            "fill in your institutional details, and submit. A welcome email is sent instantly and your workspace is provisioned."
         )
 
-    # 2. Login pages inquiries
-    if any(k in q for k in ["login url", "login link", "where to login", "sign in page", "login portal", "how to sign in"]) or q in ["login", "sign in", "log in"]:
+    if any(k in q for k in ["login", "sign in", "log in"]):
         return (
-            "### Official Login Portals on Bhoomitra\n\n"
-            "Bhoomitra provides dedicated, secure login portals tailored for each official category:\n\n"
-            "- **Universal Sign In Hub**: [/login](/login)\n"
-            "- **Government Agency Login**: [/login/government](/login/government)\n"
-            "- **Researcher GIS Lab Login**: [/login/researcher](/login/researcher)\n"
-            "- **Policy Maker Login**: [/login/policymaker](/login/policymaker)\n"
-            "- **Civil Society Login**: [/login/civil-society](/login/civil-society)\n"
-            "- **Platform Admin Login**: [/login/admin](/login/admin)"
+            "Sign in at [/login](/login). Role-specific portals: "
+            "[/login/government](/login/government), [/login/researcher](/login/researcher), "
+            "[/login/policymaker](/login/policymaker), [/login/civil-society](/login/civil-society)."
         )
 
-    # 3. Workspaces inquiries
-    if any(k in q for k in ["workspace", "portal features", "dashboard roles", "official workspaces"]):
+    if any(k in q for k in ["workspace", "dashboard", "portal"]):
         return (
-            "### Bhoomitra Official Workspaces\n\n"
-            "Stakeholders have role-specific workspaces equipped with domain tools:\n\n"
-            "1. **Government Agency Workspace** ([/workspace/government](/workspace/government)): Review and approve cadastral mutation deeds, verify DGPS survey data, and enforce state land revenue mandates.\n"
-            "2. **Researcher GIS Lab Workspace** ([/workspace/researcher](/workspace/researcher)): Conduct spatial topology modeling, analyze forest land tenure overlaps, and publish peer-reviewed papers with verified publisher affiliations.\n"
-            "3. **Policy Directorate Workspace** ([/workspace/policymaker](/workspace/policymaker)): Draft and gazette statutory policies, track public consultations, and assess tenure impacts.\n"
-            "4. **Civil Society Desk Workspace** ([/workspace/civil-society](/workspace/civil-society)): Monitor Community Forest Rights (CFR) titles under the Forest Rights Act (FRA) and file boundary rectification petitions.\n"
-            "5. **Admin Management** ([/admin](/admin)): Institutional approvals, role assignments, security telemetry, and cryptographic ledger inspection."
+            "Bhoomitra has 5 workspaces: **Government** ([/workspace/government](/workspace/government)), "
+            "**Researcher** ([/workspace/researcher](/workspace/researcher)), "
+            "**Policy** ([/workspace/policymaker](/workspace/policymaker)), "
+            "**Civil Society** ([/workspace/civil-society](/workspace/civil-society)), "
+            "and **Admin** ([/admin](/admin))."
         )
 
-    # 4. If relevant resources exist in the platform repository, dynamically synthesize a detailed answer
     if resources:
-        topic_title = question.rstrip("?").strip()
-        lines = [
-            f"### Platform Evidence Analysis: {topic_title}\n",
-            f"Based on Bhoomitra's indexed cadastral repositories and statutory archives, **{len(resources)} evidence source(s)** directly address this inquiry:\n"
-        ]
-
-        # Check for PostGIS / topological context
-        is_cadastral = any(k in q for k in ["postgis", "boundary", "topology", "overlap", "dispute", "polygon", "survey", "mutation"])
-        if is_cadastral:
-            lines.append(
-                "**Cadastral Verification Invariants:**\n"
-                "All parcel mutations and boundary deeds indexed in Bhoomitra undergo automated PostGIS topological validation "
-                "enforcing mathematical disjointness (`ST_Overlaps = FALSE`), polygon closure validity (`ST_IsValid = TRUE`), "
-                "and EPSG:4326 coordinate alignment before gazetting or state revenue approval.\n"
-            )
-
-        lines.append("**Key Evidence Findings:**")
+        lines = [f"Found {len(resources)} relevant source(s):"]
         for idx, res in enumerate(resources, 1):
             title = res.get("title", "Untitled")
-            res_type = (res.get("resource_type") or "resource").replace("_", " ").title()
             abstract = (res.get("abstract") or "").strip()
-            publisher = res.get("publisher")
-            pub_info = f" *(Publisher: {publisher})*" if publisher else ""
-            lines.append(f"- [{idx}] **{title}** ({res_type}){pub_info}: {abstract}")
-
-        lines.append(
-            "\n**Platform Navigation:**\n"
-            "- Inspect spatial layers and parcel boundaries: [/maps](/maps)\n"
-            "- Verify cryptographic SHA-256 provenance hashes: [/evidence](/evidence)\n"
-            "- Download raw GeoJSON and shapefile datasets: [/datasets](/datasets)"
-        )
+            short_abstract = abstract[:120] + "..." if len(abstract) > 120 else abstract
+            lines.append(f"[{idx}] **{title}**: {short_abstract}")
         return "\n".join(lines)
 
-    # 5. General land governance or platform fallback when no specific records matched
-    if any(k in q for k in ["land", "cadastr", "survey", "mutation", "policy", "forest", "tenure", "title", "deed", "revenue", "gram sabha", "fra", "postgis"]):
+    if any(k in q for k in ["land", "cadastr", "survey", "mutation", "policy", "forest", "tenure", "title", "deed"]):
         return (
-            "### Land Governance & Cadastral Administration Overview\n\n"
-            "Bhoomitra manages sovereign land records, cadastral surveys, statutory policies, and spatial boundary validations:\n\n"
-            "- **Cadastral Boundary Invariants**: Automated PostGIS geometric validation prevents overlapping parcel boundaries (`ST_Overlaps = FALSE`).\n"
-            "- **Statutory Policies**: State and national land legislation and revenue gazettes are searchable under [/policies](/policies).\n"
-            "- **Peer-Reviewed Research**: Cadastral science and tenure security studies are indexed under [/research](/research).\n"
-            "- **Cryptographic DAG Provenance**: Every survey token and deed is anchored via SHA-256 ledger records at [/evidence](/evidence).\n\n"
-            "Try searching for specific terms like *'mutation'*, *'drone photogrammetry'*, *'Western Ghats'*, or *'forest rights'* to inspect indexed records."
+            "Bhoomitra indexes cadastral records, land policies, and spatial data. "
+            "Search [/policies](/policies), [/research](/research), or [/maps](/maps) for specifics."
         )
 
-    # 6. Unrelated inquiry
-    return INSUFFICIENT_INFO_ANSWER
+    return "That's outside my scope. I only cover land governance and the Bhoomitra platform."
 
 
 def generate_rag_answer(
