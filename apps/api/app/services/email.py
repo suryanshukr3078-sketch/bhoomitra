@@ -238,16 +238,98 @@ If you did not initiate this registration, please contact support@bhoomitra.gov.
 Best regards,
 The Bhoomitra Team
 """
+import uuid
+from datetime import datetime, timezone
+
+_RUNTIME_CONFIG: dict[str, Any] = {}
+_EMAIL_LOGS: list[dict[str, Any]] = []
+
+
+def get_runtime_smtp_config() -> dict[str, Any]:
+    return dict(_RUNTIME_CONFIG)
+
+
+def configure_runtime_smtp(config: dict[str, Any]) -> None:
+    global _RUNTIME_CONFIG
+    _RUNTIME_CONFIG = dict(config)
+
+
+def reset_runtime_smtp() -> None:
+    global _RUNTIME_CONFIG
+    _RUNTIME_CONFIG = {}
+
+
+def get_email_logs(limit: int = 50) -> list[dict[str, Any]]:
+    return _EMAIL_LOGS[-limit:][::-1]
+
+
+def get_email_log_by_id(email_id: str) -> dict[str, Any] | None:
+    for log in _EMAIL_LOGS:
+        if log.get("id") == email_id:
+            return log
+    return None
+
+
+def record_email_log(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    status: str,
+    message: str,
+    channel: str,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    entry = {
+        "id": str(uuid.uuid4()),
+        "to_email": to_email,
+        "subject": subject,
+        "html_body": html_body,
+        "status": status,
+        "message": message,
+        "channel": channel,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "details": details or {},
+    }
+    _EMAIL_LOGS.append(entry)
+    if len(_EMAIL_LOGS) > 100:
+        del _EMAIL_LOGS[0]
+    return entry
 
 
 def is_smtp_configured() -> bool:
-    """Returns True if both SMTP username and password are provided."""
+    """Returns True if email credentials (SMTP or API key) are configured."""
+    if _RUNTIME_CONFIG.get("api_key") or (_RUNTIME_CONFIG.get("user") and _RUNTIME_CONFIG.get("password")):
+        return True
     return bool(settings.smtp_user and settings.smtp_password)
 
 
 def get_smtp_status() -> dict[str, Any]:
     """Provides public diagnostic status without exposing sensitive credentials."""
-    user = settings.smtp_user
+    cfg = _RUNTIME_CONFIG
+    user = cfg.get("user") or settings.smtp_user
+    host = cfg.get("host") or settings.smtp_host
+    port = int(cfg.get("port") or settings.smtp_port or 587)
+    use_ssl = bool(cfg.get("use_ssl") if "use_ssl" in cfg else (settings.smtp_ssl or port == 465))
+    use_tls = bool(cfg.get("use_tls") if "use_tls" in cfg else (settings.smtp_tls and not use_ssl))
+    from_email = cfg.get("from_email") or settings.smtp_from_email or user or "support@bhoomitra.gov.in"
+    from_name = cfg.get("from_name") or settings.smtp_from_name or "Bhoomitra Land Governance Platform"
+
+    api_key = cfg.get("api_key", "")
+    provider = cfg.get("provider")
+    if not provider:
+        if api_key.startswith("re_"):
+            provider = "resend"
+        elif api_key.startswith("xkeysib-"):
+            provider = "brevo"
+        elif "gmail" in host.lower():
+            provider = "gmail_smtp"
+        elif "brevo" in host.lower():
+            provider = "brevo_smtp"
+        elif "sendgrid" in host.lower():
+            provider = "sendgrid_smtp"
+        else:
+            provider = "smtp"
+
     masked_user = None
     if user:
         if "@" in user:
@@ -256,19 +338,73 @@ def get_smtp_status() -> dict[str, Any]:
         else:
             masked_user = f"{user[:2]}***"
 
-    effective_port = settings.smtp_port
-    effective_ssl = bool(settings.smtp_ssl or effective_port == 465)
-    effective_tls = bool(settings.smtp_tls and not effective_ssl)
+    is_configured = is_smtp_configured()
 
     return {
-        "configured": is_smtp_configured(),
-        "host": settings.smtp_host,
-        "port": effective_port,
-        "protocol": "SSL" if effective_ssl else ("STARTTLS" if effective_tls else "PLAIN"),
-        "from_email": settings.smtp_from_email or user or "support@bhoomitra.gov.in",
-        "from_name": settings.smtp_from_name,
+        "configured": is_configured,
+        "provider": provider,
+        "host": host,
+        "port": port,
+        "protocol": "HTTP API" if provider in ("resend", "brevo") else ("SSL" if use_ssl else ("STARTTLS" if use_tls else "PLAIN")),
+        "from_email": from_email,
+        "from_name": from_name,
         "user_masked": masked_user,
+        "outbox_count": len(_EMAIL_LOGS),
+        "runtime_override_active": bool(_RUNTIME_CONFIG),
     }
+
+
+def _attempt_http_api_dispatch(
+    provider: str,
+    api_key: str,
+    from_email: str,
+    from_name: str,
+    to_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str | None = None,
+) -> tuple[bool, str]:
+    import httpx
+    try:
+        sender_str = f"{from_name} <{from_email}>" if from_name else from_email
+        if provider == "resend" or api_key.startswith("re_"):
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={
+                        "from": sender_str,
+                        "to": [to_email],
+                        "subject": subject,
+                        "html": html_body,
+                    },
+                )
+                if res.status_code in (200, 201):
+                    data = res.json()
+                    msg_id = data.get("id", "ok")
+                    return True, f"Successfully dispatched via Resend API (id: {msg_id})"
+                else:
+                    return False, f"Resend API error ({res.status_code}): {res.text}"
+        elif provider == "brevo" or api_key.startswith("xkeysib-"):
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(
+                    "https://api.brevo.com/v3/smtp/email",
+                    headers={"api-key": api_key},
+                    json={
+                        "sender": {"name": from_name, "email": from_email},
+                        "to": [{"email": to_email}],
+                        "subject": subject,
+                        "htmlContent": html_body,
+                    },
+                )
+                if res.status_code in (200, 201):
+                    return True, "Successfully dispatched via Brevo HTTP API"
+                else:
+                    return False, f"Brevo API error ({res.status_code}): {res.text}"
+        else:
+            return False, f"Unknown HTTP email provider: {provider}"
+    except Exception as exc:
+        return False, f"HTTP API dispatch failed: {type(exc).__name__}: {exc}"
 
 
 def _attempt_smtp_dispatch(
@@ -322,28 +458,76 @@ def send_email_sync(
     subject: str,
     html_body: str,
     text_body: str | None = None,
+    runtime_config: dict[str, Any] | None = None,
 ) -> EmailDeliveryResult:
     """
-    Sends an email using standard SMTP with automatic protocol detection and Gmail failover.
-    If SMTP credentials are not configured, logs simulated delivery and returns a simulated result.
+    Sends an email using configured channel (HTTP API via Resend/Brevo, or standard SMTP with failover).
+    If email credentials are not configured, logs simulated delivery and returns a simulated result.
+    Records every delivery attempt into the in-memory outbox audit log.
     Never raises an unhandled exception.
     """
     if not to_email:
         logger.warning("[EmailService] No recipient email specified.")
-        return EmailDeliveryResult(
+        res = EmailDeliveryResult(
             success=False,
             status="failed",
             message="No recipient email specified.",
         )
+        record_email_log(to_email, subject, html_body, "failed", "No recipient email specified.", "none")
+        return res
 
-    smtp_user = settings.smtp_user
-    smtp_password = settings.smtp_password
+    cfg = {**_RUNTIME_CONFIG, **(runtime_config or {})}
+    api_key = cfg.get("api_key") or ""
+    provider = cfg.get("provider") or ("resend" if api_key.startswith("re_") else ("brevo" if api_key.startswith("xkeysib-") else ""))
+
+    # 1. HTTP API Dispatch (Resend or Brevo)
+    if provider in ("resend", "brevo") and api_key:
+        from_email = cfg.get("from_email") or settings.smtp_from_email or "support@bhoomitra.gov.in"
+        from_name = cfg.get("from_name") or settings.smtp_from_name or "Bhoomitra Land Governance Platform"
+        http_success, http_msg = _attempt_http_api_dispatch(
+            provider=provider,
+            api_key=api_key,
+            from_email=from_email,
+            from_name=from_name,
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+        record_email_log(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            status="sent" if http_success else "failed",
+            message=http_msg,
+            channel=provider,
+            details={"provider": provider},
+        )
+        return EmailDeliveryResult(
+            success=http_success,
+            status="sent" if http_success else "failed",
+            message=http_msg,
+            details={"provider": provider},
+        )
+
+    # 2. Standard SMTP Dispatch
+    smtp_user = cfg.get("user") or settings.smtp_user
+    smtp_password = cfg.get("password") or settings.smtp_password
 
     # If SMTP credentials are not configured, simulate email dispatch safely
-    if not is_smtp_configured():
+    if not (smtp_user and smtp_password):
         logger.info(
             f"[EmailService] SMTP credentials not set (SMTP_USER/SMTP_PASSWORD). "
             f"Simulated welcome email delivery to: {to_email} (Subject: '{subject}')"
+        )
+        record_email_log(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            status="simulated",
+            message="Simulated email delivery: SMTP_USER or SMTP_PASSWORD not configured on server.",
+            channel="simulated",
+            details={"to": to_email, "subject": subject},
         )
         return EmailDeliveryResult(
             success=True,
@@ -352,8 +536,8 @@ def send_email_sync(
             details={"to": to_email, "subject": subject},
         )
 
-    from_email = settings.smtp_from_email or smtp_user
-    from_name = settings.smtp_from_name
+    from_email = cfg.get("from_email") or settings.smtp_from_email or smtp_user
+    from_name = cfg.get("from_name") or settings.smtp_from_name
     sender_header = f"{from_name} <{from_email}>" if from_name else from_email
 
     msg = MIMEMultipart("alternative")
@@ -366,10 +550,10 @@ def send_email_sync(
     msg.attach(MIMEText(html_body, "html", "utf-8"))
     msg_str = msg.as_string()
 
-    host = settings.smtp_host
-    port = settings.smtp_port
-    use_ssl = bool(settings.smtp_ssl or port == 465)
-    use_tls = bool(settings.smtp_tls and not use_ssl)
+    host = cfg.get("host") or settings.smtp_host
+    port = int(cfg.get("port") or settings.smtp_port or 587)
+    use_ssl = bool(cfg.get("use_ssl") if "use_ssl" in cfg else (settings.smtp_ssl or port == 465))
+    use_tls = bool(cfg.get("use_tls") if "use_tls" in cfg else (settings.smtp_tls and not use_ssl))
 
     success, message = _attempt_smtp_dispatch(
         host=host,
@@ -404,6 +588,7 @@ def send_email_sync(
         )
         if alt_success:
             logger.info(f"[EmailService] Fallback to port {alt_port} succeeded!")
+            record_email_log(to_email, subject, html_body, "sent", alt_message, "smtp", {"host": host, "port": alt_port, "failover": True})
             return EmailDeliveryResult(
                 success=True,
                 status="sent",
@@ -413,6 +598,7 @@ def send_email_sync(
         else:
             final_message = alt_message if "Authentication Error" in alt_message else message
             logger.error(f"[EmailService] Both primary ({port}) and fallback ({alt_port}) failed. Reason: {final_message}")
+            record_email_log(to_email, subject, html_body, "failed", final_message, "smtp", {"host": host, "ports": [port, alt_port]})
             return EmailDeliveryResult(
                 success=False,
                 status="failed",
@@ -420,6 +606,7 @@ def send_email_sync(
                 details={"host": host, "ports_tested": [port, alt_port]},
             )
 
+    record_email_log(to_email, subject, html_body, "sent" if success else "failed", message, "smtp", {"host": host, "port": port})
     if success:
         logger.info(f"[EmailService] Successfully sent email to {to_email}: '{subject}'")
         return EmailDeliveryResult(

@@ -14,8 +14,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.email import (
+    configure_runtime_smtp,
+    get_email_log_by_id,
+    get_email_logs,
+    get_runtime_smtp_config,
     get_smtp_status,
     is_smtp_configured,
+    reset_runtime_smtp,
     send_email_sync,
     send_welcome_email,
 )
@@ -762,6 +767,31 @@ async def logout(
 class TestSmtpPayload(BaseModel):
     to_email: EmailStr
     subject: str = "Bhoomitra SMTP Verification Diagnostic Test"
+    provider: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_ssl: bool | None = None
+    smtp_tls: bool | None = None
+    from_email: str | None = None
+    from_name: str | None = None
+    api_key: str | None = None
+    persist: bool = False
+
+
+class ConfigureSmtpPayload(BaseModel):
+    provider: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_ssl: bool = False
+    smtp_tls: bool = True
+    from_email: str | None = None
+    from_name: str = "Bhoomitra Land Governance Platform"
+    api_key: str | None = None
+    reset: bool = False
 
 
 @router.get(
@@ -778,6 +808,88 @@ async def get_smtp_configuration_status() -> dict[str, Any]:
 
 
 @router.post(
+    "/configure-smtp",
+    summary="Configure runtime SMTP and email delivery credentials",
+)
+async def configure_smtp_endpoint(
+    payload: ConfigureSmtpPayload,
+) -> dict[str, Any]:
+    if payload.reset:
+        reset_runtime_smtp()
+        return {
+            "success": True,
+            "message": "Runtime email configuration reset to system defaults.",
+            "smtp_status": get_smtp_status(),
+        }
+
+    config: dict[str, Any] = {}
+    if payload.provider:
+        config["provider"] = payload.provider
+    if payload.smtp_host:
+        config["host"] = payload.smtp_host
+    if payload.smtp_port:
+        config["port"] = payload.smtp_port
+    if payload.smtp_user:
+        config["user"] = payload.smtp_user
+    if payload.smtp_password:
+        config["password"] = payload.smtp_password
+    if payload.smtp_ssl is not None:
+        config["use_ssl"] = payload.smtp_ssl
+    if payload.smtp_tls is not None:
+        config["use_tls"] = payload.smtp_tls
+    if payload.from_email:
+        config["from_email"] = payload.from_email
+    if payload.from_name:
+        config["from_name"] = payload.from_name
+    if payload.api_key:
+        config["api_key"] = payload.api_key
+
+    configure_runtime_smtp(config)
+    return {
+        "success": True,
+        "message": "Runtime email configuration saved successfully.",
+        "smtp_status": get_smtp_status(),
+    }
+
+
+@router.get(
+    "/email-logs",
+    summary="Retrieve outgoing email audit ledger",
+)
+async def list_email_logs(limit: int = 50) -> dict[str, Any]:
+    logs = get_email_logs(limit=min(limit, 100))
+    return {
+        "count": len(logs),
+        "logs": logs,
+    }
+
+
+@router.post(
+    "/resend-email/{email_id}",
+    summary="Resend an email from the audit outbox",
+)
+async def resend_email_endpoint(email_id: str) -> dict[str, Any]:
+    log = get_email_log_by_id(email_id)
+    if not log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Email log entry {email_id} not found.",
+        )
+    result = await asyncio.to_thread(
+        send_email_sync,
+        to_email=log["to_email"],
+        subject=f"[Resend] {log['subject']}",
+        html_body=log.get("html_body", ""),
+    )
+    return {
+        "success": result.success,
+        "status": result.status,
+        "message": result.message,
+        "details": result.get("details", {}),
+    }
+
+
+@router.post(
     "/test-smtp",
     summary="Send a test email to verify SMTP configuration",
 )
@@ -787,31 +899,78 @@ async def test_smtp_dispatch(
     response: Response,
     payload: TestSmtpPayload,
 ) -> dict[str, Any]:
-    if not is_smtp_configured():
+    dynamic_cfg: dict[str, Any] = {}
+    if payload.provider:
+        dynamic_cfg["provider"] = payload.provider
+    if payload.smtp_host:
+        dynamic_cfg["host"] = payload.smtp_host
+    if payload.smtp_port:
+        dynamic_cfg["port"] = payload.smtp_port
+    if payload.smtp_user:
+        dynamic_cfg["user"] = payload.smtp_user
+    if payload.smtp_password:
+        dynamic_cfg["password"] = payload.smtp_password
+    if payload.smtp_ssl is not None:
+        dynamic_cfg["use_ssl"] = payload.smtp_ssl
+    if payload.smtp_tls is not None:
+        dynamic_cfg["use_tls"] = payload.smtp_tls
+    if payload.from_email:
+        dynamic_cfg["from_email"] = payload.from_email
+    if payload.from_name:
+        dynamic_cfg["from_name"] = payload.from_name
+    if payload.api_key:
+        dynamic_cfg["api_key"] = payload.api_key
+
+    has_dynamic_creds = bool(
+        dynamic_cfg.get("api_key")
+        or (dynamic_cfg.get("user") and dynamic_cfg.get("password"))
+    )
+
+    if not has_dynamic_creds and not is_smtp_configured():
         return {
             "success": False,
             "status": "unconfigured",
-            "message": "SMTP credentials (SMTP_USER/SMTP_PASSWORD) are not configured on the server.",
+            "message": "SMTP credentials (SMTP_USER/SMTP_PASSWORD or API Key) are not configured on the server.",
             "smtp_status": get_smtp_status(),
         }
 
+    active_host = dynamic_cfg.get("host") or settings.smtp_host
+    active_port = dynamic_cfg.get("port") or settings.smtp_port
+
     test_html = f"""<!DOCTYPE html>
 <html>
-<body style="font-family: -apple-system, sans-serif; padding: 24px; color: #0f172a; background-color: #f8fafc;">
-  <div style="max-width: 500px; background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
-    <h2 style="color: #047857; margin-top: 0;">🏛️ Bhoomitra SMTP Diagnostic Test</h2>
-    <p>This automated test message confirms that your SMTP relay configuration is active and transmitting properly.</p>
-    <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
-      <tr><td style="padding: 6px 0; color: #64748b;">Host:</td><td style="font-weight: 600;">{settings.smtp_host}:{settings.smtp_port}</td></tr>
-      <tr><td style="padding: 6px 0; color: #64748b;">Recipient:</td><td style="font-weight: 600;">{payload.to_email}</td></tr>
-      <tr><td style="padding: 6px 0; color: #64748b;">Timestamp:</td><td style="font-weight: 600;">{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}</td></tr>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #0f172a; background-color: #f8fafc;">
+  <div style="max-width: 520px; margin: 0 auto; background: white; padding: 28px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.04);">
+    <div style="background: #047857; color: white; padding: 8px 14px; border-radius: 6px; display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px;">
+      Live Diagnostic Pass
+    </div>
+    <h2 style="color: #064e3b; margin: 0 0 12px 0; font-size: 22px;">🏛️ Bhoomitra Email Dispatch Verified</h2>
+    <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 20px 0;">
+      This automated diagnostic test confirms that the platform email delivery pipeline is active, authenticated, and communicating successfully with mail recipients.
+    </p>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 0; color: #64748b; width: 35%;">Relay Host</td>
+        <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">{active_host}:{active_port}</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 0; color: #64748b;">Recipient</td>
+        <td style="padding: 8px 0; font-weight: 600; color: #047857;">{payload.to_email}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #64748b;">Dispatched At</td>
+        <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}</td>
+      </tr>
     </table>
-    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
-    <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Bhoomitra National Land Governance Platform</p>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #166534;">
+      ✓ Verification complete. Registration notifications and platform security alerts are operational.
+    </div>
+    <hr style="margin: 24px 0 16px 0; border: none; border-top: 1px solid #e2e8f0;">
+    <p style="font-size: 11px; color: #94a3b8; margin: 0;">Bhoomitra National Land Governance Platform</p>
   </div>
 </body>
 </html>"""
-    test_text = f"Bhoomitra SMTP Diagnostic Test\n\nVerified delivery to {payload.to_email} at {datetime.now(UTC).isoformat()}."
+    test_text = f"Bhoomitra SMTP Diagnostic Test\n\nVerified delivery to {payload.to_email} via {active_host}:{active_port} at {datetime.now(UTC).isoformat()}."
 
     try:
         result = await asyncio.wait_for(
@@ -821,9 +980,14 @@ async def test_smtp_dispatch(
                 subject=payload.subject,
                 html_body=test_html,
                 text_body=test_text,
+                runtime_config=dynamic_cfg if dynamic_cfg else None,
             ),
-            timeout=10.0,
+            timeout=12.0,
         )
+
+        if payload.persist and result.success and dynamic_cfg:
+            configure_runtime_smtp(dynamic_cfg)
+
         return {
             "success": result.success,
             "status": result.status,

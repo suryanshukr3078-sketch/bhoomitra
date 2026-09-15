@@ -151,7 +151,8 @@ def test_smtp_status_api_endpoint(client: TestClient) -> None:
 
 def test_test_smtp_api_endpoint_unconfigured(client: TestClient) -> None:
     with patch("app.services.email.settings.smtp_user", None), \
-         patch("app.services.email.settings.smtp_password", None):
+         patch("app.services.email.settings.smtp_password", None), \
+         patch("app.services.email._RUNTIME_CONFIG", {}):
         resp = client.post(
             "/api/v1/auth/test-smtp",
             json={"to_email": "test@example.com"},
@@ -160,4 +161,41 @@ def test_test_smtp_api_endpoint_unconfigured(client: TestClient) -> None:
         data = resp.json()
         assert data["success"] is False
         assert data["status"] == "unconfigured"
+
+
+def test_configure_smtp_and_email_logs_endpoint(client: TestClient) -> None:
+    # 1. Configure runtime SMTP
+    conf_resp = client.post(
+        "/api/v1/auth/configure-smtp",
+        json={
+            "provider": "resend",
+            "api_key": "re_test_dummy_key_12345",
+            "from_email": "notifications@bhoomitra.gov.in",
+        },
+    )
+    assert conf_resp.status_code == 200
+    conf_data = conf_resp.json()
+    assert conf_data["success"] is True
+    assert conf_data["smtp_status"]["configured"] is True
+    assert conf_data["smtp_status"]["provider"] == "resend"
+
+    # 2. Verify status endpoint reflects runtime config
+    status_resp = client.get("/api/v1/auth/smtp-status")
+    assert status_resp.status_code == 200
+    assert status_resp.json()["configured"] is True
+    assert status_resp.json()["provider"] == "resend"
+
+    # 3. Check email logs endpoint
+    logs_resp = client.get("/api/v1/auth/email-logs")
+    assert logs_resp.status_code == 200
+    assert "logs" in logs_resp.json()
+
+    # 4. Reset runtime config
+    reset_resp = client.post(
+        "/api/v1/auth/configure-smtp",
+        json={"reset": True},
+    )
+    assert reset_resp.status_code == 200
+    assert reset_resp.json()["success"] is True
+
 

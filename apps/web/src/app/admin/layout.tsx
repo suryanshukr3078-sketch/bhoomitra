@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Loader2,
   ShieldAlert,
+  Mail,
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -77,6 +78,12 @@ export default function AdminLayout({
       name: 'Organizations',
       href: '/admin/organizations',
       icon: Building2,
+      exact: false,
+    },
+    {
+      name: 'Email & SMTP Relay',
+      href: '/admin/smtp',
+      icon: Mail,
       exact: false,
     },
   ];
