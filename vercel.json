@@ -10,13 +10,7 @@
       "destination": "/api/index.py"
     },
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "query",
-          "key": "path"
-        }
-      ],
+      "source": "/(.*)",
       "destination": "/api/index.py"
     }
   ]
