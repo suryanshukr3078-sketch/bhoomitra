@@ -11,12 +11,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Protect /dashboard, /contribute, and /admin routes: redirect unauthenticated visits to /login
-  if (
-    request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/contribute') ||
-    request.nextUrl.pathname.startsWith('/admin')
-  ) {
+  // Redirect /contribute to /dashboard?tab=contribute so users access the official dashboard contribute workflow
+  if (request.nextUrl.pathname === '/contribute') {
+    const dashUrl = request.nextUrl.clone();
+    dashUrl.pathname = '/dashboard';
+    dashUrl.searchParams.set('tab', 'contribute');
+    return NextResponse.redirect(dashUrl);
+  }
+
+  // Protect privileged /admin routes: redirect unauthenticated visits to /login
+  if (request.nextUrl.pathname.startsWith('/admin')) {
     const token =
       request.cookies.get('access_token')?.value ||
       request.cookies.get('auth_token')?.value;

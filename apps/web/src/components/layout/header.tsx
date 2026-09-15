@@ -196,6 +196,18 @@ export function Header() {
                     <span className="hidden sm:inline">Dashboard</span>
                   </motion.a>
                 </Link>
+                <Link href="/dashboard?tab=contribute" passHref legacyBehavior>
+                  <motion.a
+                    whileHover={prefersReduced ? undefined : { scale: 1.03 }}
+                    whileTap={prefersReduced ? undefined : { scale: 0.97 }}
+                    transition={{ duration: 0.15 }}
+                    title="Contribute Land Records"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs 2xl:text-sm font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5 text-emerald-700 shrink-0" aria-hidden="true" />
+                    <span>Contribute</span>
+                  </motion.a>
+                </Link>
                 <div className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
                   <User className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
                   <span className="max-w-[120px] truncate">{user.full_name || user.email}</span>
@@ -397,6 +409,17 @@ export function Header() {
             </Link>
             {isAuthenticated && user ? (
               <div className="grid grid-cols-1 gap-2">
+                <Link href="/dashboard?tab=contribute" passHref legacyBehavior>
+                  <motion.a
+                    whileTap={prefersReduced ? undefined : { scale: 0.98 }}
+                    transition={{ duration: 0.1 }}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+                  >
+                    <UploadCloud className="w-4 h-4 text-emerald-700 shrink-0" aria-hidden="true" />
+                    Contribute Records (Dashboard)
+                  </motion.a>
+                </Link>
                 {Boolean(user.is_superuser || user.role?.toLowerCase() === 'admin') && (
                   <Link href="/admin" passHref legacyBehavior>
                     <motion.a

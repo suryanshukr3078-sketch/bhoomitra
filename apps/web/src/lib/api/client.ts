@@ -26,7 +26,10 @@ export function setAuthToken(token: string): void {
       localStorage.setItem('access_token', token);
     } catch {}
     if (typeof document !== 'undefined') {
-      document.cookie = `access_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax; Secure`;
+      const isHttps = window.location.protocol === 'https:';
+      const secureAttr = isHttps ? '; Secure' : '';
+      document.cookie = `access_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax${secureAttr}`;
+      document.cookie = `auth_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax${secureAttr}`;
     }
   }
 }
@@ -37,7 +40,10 @@ export function clearAuthToken(): void {
       localStorage.removeItem('access_token');
     } catch {}
     if (typeof document !== 'undefined') {
-      document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure';
+      const isHttps = window.location.protocol === 'https:';
+      const secureAttr = isHttps ? '; Secure' : '';
+      document.cookie = `access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureAttr}`;
+      document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureAttr}`;
     }
   }
 }
@@ -125,7 +131,9 @@ export async function apiRequest<T>(
     } catch {
       // Non-JSON error body
     }
-    throw new Error(errorDetail);
+    const err = new Error(errorDetail);
+    (err as any).status = res.status;
+    throw err;
   }
 
   const data = (await res.json()) as T;

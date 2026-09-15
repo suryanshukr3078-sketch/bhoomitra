@@ -38,9 +38,41 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
+function parseJwtPayload(token: string): UserProfile | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonStr = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonStr);
+    if (!payload.sub && !payload.email) return null;
+    return {
+      id: String(payload.sub || 'authenticated-user'),
+      email: String(payload.email || 'user@bhoomitra.gov.in'),
+      full_name: String(payload.full_name || payload.email || 'Platform Contributor'),
+      role: String(payload.role || 'Member'),
+      is_active: true,
+      is_superuser: Boolean(payload.is_superuser),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    const token = getAuthToken();
+    return token ? parseJwtPayload(token) : null;
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const token = getAuthToken();
+    return token ? false : true;
+  });
   const router = useRouter();
 
   const refreshUser = useCallback(async (): Promise<UserProfile | null> => {
@@ -50,14 +82,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         return null;
       }
+      // Populate synchronous JWT identity first so client navigation never flickers
+      const baseline = parseJwtPayload(token);
+      if (baseline) {
+        setUser((prev) => prev || baseline);
+      }
+
       const userData = await apiRequest<UserProfile>('/auth/me', {
         method: 'GET',
       });
       setUser(userData);
       return userData;
-    } catch {
-      clearAuthToken();
-      setUser(null);
+    } catch (err: any) {
+      if (err?.status === 401) {
+        clearAuthToken();
+        setUser(null);
+      } else {
+        console.warn('[AuthProvider] /auth/me temporary error, preserving active session:', err);
+      }
       return null;
     } finally {
       setIsLoading(false);

@@ -66,11 +66,6 @@ export default function ContributePage() {
     },
   });
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/login?redirect=/contribute');
-    }
-  }, [isLoading, isAuthenticated, router]);
 
   useEffect(() => {
     if (user && !isDirty) {
@@ -205,7 +200,34 @@ export default function ContributePage() {
   }
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
+          <UploadCloud className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Official Contributor Sign-In Required</h1>
+          <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+            Please sign in with your official researcher, policymaker, or agency credentials to publish land governance records to the national registry.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <Link
+            href="/login?redirect=/dashboard?tab=contribute"
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm transition-colors w-full sm:w-auto"
+          >
+            <LogIn className="w-4 h-4" />
+            Sign In to Open Contribute Studio
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors w-full sm:w-auto"
+          >
+            Go to Official Dashboard
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

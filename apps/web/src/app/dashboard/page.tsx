@@ -183,30 +183,50 @@ const BASE_TABS: { id: DimensionTab; label: string; icon: React.ElementType }[] 
 export default function DashboardPage() {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const router = useRouter();
-  const searchParams = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search)
-    : null;
-  const initialTab = (searchParams?.get('tab') as DimensionTab) || 'all';
-  const [activeTab, setActiveTab] = useState<DimensionTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<DimensionTab>('all');
   const [data, setData] = useState<DashboardOverview>(DEFAULT_OVERVIEW);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
+  const [publishedResource, setPublishedResource] = useState<{
+    id: string;
+    title: string;
+    url: string;
+  } | null>(null);
   const { toast } = useToast();
 
-  // Redirect unauthenticated users to login
+  // Listen to ?tab= query parameter on mount and update activeTab
   useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.replace('/login?redirect=/dashboard');
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const tabParam = sp.get('tab') as DimensionTab | null;
+      if (tabParam) {
+        setActiveTab(tabParam);
+      }
     }
-  }, [isAuthLoading, isAuthenticated, router]);
+  }, []);
 
-  // Build tabs dynamically: authenticated users get the Contribute tab
-  const tabs = isAuthenticated
-    ? [...BASE_TABS, { id: 'contribute' as DimensionTab, label: 'Contribute', icon: UploadCloud }]
-    : BASE_TABS;
+  // Sync tab change to URL search params
+  const handleTabChange = (tabId: DimensionTab) => {
+    setActiveTab(tabId);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tabId === 'all') {
+        url.searchParams.delete('tab');
+      } else {
+        url.searchParams.set('tab', tabId);
+      }
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  // The Contribute tab is always accessible directly in the official dashboard menu
+  const tabs = [
+    ...BASE_TABS,
+    { id: 'contribute' as DimensionTab, label: 'Contribute', icon: UploadCloud },
+  ];
 
   const fetchMetrics = useCallback(async (showToast = false) => {
     try {
@@ -237,17 +257,29 @@ export default function DashboardPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<ContributeFormData>({
     resolver: zodResolver(contributeSchema),
     defaultValues: {
       title: '',
+      publisher: '',
       resourceType: 'research_paper',
       abstract: '',
       jurisdiction: 'IN-MH',
       visibility: 'public',
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      if (user.organization_name) {
+        setValue('publisher', user.organization_name);
+      } else if (user.full_name) {
+        setValue('publisher', user.full_name);
+      }
+    }
+  }, [user, setValue]);
 
   const onContributeSubmit = async (formData: ContributeFormData) => {
     setIsSubmitting(true);
@@ -289,6 +321,7 @@ export default function DashboardPage() {
         credentials: 'include',
         body: JSON.stringify({
           title: formData.title,
+          publisher: formData.publisher?.trim() || undefined,
           abstract: formData.abstract,
           resource_type: formData.resourceType,
           visibility: formData.visibility,
@@ -308,9 +341,24 @@ export default function DashboardPage() {
         throw new Error(errJson.detail || `Failed to create resource (Status: ${resourceRes.status})`);
       }
 
+      const createdResource = await resourceRes.json();
+      let targetSection = 'research';
+      if (formData.resourceType === 'policy') {
+        targetSection = 'policies';
+      } else if (formData.resourceType === 'dataset' || formData.resourceType === 'spatial_layer') {
+        targetSection = 'datasets';
+      }
+
+      setPublishedResource({
+        id: createdResource.id,
+        title: createdResource.title || formData.title,
+        url: `/${targetSection}/${createdResource.id}`,
+      });
+
       toast({
         title: 'Resource Published',
-        description: 'Your contribution has been successfully indexed on the platform.',
+        description: `"${createdResource.title || formData.title}" has been successfully published to the registry.`,
+        variant: 'success',
       });
 
       reset();
@@ -359,24 +407,18 @@ export default function DashboardPage() {
             Refresh
           </button>
 
-          {isAuthenticated ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('contribute')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm transition-colors"
-            >
-              <UploadCloud className="w-3.5 h-3.5" />
-              Contribute
-            </button>
-          ) : (
-            <Link
-              href="/login?redirect=/dashboard"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Sign In to Contribute
-            </Link>
-          )}
+          <button
+            type="button"
+            onClick={() => handleTabChange('contribute')}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors ${
+              activeTab === 'contribute'
+                ? 'bg-emerald-900 text-white ring-2 ring-emerald-400'
+                : 'text-white bg-emerald-700 hover:bg-emerald-800'
+            }`}
+          >
+            <UploadCloud className="w-3.5 h-3.5" />
+            <span>Contribute Records</span>
+          </button>
         </div>
       </div>
 
@@ -461,18 +503,26 @@ export default function DashboardPage() {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const isContribute = tab.id === 'contribute';
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
                   isActive
                     ? 'bg-emerald-700 text-white shadow-xs'
+                    : isContribute
+                    ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : isContribute ? 'text-emerald-700' : 'text-slate-500'}`} />
                 {tab.label}
+                {isContribute && !isActive && (
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-emerald-200 text-emerald-900 rounded-full">
+                    Upload
+                  </span>
+                )}
               </button>
             );
           })}
@@ -481,77 +531,114 @@ export default function DashboardPage() {
 
       {/* Main Tab Content */}
       <div className="min-h-[400px]">
-        {isLoadingMetrics ? (
-          <div className="p-8 space-y-4">
-            <Skeleton className="h-32 w-full rounded-2xl" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Skeleton className="h-24 rounded-xl" />
-              <Skeleton className="h-24 rounded-xl" />
-              <Skeleton className="h-24 rounded-xl" />
+        {activeTab === 'contribute' ? (
+          !isAuthenticated && !isAuthLoading ? (
+            <div className="py-12 space-y-6 max-w-xl mx-auto text-center bg-white p-8 sm:p-10 rounded-2xl border border-slate-200/80 shadow-sm mt-4">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
+                <UploadCloud className="w-7 h-7" />
+              </div>
+              <div className="space-y-1.5">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Official Contributor Sign-In Required</h2>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                  Sign in with your verified credentials to contribute research publications, policy statutes, or spatial cadastral layers to the national repository.
+                </p>
+              </div>
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/login?redirect=/dashboard?tab=contribute"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm transition-colors w-full sm:w-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  Sign In to Open Contribute Form
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors w-full sm:w-auto"
+                >
+                  Request Contributor Access
+                </Link>
+              </div>
             </div>
-          </div>
-        ) : (
-          <>
-            {activeTab === 'all' && (
-              <OverviewTab overview={data} onSelectTab={(tab) => setActiveTab(tab)} />
-            )}
-            {activeTab === 'research' && <ResearchTab data={data.research} />}
-            {activeTab === 'policy' && <PolicyTab data={data.policy} />}
-            {activeTab === 'land_use' && <LandUseTab data={data.land_use} />}
-            {activeTab === 'climate' && <ClimateTab data={data.climate} />}
-            {activeTab === 'disputes' && (
-              <DisputesTab data={data.disputes} permissions={data.permissions} />
-            )}
-            {activeTab === 'projects' && <ProjectsTab data={data.projects} />}
-            {activeTab === 'geospatial' && (
-              <GeospatialTab data={data.geospatial} permissions={data.permissions} />
-            )}
-            {activeTab === 'contribute' && (
-              <div className="py-6 space-y-6 max-w-2xl">
-                {submitSuccess ? (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-4">
-                    <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                    <h3 className="text-lg font-bold text-emerald-900">Contribution Published!</h3>
-                    <p className="text-sm text-emerald-700">Your document has been indexed in the national registry.</p>
+          ) : (
+            <div className="py-6 space-y-6 max-w-2xl">
+              {submitSuccess ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-4">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+                  <h3 className="text-lg font-bold text-emerald-900">Contribution Published!</h3>
+                  <p className="text-sm text-emerald-700">
+                    {publishedResource?.title
+                      ? `"${publishedResource.title}" has been successfully indexed in the national registry.`
+                      : 'Your document has been indexed in the national registry.'}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    {publishedResource?.url && (
+                      <Link
+                        href={publishedResource.url}
+                        className="inline-flex items-center gap-2 px-5 py-2 text-sm font-bold text-emerald-800 bg-white border border-emerald-300 rounded-xl hover:bg-emerald-50 transition-colors shadow-2xs"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        View Published Record
+                      </Link>
+                    )}
                     <button
                       type="button"
-                      onClick={() => { setSubmitSuccess(false); }}
+                      onClick={() => {
+                        setSubmitSuccess(false);
+                        setPublishedResource(null);
+                      }}
                       className="inline-flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-colors"
                     >
                       <UploadCloud className="w-4 h-4" />
                       Submit Another Resource
                     </button>
                   </div>
-                ) : (
-                  <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
-                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
-                        <UploadCloud className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h2 className="text-base font-bold text-slate-900">Submit Research, Policy, or Dataset</h2>
-                        <p className="text-xs text-slate-500">Upload PDFs, images, GeoJSON, or spatial layers to the national registry</p>
-                      </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                      <UploadCloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900">Submit Research, Policy, or Dataset</h2>
+                      <p className="text-xs text-slate-500">Upload PDFs, images, GeoJSON, or spatial layers to the national registry</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSubmit(onContributeSubmit)} className="space-y-5" noValidate>
+                    {/* Title */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                        Document / Dataset Title <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Pune Metropolitan Cadastral Survey & Mutation Guidelines 2026"
+                        className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
+                          errors.title ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
+                        }`}
+                        {...register('title')}
+                      />
+                      {errors.title && (
+                        <p role="alert" className="text-xs text-rose-600 font-medium">{errors.title.message}</p>
+                      )}
                     </div>
 
-                    <form onSubmit={handleSubmit(onContributeSubmit)} className="space-y-5" noValidate>
-                      {/* Title */}
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                          Document / Dataset Title <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Pune Metropolitan Cadastral Survey & Mutation Guidelines 2026"
-                          className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
-                            errors.title ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
-                          }`}
-                          {...register('title')}
-                        />
-                        {errors.title && (
-                          <p role="alert" className="text-xs text-rose-600 font-medium">{errors.title.message}</p>
-                        )}
-                      </div>
+                    {/* Publisher / Issuing Organization */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                        Publisher / Issuing Authority
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. National Institute of Rural Development or Department of Land Resources"
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        {...register('publisher')}
+                      />
+                      <p className="text-[11px] text-slate-400">
+                        Pre-filled from your registered organization.
+                      </p>
+                    </div>
 
                       {/* Type & Jurisdiction */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -686,6 +773,31 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+            )
+          ) : isLoadingMetrics ? (
+          <div className="p-8 space-y-4">
+            <Skeleton className="h-32 w-full rounded-2xl" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
+            </div>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'all' && (
+              <OverviewTab overview={data} onSelectTab={(tab) => handleTabChange(tab)} />
+            )}
+            {activeTab === 'research' && <ResearchTab data={data.research} />}
+            {activeTab === 'policy' && <PolicyTab data={data.policy} />}
+            {activeTab === 'land_use' && <LandUseTab data={data.land_use} />}
+            {activeTab === 'climate' && <ClimateTab data={data.climate} />}
+            {activeTab === 'disputes' && (
+              <DisputesTab data={data.disputes} permissions={data.permissions} />
+            )}
+            {activeTab === 'projects' && <ProjectsTab data={data.projects} />}
+            {activeTab === 'geospatial' && (
+              <GeospatialTab data={data.geospatial} permissions={data.permissions} />
             )}
           </>
         )}
