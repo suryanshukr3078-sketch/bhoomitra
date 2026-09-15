@@ -55,11 +55,11 @@ export function invalidateApiCache(pathPrefix?: string): void {
     clientMemoryCache.clear();
     return;
   }
-  for (const key of clientMemoryCache.keys()) {
+  Array.from(clientMemoryCache.keys()).forEach((key) => {
     if (key.includes(pathPrefix)) {
       clientMemoryCache.delete(key);
     }
-  }
+  });
 }
 
 export async function apiRequest<T>(

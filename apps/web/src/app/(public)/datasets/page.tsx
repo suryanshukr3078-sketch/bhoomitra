@@ -102,6 +102,36 @@ const DATASETS: DatasetItem[] = [
     description:
       'Field-verified parcel shapefiles for canal irrigation distribution, soil classification, and crop tenancy records.',
   },
+  {
+    id: 'ds-05',
+    title: 'Sentinel-2 Multi-Spectral Land Cover & Agrarian NDVI Index 2026',
+    format: 'Cloud-Optimized GeoTIFF',
+    featuresCount: '10m Multi-spectral Bands',
+    srid: 'EPSG:4326 (WGS 84)',
+    bbox: '[68.12, 8.08, 97.39, 37.05]',
+    fileSize: '3.2 GB',
+    fileSizeBytes: 3435973836,
+    lastUpdated: 'August 2026',
+    lastUpdatedTimestamp: 1785600000000,
+    jurisdiction: 'National (India)',
+    description:
+      'Cloud-optimized remote sensing raster mosaic providing NDVI vegetation health, seasonal crop canopy classification, and surface water dynamics.',
+  },
+  {
+    id: 'ds-06',
+    title: 'All-India Agrarian Landholding Census & Fragmentation Index',
+    format: 'GeoJSON',
+    featuresCount: '14,200 Sub-divisions',
+    srid: 'EPSG:4326 (WGS 84)',
+    bbox: '[68.12, 8.08, 97.39, 37.05]',
+    fileSize: '112.5 MB',
+    fileSizeBytes: 117964800,
+    lastUpdated: 'May 2026',
+    lastUpdatedTimestamp: 1777593600000,
+    jurisdiction: 'National (India)',
+    description:
+      'Socio-economic census polygons correlating operational landholding sizes, agricultural credit density, and tenant farmer formalization indices.',
+  },
 ];
 
 export default function DatasetsPage() {
@@ -567,6 +597,65 @@ export default function DatasetsPage() {
           </motion.button>
         </div>
       )}
+
+      {/* AI-Powered Cross-Domain Recommendations */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 mt-10">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2 text-emerald-800">
+            <span className="text-sm font-bold flex items-center gap-1.5">
+              <span>Connected Policies &amp; Research Citations</span>
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 font-medium">Derived from PostGIS spatial features</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            href="/maps"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase">
+              Interactive GIS Map
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              View Cadastral Parcels on Full Interactive Map
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Inspect sub-decimeter PostGIS parcel polygons across Delhi, Bhopal, Pune, and Bangalore with live satellite overlays.
+            </p>
+          </Link>
+
+          <Link
+            href="/policies"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full uppercase">
+              Related Statutory Policy
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              Digital Cadastral Survey &amp; Real-Time Mutation Mandate 2026
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Mandates automated validation of all conveyance deeds against registered vector boundary polygons.
+            </p>
+          </Link>
+
+          <Link
+            href="/developers"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full uppercase">
+              Developer APIs
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              Consume Datasets via OGC WFS &amp; GeoJSON REST
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Stream vector geometries directly into QGIS, ArcGIS Pro, MapLibre GL, and Leaflet.
+            </p>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

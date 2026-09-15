@@ -36,6 +36,10 @@ export interface MapViewProps {
     surveyPoints?: boolean;
     satellite?: boolean;
     disputedZones?: boolean;
+    landUse?: boolean;
+    climateVulnerability?: boolean;
+    infrastructure?: boolean;
+    fraTenure?: boolean;
   };
   className?: string;
 }
@@ -181,6 +185,10 @@ export function MapView({
     surveyPoints: true,
     satellite: false,
     disputedZones: false,
+    landUse: false,
+    climateVulnerability: false,
+    infrastructure: false,
+    fraTenure: false,
   },
   className = 'w-full h-full min-h-[400px]',
 }: MapViewProps) {
@@ -376,6 +384,26 @@ export function MapView({
         'visibility',
         activeLayers.polygons !== false ? 'visible' : 'none'
       );
+
+      // Thematic styling: override polygon color dynamically when a thematic GIS layer is enabled
+      let thematicColor: any = [
+        'case',
+        ['==', ['get', 'id'], selectedFeatureId || ''],
+        '#047857',
+        '#059669',
+      ];
+
+      if (activeLayers.climateVulnerability) {
+        thematicColor = '#ef4444'; // Red for climate/flood hazard overlay
+      } else if (activeLayers.fraTenure) {
+        thematicColor = '#0d9488'; // Teal for FRA tribal tenure
+      } else if (activeLayers.infrastructure) {
+        thematicColor = '#8b5cf6'; // Purple for industrial corridors / SEZ
+      } else if (activeLayers.landUse) {
+        thematicColor = '#16a34a'; // Vibrant green for agrarian land use
+      }
+
+      map.setPaintProperty('cadastral-polygons-fill', 'fill-color', thematicColor);
     }
     if (map.getLayer('cadastral-polygons-line')) {
       map.setLayoutProperty(
@@ -391,7 +419,7 @@ export function MapView({
         activeLayers.surveyPoints !== false ? 'visible' : 'none'
       );
     }
-  }, [activeLayers, mapLoaded]);
+  }, [activeLayers, mapLoaded, selectedFeatureId]);
 
   // Update center and zoom when props change
   useEffect(() => {

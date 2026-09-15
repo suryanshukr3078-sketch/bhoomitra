@@ -111,6 +111,10 @@ export default function MapsPage() {
     surveyPoints: true,
     satellite: false,
     disputedZones: false,
+    landUse: false,
+    climateVulnerability: false,
+    infrastructure: false,
+    fraTenure: false,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [showLayerPanel, setShowLayerPanel] = useState(false);
@@ -298,6 +302,77 @@ export default function MapsPage() {
                 className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
               />
             </label>
+
+            <div className="pt-2 border-t border-slate-800 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+              Thematic Visualizations
+            </div>
+            <label className="flex items-center justify-between cursor-pointer py-1 text-emerald-300">
+              <span>Land Use Patterns (Agri/Urban/Forest)</span>
+              <input
+                type="checkbox"
+                checked={activeLayers.landUse}
+                onChange={() => toggleLayer('landUse')}
+                className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500"
+              />
+            </label>
+            <label className="flex items-center justify-between cursor-pointer py-1 text-rose-300">
+              <span>Climate & Flood Hazard Zones</span>
+              <input
+                type="checkbox"
+                checked={activeLayers.climateVulnerability}
+                onChange={() => toggleLayer('climateVulnerability')}
+                className="rounded border-slate-700 text-rose-500 focus:ring-rose-500"
+              />
+            </label>
+            <label className="flex items-center justify-between cursor-pointer py-1 text-purple-300">
+              <span>Infrastructure & Freight Corridors</span>
+              <input
+                type="checkbox"
+                checked={activeLayers.infrastructure}
+                onChange={() => toggleLayer('infrastructure')}
+                className="rounded border-slate-700 text-purple-500 focus:ring-purple-500"
+              />
+            </label>
+            <label className="flex items-center justify-between cursor-pointer py-1 text-teal-300">
+              <span>Forest Rights Act (FRA) Titles</span>
+              <input
+                type="checkbox"
+                checked={activeLayers.fraTenure}
+                onChange={() => toggleLayer('fraTenure')}
+                className="rounded border-slate-700 text-teal-500 focus:ring-teal-500"
+              />
+            </label>
+          </div>
+        )}
+
+        {/* Thematic Legend Float */}
+        {(activeLayers.landUse || activeLayers.climateVulnerability || activeLayers.infrastructure || activeLayers.fraTenure) && (
+          <div className="p-3 bg-slate-900/95 border border-slate-700 rounded-xl shadow-xl backdrop-blur-md text-[11px] space-y-1.5 animate-in fade-in">
+            <div className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Active Thematic Legend</div>
+            {activeLayers.landUse && (
+              <div className="flex items-center gap-2 text-emerald-300">
+                <div className="w-3 h-3 rounded bg-emerald-600 shrink-0" />
+                <span>Green: Agrarian & Protected Buffer</span>
+              </div>
+            )}
+            {activeLayers.climateVulnerability && (
+              <div className="flex items-center gap-2 text-rose-300">
+                <div className="w-3 h-3 rounded bg-rose-500 shrink-0" />
+                <span>Red: High Flood & Vulnerability Zone</span>
+              </div>
+            )}
+            {activeLayers.infrastructure && (
+              <div className="flex items-center gap-2 text-purple-300">
+                <div className="w-3 h-3 rounded bg-purple-500 shrink-0" />
+                <span>Purple: Special Economic Zone / Industrial Corridor</span>
+              </div>
+            )}
+            {activeLayers.fraTenure && (
+              <div className="flex items-center gap-2 text-teal-300">
+                <div className="w-3 h-3 rounded bg-teal-500 shrink-0" />
+                <span>Teal: Gram Sabha Forest Rights Demarcation</span>
+              </div>
+            )}
           </div>
         )}
       </div>

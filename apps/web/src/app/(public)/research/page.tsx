@@ -98,6 +98,34 @@ const PAPERS: ResearchPaper[] = [
     abstract:
       'Centimeter-accuracy orthomosaic processing with Cloud-Optimized GeoTIFFs for informal settlement formalization.',
   },
+  {
+    id: 'res-005',
+    title: 'Legal Jurisprudence of Adverse Possession vs Conclusive Title in Indian Common Law',
+    authors: ['Adv. Vikramaditya Joshi', 'Dr. Radhika Nair'],
+    journal: 'National Law School of India Land Review',
+    publisher: 'NLSIU Bangalore & Ministry of Law and Justice',
+    doi: '10.1093/jls/2026.0412',
+    publicationDate: 'April 2026',
+    publicationTimestamp: 1775001600000,
+    peerReviewed: true,
+    category: 'Legal & Jurisprudence',
+    abstract:
+      'Critical legal synthesis tracing statutory shifts from presumptive title deeds to state-guaranteed conclusive registration under Seventh Schedule mandates.',
+  },
+  {
+    id: 'res-006',
+    title: 'Sub-Divisional Cadastral Reconstitution: An Empirical Case Study of Pune North MIDC Grid',
+    authors: ['Prof. Sneha Patil', 'R. M. Kulkarni'],
+    journal: 'Journal of Indian Spatial Administration & Economic Growth',
+    publisher: 'Gokhale Institute of Politics and Economics',
+    doi: '10.1080/09614524.2026.11890',
+    publicationDate: 'March 2026',
+    publicationTimestamp: 1772496000000,
+    peerReviewed: true,
+    category: 'Field Case Studies',
+    abstract:
+      'Field evaluation of automated parcel consolidation and land pooling mutation speed across 1,200 industrial plots in Pune district.',
+  },
 ];
 
 export default function ResearchPage() {
@@ -112,7 +140,7 @@ export default function ResearchPage() {
   const pageSize = 6;
   const { toast } = useToast();
 
-  const categories = ['All', 'Cadastral GIS', 'Tenure Security', 'Customary Rights'];
+  const categories = ['All', 'Cadastral GIS', 'Tenure Security', 'Customary Rights', 'Legal & Jurisprudence', 'Field Case Studies'];
 
   useEffect(() => {
     let isMounted = true;
@@ -566,6 +594,65 @@ export default function ResearchPage() {
           </motion.button>
         </div>
       )}
+
+      {/* AI-Powered Cross-Domain Recommendations */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 mt-10">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2 text-emerald-800">
+            <span className="text-sm font-bold flex items-center gap-1.5">
+              <span>Connected Policies &amp; Empirical Datasets</span>
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 font-medium">Cross-domain graph matching</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            href="/policies"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase">
+              Statutory Policy
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              National Conclusive Land Titling &amp; Digital Registry Act 2026
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Enacts the statutory framework analyzed in recent jurisprudence papers on adverse possession mitigation.
+            </p>
+          </Link>
+
+          <Link
+            href="/datasets"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full uppercase">
+              Ground Truth Dataset
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              Pune District Cadastral Parcel Polygons 2026
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Empirical PostGIS dataset with verified survey timestamps and 48,200 digitized parcel boundaries.
+            </p>
+          </Link>
+
+          <Link
+            href="/innovation"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full uppercase">
+              Research Funding
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              Apply for ₹25 Lakh National Land Research Grant
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Open call for academic proposals investigating conclusive titling, credit access, and tenurial justice.
+            </p>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

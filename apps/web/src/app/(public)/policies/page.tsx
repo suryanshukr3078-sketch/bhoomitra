@@ -36,6 +36,7 @@ interface PolicyDocument {
   jurisdictionName: string;
   issuingAuthority: string;
   lifecycleStatus: 'active' | 'consultation' | 'draft' | 'superseded';
+  docType?: 'policy' | 'legal_document' | 'case_study';
   effectiveFrom: string;
   effectiveTimestamp: number;
   legalBasis: string;
@@ -99,6 +100,67 @@ const POLICIES: PolicyDocument[] = [
     legalBasis: 'Gujarat Agricultural Tenancy Act',
     summary:
       'Framework for 5-year tenant farmer protections (superseded by National Unified Tenancy Framework 2026).',
+    docType: 'policy',
+  },
+  {
+    id: 'pol-005',
+    policyNumber: 'ACT-CENTRAL-2026-01',
+    title: 'National Conclusive Land Titling & Digital Registry Act 2026',
+    jurisdictionCode: 'IN-DL',
+    jurisdictionName: 'National / Central',
+    issuingAuthority: 'Ministry of Rural Development & Parliament of India',
+    lifecycleStatus: 'active',
+    docType: 'legal_document',
+    effectiveFrom: 'April 1, 2026',
+    effectiveTimestamp: 1775001600000,
+    legalBasis: 'Constitution of India, Seventh Schedule Entry 18',
+    summary:
+      'Statutory legal enactment transitioning presumptive deeds to state-guaranteed conclusive titles with indemnification provisions.',
+  },
+  {
+    id: 'pol-006',
+    policyNumber: 'JUD-SC-2025-88',
+    title: 'Supreme Court Landmark Directive on Gram Sabha Community Forest Demarcation',
+    jurisdictionCode: 'IN-SC',
+    jurisdictionName: 'Supreme Court of India',
+    issuingAuthority: 'Supreme Court of India (Appellate Jurisdiction)',
+    lifecycleStatus: 'active',
+    docType: 'legal_document',
+    effectiveFrom: 'November 20, 2025',
+    effectiveTimestamp: 1763596800000,
+    legalBasis: 'FRA 2006, Sec 6(1) & Article 21',
+    summary:
+      'Judicial binding precedent mandating statutory recognition of Gram Sabha spatial boundaries over arbitrary administrative revenue partitions.',
+  },
+  {
+    id: 'pol-007',
+    policyNumber: 'CAS-TG-2026-03',
+    title: 'Dharani Portal Real-Time Digital Mutation: Empirical Case Study of Rangareddy District',
+    jurisdictionCode: 'IN-TG',
+    jurisdictionName: 'Telangana',
+    issuingAuthority: 'Centre for Good Governance & Revenue Academy',
+    lifecycleStatus: 'active',
+    docType: 'case_study',
+    effectiveFrom: 'February 10, 2026',
+    effectiveTimestamp: 1770681600000,
+    legalBasis: 'Telangana Rights in Land and Pattadar Passbooks Act 2020',
+    summary:
+      'Field case study evaluating the elimination of revenue discretionary powers through algorithmic slotted mutation appointments.',
+  },
+  {
+    id: 'pol-008',
+    policyNumber: 'CAS-MP-2026-01',
+    title: 'SVAMITVA Abadi Drone Parcel Demarcation: Field Case Study in Harda MP',
+    jurisdictionCode: 'IN-MP',
+    jurisdictionName: 'Madhya Pradesh',
+    issuingAuthority: 'Madhya Pradesh State Land Revenue Directorate',
+    lifecycleStatus: 'active',
+    docType: 'case_study',
+    effectiveFrom: 'March 14, 2026',
+    effectiveTimestamp: 1773446400000,
+    legalBasis: 'SVAMITVA Scheme Guidelines 2021',
+    summary:
+      'Empirical analysis of 100% rural residential property card distribution and resultant reduction in boundary dispute litigation.',
   },
 ];
 
@@ -106,6 +168,7 @@ export default function PoliciesPage() {
   const prefersReduced = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [docTypeFilter, setDocTypeFilter] = useState<'all' | 'policy' | 'legal_document' | 'case_study'>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'jurisdiction_asc'>('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -113,6 +176,13 @@ export default function PoliciesPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const pageSize = 6;
   const { toast } = useToast();
+
+  const DOC_TYPE_TABS = [
+    { value: 'all', label: 'All Resources' },
+    { value: 'policy', label: 'Policy Directives' },
+    { value: 'legal_document', label: 'Legal Acts & Orders' },
+    { value: 'case_study', label: 'Field Case Studies' },
+  ];
 
   const STATUS_TABS = [
     { value: 'All', label: 'All Statuses' },
@@ -195,7 +265,8 @@ export default function PoliciesPage() {
         p.jurisdictionName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.summary.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'All' || p.lifecycleStatus === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesDocType = docTypeFilter === 'all' || (p.docType || 'policy') === docTypeFilter;
+      return matchesSearch && matchesStatus && matchesDocType;
     });
 
     return filtered.sort((a, b) => {
@@ -204,7 +275,7 @@ export default function PoliciesPage() {
       if (sortBy === 'jurisdiction_asc') return a.jurisdictionName.localeCompare(b.jurisdictionName);
       return 0;
     });
-  }, [allAvailablePolicies, searchQuery, statusFilter, sortBy]);
+  }, [allAvailablePolicies, searchQuery, statusFilter, docTypeFilter, sortBy]);
 
   const totalPages = Math.ceil(filteredAndSortedPolicies.length / pageSize) || 1;
   const paginatedPolicies = useMemo(() => {
@@ -329,30 +400,55 @@ export default function PoliciesPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Status Filter */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              {STATUS_TABS.map((tab) => (
-                <motion.button
+          <div className="flex flex-col gap-2.5">
+            {/* Document Type Filter (Policy, Legal Document, Case Study) */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                Document Type:
+              </span>
+              {DOC_TYPE_TABS.map((tab) => (
+                <button
                   key={tab.value}
                   type="button"
-                  whileHover={prefersReduced ? undefined : { scale: 1.04 }}
-                  whileTap={prefersReduced ? undefined : { scale: 0.96 }}
-                  transition={{ duration: 0.12 }}
                   onClick={() => {
-                    setStatusFilter(tab.value);
+                    setDocTypeFilter(tab.value as any);
                     setCurrentPage(1);
                   }}
-                  className={`px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
-                    statusFilter === tab.value
-                      ? 'bg-gradient-to-r from-emerald-800 to-teal-700 text-white shadow-sm'
-                      : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/90'
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                    docTypeFilter === tab.value
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   {tab.label}
-                </motion.button>
+                </button>
               ))}
             </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Status Filter */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                {STATUS_TABS.map((tab) => (
+                  <motion.button
+                    key={tab.value}
+                    type="button"
+                    whileHover={prefersReduced ? undefined : { scale: 1.04 }}
+                    whileTap={prefersReduced ? undefined : { scale: 0.96 }}
+                    transition={{ duration: 0.12 }}
+                    onClick={() => {
+                      setStatusFilter(tab.value);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl whitespace-nowrap transition-all ${
+                      statusFilter === tab.value
+                        ? 'bg-gradient-to-r from-emerald-800 to-teal-700 text-white shadow-sm'
+                        : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/90'
+                    }`}
+                  >
+                    {tab.label}
+                  </motion.button>
+                ))}
+              </div>
 
             {/* Sort Dropdown */}
             <div className="flex items-center gap-1.5 border border-slate-300 rounded-xl px-3 py-2 bg-white text-xs text-slate-700 shadow-sm">
@@ -371,6 +467,7 @@ export default function PoliciesPage() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Item Count & Page Info */}
       <div className="flex items-center justify-between text-xs text-slate-500 px-1 font-medium">
@@ -552,6 +649,65 @@ export default function PoliciesPage() {
           </motion.button>
         </div>
       )}
+
+      {/* AI-Powered Cross-Domain Recommendations */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 mt-10">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2 text-emerald-800">
+            <span className="text-sm font-bold flex items-center gap-1.5">
+              <span>AI Recommendations &amp; Connected Evidence</span>
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 font-medium">Cross-domain graph matching</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            href="/research"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full uppercase">
+              Supporting Research
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              PostGIS Cadastral Polygon Topology &amp; Boundary Dispute Prevention
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Validates empirical effectiveness of the Digital Cadastral Survey mandate across 45,000 communal parcels.
+            </p>
+          </Link>
+
+          <Link
+            href="/datasets"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full uppercase">
+              Verified Spatial Layer
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              National Cadastral Parcel Polygons &amp; Boundary Reconciliations 2026
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Sub-decimeter PostGIS parcel polygons supporting statutory 7/12 land mutation procedures.
+            </p>
+          </Link>
+
+          <Link
+            href="/simulation"
+            className="p-4 rounded-xl bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 transition-all group block"
+          >
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full uppercase">
+              Policy Simulation
+            </span>
+            <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 mt-2 line-clamp-2">
+              Simulate Proposed Tenancy &amp; Stamp Duty Reforms
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+              Project multi-year agricultural credit inflow and dispute reduction before statutory enactment.
+            </p>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
