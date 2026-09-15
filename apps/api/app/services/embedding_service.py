@@ -63,7 +63,9 @@ def get_effective_gemini_api_key() -> str | None:
     if not raw:
         return None
     cleaned = str(raw).strip().strip("'\"")
-    return cleaned if cleaned else None
+    if not cleaned or cleaned.startswith("@") or "your-" in cleaned.lower():
+        return None
+    return cleaned
 
 
 def generate_embedding(text: str, allow_fallback: bool = True) -> list[float] | None:
@@ -94,10 +96,14 @@ def generate_embedding(text: str, allow_fallback: bool = True) -> list[float] | 
         try:
             from google import genai
 
-            client = genai.Client(api_key=api_key)
-            truncated_text = clean_text[:8000]
+            try:
+                client = genai.Client(api_key=api_key, http_options={"timeout": 3000})
+            except Exception:
+                client = genai.Client(api_key=api_key)
+            truncated_text = clean_text[:2000]
 
-            for m in unique_embed_models:
+            models_to_try = unique_embed_models[:2]
+            for m in models_to_try:
                 try:
                     response = client.models.embed_content(
                         model=m,

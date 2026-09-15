@@ -162,9 +162,17 @@ def generate_rag_answer(
         try:
             from google import genai
 
-            client = genai.Client(api_key=api_key)
+            try:
+                client = genai.Client(api_key=api_key, http_options={"timeout": 5000})
+            except Exception:
+                client = genai.Client(api_key=api_key)
 
-            for model_candidate in unique_models:
+            # Restrict to at most 2 fast, reliable models to stay strictly within serverless budget
+            models_to_try = [m for m in unique_models if m in ("gemini-2.0-flash", "gemini-1.5-flash")][:2]
+            if not models_to_try:
+                models_to_try = unique_models[:2]
+
+            for model_candidate in models_to_try:
                 try:
                     response = client.models.generate_content(
                         model=model_candidate,

@@ -369,20 +369,25 @@ async def assistant_evidence_search(
                 import structlog
                 structlog.get_logger(__name__).warning("Keyword search inside assistant failed", error=str(kw_err))
 
-    # B. Semantic vector retrieval
+    # B. Semantic vector retrieval (timeout guarded to 3.0s max)
     try:
-        semantic_result = await semantic_search(
-            request=request,
-            response=response,
-            payload=SemanticSearchRequest(query=question_text, limit=effective_limit * 2),
-            resource_type=None,
-            limit=effective_limit * 2,
-            db=db,
+        import asyncio
+
+        semantic_result = await asyncio.wait_for(
+            semantic_search(
+                request=request,
+                response=response,
+                payload=SemanticSearchRequest(query=question_text, limit=effective_limit * 2),
+                resource_type=None,
+                limit=effective_limit * 2,
+                db=db,
+            ),
+            timeout=3.0,
         )
         vector_items = semantic_result.get("items", [])
     except Exception as search_err:
         import structlog
-        structlog.get_logger(__name__).warning("Semantic search inside assistant failed", error=str(search_err))
+        structlog.get_logger(__name__).warning("Semantic search inside assistant skipped or timed out", error=str(search_err))
         vector_items = []
 
     # C. Merge items prioritizing keyword relevance then semantic similarity
