@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.auth import get_optional_current_user
+from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.db import get_db
 from app.core.limiter import limiter
 from app.core.storage import ALLOWED_EXTENSIONS
@@ -23,7 +23,7 @@ from app.models.enums import (
     SpatialStorageType,
     UserStatus,
 )
-from app.models.identity import Organization, User
+from app.models.identity import Organization, OrganizationMembership, User
 from app.models.resources import Policy, ResearchPaper, Resource, SpatialLayer
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
@@ -79,41 +79,38 @@ async def create_resource(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     try:
-        # 1. Resolve Creator User
-        user_id = current_user.id if current_user else None
-        if not user_id:
-            user_res = await db.execute(select(User).limit(1))
-            existing_user = user_res.scalars().first()
-            if existing_user:
-                user_id = existing_user.id
-            else:
-                new_user = User(
-                    email="contributor@landgovernance.org",
-                    full_name="Registry Contributor",
-                    status=UserStatus.ACTIVE,
-                    is_superuser=False,
-                )
-                db.add(new_user)
-                await db.flush()
-                user_id = new_user.id
+        # 1. Use the authenticated user's ID directly (any logged-in user may contribute)
+        user_id = current_user.id
 
-        # 2. Resolve Owner Organization
-        org_res = await db.execute(select(Organization).limit(1))
-        existing_org = org_res.scalars().first()
-        if existing_org:
-            org_id = existing_org.id
-        else:
-            new_org = Organization(
-                name="National Land Governance Observatory",
-                slug=f"national-land-observatory-{uuid4().hex[:6]}",
-                organization_type=OrganizationType.GOVERNMENT,
+        # 2. Resolve Owner Organization: prefer user's own membership org, fallback to first org
+        org_id = None
+        if current_user.id:
+            mem_res = await db.execute(
+                select(OrganizationMembership)
+                .where(OrganizationMembership.user_id == current_user.id)
+                .limit(1)
             )
-            db.add(new_org)
-            await db.flush()
-            org_id = new_org.id
+            mem = mem_res.scalar_one_or_none()
+            if mem:
+                org_id = mem.organization_id
+
+        if not org_id:
+            org_res = await db.execute(select(Organization).limit(1))
+            existing_org = org_res.scalars().first()
+            if existing_org:
+                org_id = existing_org.id
+            else:
+                new_org = Organization(
+                    name="National Land Governance Observatory",
+                    slug=f"national-land-observatory-{uuid4().hex[:6]}",
+                    organization_type=OrganizationType.GOVERNMENT,
+                )
+                db.add(new_org)
+                await db.flush()
+                org_id = new_org.id
 
         # 3. Create Resource
         slug = generate_slug(payload.title)

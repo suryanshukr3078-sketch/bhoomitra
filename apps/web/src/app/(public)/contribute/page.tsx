@@ -205,36 +205,7 @@ export default function ContributePage() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mx-auto flex items-center justify-center shadow-sm">
-          <AlertCircle className="w-8 h-8" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">
-            Sign-in Required to Contribute
-          </h1>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            The decentralized contribution portal is restricted to authenticated institutional users, researchers, and administrators. Please log in with your credentials to submit cadastral records and research documents.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <Link
-            href="/login?redirect=/contribute"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-xl shadow-md transition-colors"
-          >
-            <LogIn className="w-4 h-4" />
-            Sign In to Contribute
-          </Link>
-          <Link
-            href="/"
-            className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors"
-          >
-            Back to Home
-          </Link>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -363,9 +334,9 @@ export default function ContributePage() {
               <input
                 id="file-upload"
                 type="file"
-                accept=".pdf,.geojson,.json,.tif,.tiff,.png,.jpg,.jpeg"
+                accept="application/pdf,image/png,image/jpeg,image/jpg,.pdf,.geojson,.json,.tif,.tiff,.png,.jpg,.jpeg"
                 onChange={handleFileChange}
-                className="hidden"
+                className="sr-only"
               />
               <label
                 htmlFor="file-upload"

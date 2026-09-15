@@ -30,35 +30,20 @@ export default function AdminLayout({
     }
   }, [isLoading, isAuthenticated, isAdmin, router]);
 
+  // While auth state is resolving (initial load or between navigations), show spinner.
+  // This prevents the "Access Denied" block from flashing on valid admin navigations.
   if (isLoading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
-        <p className="text-sm font-medium text-slate-600">Verifying administrator credentials...</p>
+        <p className="text-sm font-medium text-slate-600">Loading admin portal...</p>
       </div>
     );
   }
 
+  // Only show the access denied block when we have a definitive answer: loaded + not admin.
   if (!isAuthenticated || !isAdmin) {
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-4 shadow-sm">
-          <ShieldAlert className="w-8 h-8" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
-        <p className="text-sm text-slate-600 max-w-md mb-6">
-          This portal is restricted to authorized platform administrators and registrar officers.
-          You are being redirected to the homepage...
-        </p>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Return to Platform Homepage
-        </Link>
-      </div>
-    );
+    return null;
   }
 
   const navTabs = [

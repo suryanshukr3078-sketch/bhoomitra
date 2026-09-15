@@ -675,7 +675,7 @@ export default function DashboardPage() {
                   <input
                     id="dash-file-upload"
                     type="file"
-                    accept=".pdf,.geojson,.json,.tif,.tiff,.png,.jpg,.jpeg"
+                    accept="application/pdf,image/png,image/jpeg,image/jpg,.pdf,.geojson,.json,.tif,.tiff,.png,.jpg,.jpeg"
                     onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
                     className="text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                   />

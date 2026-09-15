@@ -11,10 +11,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Protect /dashboard and /contribute routes: redirect unauthenticated visits to /login
+  // Protect /dashboard, /contribute, and /admin routes: redirect unauthenticated visits to /login
   if (
     request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/contribute')
+    request.nextUrl.pathname.startsWith('/contribute') ||
+    request.nextUrl.pathname.startsWith('/admin')
   ) {
     const token =
       request.cookies.get('access_token')?.value ||
