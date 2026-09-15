@@ -37,7 +37,7 @@ if settings.is_serverless:
         settings.database_url,
         echo=settings.debug,
         poolclass=NullPool,
-        pool_pre_ping=True,
+        pool_pre_ping=False,
         connect_args={
             "application_name": settings.app_name,
             "options": serverless_options,

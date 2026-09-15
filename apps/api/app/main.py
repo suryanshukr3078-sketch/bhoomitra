@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import configure_logging
 from app.core.middleware import (
+    CacheControlMiddleware,
     QueryPathRewriteMiddleware,
     RequestIDMiddleware,
 )
@@ -171,6 +172,10 @@ def create_application() -> FastAPI:
     application.add_middleware(
         GZipMiddleware,
         minimum_size=1000,
+    )
+
+    application.add_middleware(
+        CacheControlMiddleware,
     )
 
     application.add_middleware(

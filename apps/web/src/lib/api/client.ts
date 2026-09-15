@@ -42,6 +42,26 @@ export function clearAuthToken(): void {
   }
 }
 
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const clientMemoryCache = new Map<string, CacheEntry<unknown>>();
+const CACHE_TTL_MS = 45 * 1000; // 45s fresh in-memory TTL
+
+export function invalidateApiCache(pathPrefix?: string): void {
+  if (!pathPrefix) {
+    clientMemoryCache.clear();
+    return;
+  }
+  for (const key of clientMemoryCache.keys()) {
+    if (key.includes(pathPrefix)) {
+      clientMemoryCache.delete(key);
+    }
+  }
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {}
@@ -56,12 +76,33 @@ export async function apiRequest<T>(
     url = `${origin}${url}`;
   }
 
+  const method = (options.method || 'GET').toUpperCase();
+  const token = getAuthToken();
+
+  // Invalidate cache on write operations
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    invalidateApiCache();
+  }
+
+  // Check client-side in-memory cache for GET requests
+  const isGet = method === 'GET';
+  const shouldSkipCache =
+    options.cache === 'no-store' ||
+    (options.headers as Record<string, string>)?.[ 'Cache-Control']?.includes('no-cache');
+
+  const cacheKey = `${url}:${token || 'anon'}`;
+  if (typeof window !== 'undefined' && isGet && !shouldSkipCache) {
+    const cached = clientMemoryCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data as T;
+    }
+  }
+
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(options.headers as Record<string, string>),
   };
 
-  const token = getAuthToken();
   if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -87,7 +128,14 @@ export async function apiRequest<T>(
     throw new Error(errorDetail);
   }
 
-  return res.json() as Promise<T>;
+  const data = (await res.json()) as T;
+
+  // Save to client-side in-memory cache
+  if (typeof window !== 'undefined' && isGet && !shouldSkipCache) {
+    clientMemoryCache.set(cacheKey, { data, timestamp: Date.now() });
+  }
+
+  return data;
 }
 
 /**

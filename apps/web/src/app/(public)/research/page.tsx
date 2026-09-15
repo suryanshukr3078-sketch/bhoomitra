@@ -118,21 +118,17 @@ export default function ResearchPage() {
     let isMounted = true;
     setIsLoading(true);
 
+    const debounceDelay = searchQuery ? 250 : 0;
     const timer = setTimeout(async () => {
       try {
-        const queryParam = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
-        // Try standard REST collection route /resources first, fallback to /search
-        let data = await apiGet<{ items: any[]; count: number }>(
-          `/resources?resource_type=research_paper${queryParam}`,
+        const endpoint = searchQuery
+          ? `/search?resource_type=research_paper&q=${encodeURIComponent(searchQuery)}`
+          : `/resources?resource_type=research_paper`;
+
+        const data = await apiGet<{ items: any[]; count: number }>(
+          endpoint,
           { items: [], count: 0 }
         );
-
-        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
-          data = await apiGet<{ items: any[]; count: number }>(
-            `/search?resource_type=research_paper${queryParam}`,
-            { items: [], count: 0 }
-          );
-        }
 
         if (!isMounted) return;
 
@@ -194,7 +190,7 @@ export default function ResearchPage() {
       } finally {
         if (isMounted) setIsLoading(false);
       }
-    }, 250);
+    }, debounceDelay);
 
     return () => {
       isMounted = false;

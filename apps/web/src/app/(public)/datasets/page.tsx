@@ -122,28 +122,17 @@ export default function DatasetsPage() {
     let isMounted = true;
     setIsLoading(true);
 
+    const debounceDelay = searchQuery ? 250 : 0;
     const timer = setTimeout(async () => {
       try {
-        const queryParam = searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : '';
-        // Try standard REST collection route /resources first, fallback to /datasets and /search
-        let data = await apiGet<{ items: any[]; count: number }>(
-          `/resources?resource_type=dataset${queryParam}`,
+        const endpoint = searchQuery
+          ? `/search?resource_type=dataset&q=${encodeURIComponent(searchQuery)}`
+          : `/resources?resource_type=dataset`;
+
+        const data = await apiGet<{ items: any[]; count: number }>(
+          endpoint,
           { items: [], count: 0 }
         );
-
-        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
-          data = await apiGet<{ items: any[]; count: number }>(
-            `/datasets?${queryParam.replace(/^&/, '')}`,
-            { items: [], count: 0 }
-          );
-        }
-
-        if (!data || !Array.isArray(data.items) || data.items.length === 0) {
-          data = await apiGet<{ items: any[]; count: number }>(
-            `/search?resource_type=dataset${queryParam}`,
-            { items: [], count: 0 }
-          );
-        }
 
         if (!isMounted) return;
 
@@ -180,7 +169,7 @@ export default function DatasetsPage() {
       } finally {
         if (isMounted) setIsLoading(false);
       }
-    }, 250);
+    }, debounceDelay);
 
     return () => {
       isMounted = false;

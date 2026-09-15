@@ -130,39 +130,22 @@ async def build_dashboard_data(
     db: AsyncSession,
     permissions: RolePermissions,
 ) -> DashboardOverviewResponse:
-    # 1. Base database counts
-    total_papers_db = (
-        await db.execute(select(func.count(ResearchPaper.resource_id)))
-    ).scalar_one() or 0
-    total_policies_db = (
-        await db.execute(select(func.count(Policy.resource_id)))
-    ).scalar_one() or 0
-    total_spatial_db = (
-        await db.execute(select(func.count(SpatialFeature.id)))
-    ).scalar_one() or 0
-
-    # Policy status breakdown
-    enacted_policies_db = (
-        await db.execute(
-            select(func.count(Policy.resource_id)).where(
-                Policy.lifecycle_status == PolicyLifecycleStatus.ACTIVE
-            )
-        )
-    ).scalar_one() or 0
-    under_review_db = (
-        await db.execute(
-            select(func.count(Policy.resource_id)).where(
-                Policy.lifecycle_status == PolicyLifecycleStatus.CONSULTATION
-            )
-        )
-    ).scalar_one() or 0
-    draft_policies_db = (
-        await db.execute(
-            select(func.count(Policy.resource_id)).where(
-                Policy.lifecycle_status == PolicyLifecycleStatus.DRAFT
-            )
-        )
-    ).scalar_one() or 0
+    # 1. Base database counts retrieved in a single batched query
+    counts_stmt = select(
+        select(func.count(ResearchPaper.resource_id)).scalar_subquery().label("total_papers"),
+        select(func.count(SpatialFeature.id)).scalar_subquery().label("total_spatial"),
+        func.count(Policy.resource_id).label("total_policies"),
+        func.count(Policy.resource_id).filter(Policy.lifecycle_status == PolicyLifecycleStatus.ACTIVE).label("enacted_policies"),
+        func.count(Policy.resource_id).filter(Policy.lifecycle_status == PolicyLifecycleStatus.CONSULTATION).label("under_review"),
+        func.count(Policy.resource_id).filter(Policy.lifecycle_status == PolicyLifecycleStatus.DRAFT).label("draft_policies"),
+    )
+    counts_res = (await db.execute(counts_stmt)).mappings().one()
+    total_papers_db = counts_res["total_papers"] or 0
+    total_spatial_db = counts_res["total_spatial"] or 0
+    total_policies_db = counts_res["total_policies"] or 0
+    enacted_policies_db = counts_res["enacted_policies"] or 0
+    under_review_db = counts_res["under_review"] or 0
+    draft_policies_db = counts_res["draft_policies"] or 0
 
     # 2. Research Metrics
     base_papers = max(total_papers_db, 48)

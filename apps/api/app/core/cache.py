@@ -21,6 +21,10 @@ class CacheService:
     async def _get_client(self) -> aioredis.Redis | None:
         if not self._redis_available:
             return None
+        # In serverless environments (Vercel), skip local 127.0.0.1/localhost Redis to avoid 2s connection timeout
+        if settings.is_serverless and any(h in self.redis_url for h in ("127.0.0.1", "localhost")):
+            self._redis_available = False
+            return None
         if self._redis is None:
             try:
                 self._redis = aioredis.from_url(
