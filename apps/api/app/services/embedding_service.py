@@ -85,7 +85,6 @@ def generate_embedding(text: str, allow_fallback: bool = True) -> list[float] | 
     candidate_models = [
         model_name,
         "gemini-embedding-001",
-        "text-embedding-005",
         "text-embedding-004",
     ]
     seen_embed = set()

@@ -77,6 +77,95 @@ export function getResourceTypeMeta(type: string): { label: string; icon: React.
   return { label: type.replace('_', ' ').toUpperCase(), icon: FileText };
 }
 
+/**
+ * Minimal inline markdown renderer — no external package required.
+ * Handles: ## headings, **bold**, * / - bullet lists, and newlines.
+ * Returns an array of React nodes safe to embed inside any container.
+ */
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let listItems: React.ReactNode[] = [];
+
+  const flushList = (key: string) => {
+    if (listItems.length > 0) {
+      nodes.push(
+        <ul key={key} className="list-disc list-outside pl-5 space-y-1 my-2">
+          {listItems}
+        </ul>
+      );
+      listItems = [];
+    }
+  };
+
+  const renderInline = (raw: string, baseKey: string): React.ReactNode => {
+    // Split on **...** bold markers
+    const parts = raw.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={`${baseKey}-b${i}`}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  lines.forEach((line, i) => {
+    const key = `line-${i}`;
+
+    // H2 heading: ## text
+    if (/^##\s+/.test(line)) {
+      flushList(`list-before-${i}`);
+      nodes.push(
+        <h2 key={key} className="text-base font-bold text-slate-900 mt-4 mb-1">
+          {renderInline(line.replace(/^##\s+/, ''), key)}
+        </h2>
+      );
+      return;
+    }
+
+    // H3 heading: ### text
+    if (/^###\s+/.test(line)) {
+      flushList(`list-before-${i}`);
+      nodes.push(
+        <h3 key={key} className="text-sm font-semibold text-slate-800 mt-3 mb-0.5">
+          {renderInline(line.replace(/^###\s+/, ''), key)}
+        </h3>
+      );
+      return;
+    }
+
+    // Bullet list item: * or -
+    if (/^\*\s+/.test(line) || /^-\s+/.test(line)) {
+      listItems.push(
+        <li key={key} className="text-sm leading-relaxed">
+          {renderInline(line.replace(/^[\*\-]\s+/, ''), key)}
+        </li>
+      );
+      return;
+    }
+
+    // Blank line — flush pending list then add spacing
+    if (line.trim() === '') {
+      flushList(`list-at-${i}`);
+      nodes.push(<div key={key} className="h-2" />);
+      return;
+    }
+
+    // Regular paragraph line — flush list first
+    flushList(`list-before-para-${i}`);
+    nodes.push(
+      <p key={key} className="text-sm sm:text-base leading-relaxed">
+        {renderInline(line, key)}
+      </p>
+    );
+  });
+
+  // Flush any trailing list
+  flushList('list-end');
+
+  return nodes;
+}
+
 export function EvidenceAssistant() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -304,9 +393,10 @@ export function EvidenceAssistant() {
 
             {/* Answer Content Body */}
             <div className="p-6 sm:p-8 space-y-4">
-              <div className="text-slate-800 text-sm sm:text-base leading-relaxed whitespace-pre-line font-normal selection:bg-emerald-100">
-                {result.answer}
+              <div className="text-slate-800 text-sm sm:text-base leading-relaxed font-normal selection:bg-emerald-100 space-y-2">
+                {renderMarkdown(result.answer)}
               </div>
+
 
               {/* Persistent Legal Disclaimer Banner */}
               <div className="mt-6 pt-5 border-t border-slate-100">

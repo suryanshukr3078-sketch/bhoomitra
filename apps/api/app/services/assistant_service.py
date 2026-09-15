@@ -147,14 +147,13 @@ def generate_rag_answer(
     )
 
     api_key = get_effective_gemini_api_key()
-    primary_model = getattr(settings, "gemini_text_model", "gemini-3.7-flash") or "gemini-3.7-flash"
+    primary_model = getattr(settings, "gemini_text_model", "gemini-2.0-flash") or "gemini-2.0-flash"
     candidate_models = [
         primary_model,
-        "gemini-3.7-flash",
-        "gemini-flash-latest",
-        "gemini-3.5-flash-lite",
-        "gemini-flash-lite-latest",
-        "gemini-3.6-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+        "gemini-2.5-flash-preview-05-20",
     ]
     seen = set()
     unique_models = [m for m in candidate_models if m and not (m in seen or seen.add(m))]
