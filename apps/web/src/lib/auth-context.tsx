@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiRequest, clearAuthToken } from '@/lib/api/client';
+import { apiRequest, clearAuthToken, getAuthToken } from '@/lib/api/client';
 
 export interface UserProfile {
   id: string;
@@ -13,6 +13,9 @@ export interface UserProfile {
   is_superuser?: boolean;
   status?: string;
   created_at?: string;
+  organization_id?: string | null;
+  organization_name?: string | null;
+  organization_slug?: string | null;
 }
 
 interface AuthContextType {
@@ -42,12 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async (): Promise<UserProfile | null> => {
     try {
+      const token = getAuthToken();
+      if (!token) {
+        setUser(null);
+        return null;
+      }
       const userData = await apiRequest<UserProfile>('/auth/me', {
         method: 'GET',
       });
       setUser(userData);
       return userData;
     } catch {
+      clearAuthToken();
       setUser(null);
       return null;
     } finally {

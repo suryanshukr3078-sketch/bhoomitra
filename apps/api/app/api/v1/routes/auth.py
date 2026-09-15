@@ -235,14 +235,15 @@ async def register(
             "email_message": email_message,
         }
 
-    # Verified immediately: issue HttpOnly access token cookie
+    # Verified immediately: issue access token cookie
     access_token = create_access_token({"sub": str(user.id), "email": user.email})
+    cookie_samesite = "none" if settings.is_production else "lax"
     response.set_cookie(
         key="access_token",
         value=access_token,
         max_age=86400,
         httponly=True,
-        samesite="lax",
+        samesite=cookie_samesite,
         secure=settings.is_production,
         path="/",
     )
@@ -256,6 +257,9 @@ async def register(
             role=role_title,
             is_active=True,
             created_at=resolved_created_at,
+            organization_id=str(org.id) if org else None,
+            organization_name=org.name if org else None,
+            organization_slug=org.slug if org else None,
         ),
         "status": "success",
         "message": "Registration successful, you can now log in",
@@ -307,17 +311,40 @@ async def login(
 
     access_token = create_access_token({"sub": str(user.id), "email": user.email})
 
+    cookie_samesite = "none" if settings.is_production else "lax"
     response.set_cookie(
         key="access_token",
         value=access_token,
         max_age=86400,
         httponly=True,
-        samesite="lax",
+        samesite=cookie_samesite,
         secure=settings.is_production,
         path="/",
     )
 
     role_label = "admin" if user.is_superuser else "CITIZEN"
+    org_id_val = None
+    org_name_val = None
+    org_slug_val = None
+
+    try:
+        stmt_membership = (
+            select(OrganizationMembership, Organization)
+            .outerjoin(Organization, OrganizationMembership.organization_id == Organization.id)
+            .where(OrganizationMembership.user_id == user.id)
+        )
+        membership_res = await db.execute(stmt_membership)
+        membership_row = membership_res.first()
+        if membership_row and isinstance(membership_row, (tuple, list)) and len(membership_row) >= 2:
+            m, o = membership_row[0], membership_row[1]
+            if m and hasattr(m, "role") and isinstance(getattr(m, "role", None), str):
+                role_label = m.role
+            if o and hasattr(o, "id") and hasattr(o, "name") and isinstance(getattr(o, "name", None), str):
+                org_id_val = str(o.id)
+                org_name_val = str(o.name)
+                org_slug_val = str(getattr(o, "slug", None) or "")
+    except Exception:
+        pass
 
     return {
         "token": Token(access_token=access_token, token_type="bearer"),
@@ -330,6 +357,9 @@ async def login(
             is_superuser=user.is_superuser,
             status=user.status.value,
             created_at=user.created_at,
+            organization_id=org_id_val,
+            organization_name=org_name_val,
+            organization_slug=org_slug_val,
         ),
     }
 
@@ -341,8 +371,32 @@ async def login(
 )
 async def get_me(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> Any:
     role_label = "admin" if current_user.is_superuser else "CITIZEN"
+    org_id_val = None
+    org_name_val = None
+    org_slug_val = None
+
+    try:
+        stmt_membership = (
+            select(OrganizationMembership, Organization)
+            .outerjoin(Organization, OrganizationMembership.organization_id == Organization.id)
+            .where(OrganizationMembership.user_id == current_user.id)
+        )
+        membership_res = await db.execute(stmt_membership)
+        membership_row = membership_res.first()
+        if membership_row and isinstance(membership_row, (tuple, list)) and len(membership_row) >= 2:
+            m, o = membership_row[0], membership_row[1]
+            if m and hasattr(m, "role") and isinstance(getattr(m, "role", None), str):
+                role_label = m.role
+            if o and hasattr(o, "id") and hasattr(o, "name") and isinstance(getattr(o, "name", None), str):
+                org_id_val = str(o.id)
+                org_name_val = str(o.name)
+                org_slug_val = str(getattr(o, "slug", None) or "")
+    except Exception:
+        pass
+
     return UserRead(
         id=str(current_user.id),
         email=current_user.email,
@@ -352,6 +406,9 @@ async def get_me(
         is_superuser=current_user.is_superuser,
         status=current_user.status.value,
         created_at=current_user.created_at,
+        organization_id=org_id_val,
+        organization_name=org_name_val,
+        organization_slug=org_slug_val,
     )
 
 
@@ -362,11 +419,12 @@ async def get_me(
 async def logout(
     response: Response,
 ) -> dict[str, str]:
+    cookie_samesite = "none" if settings.is_production else "lax"
     response.delete_cookie(
         key="access_token",
         path="/",
         httponly=True,
-        samesite="lax",
+        samesite=cookie_samesite,
         secure=settings.is_production,
     )
     return {"status": "success", "message": "Successfully logged out."}

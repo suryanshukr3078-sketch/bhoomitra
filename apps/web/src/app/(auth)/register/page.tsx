@@ -31,7 +31,7 @@ import {
   Globe2,
   Sparkles,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 
 interface CategoryOption {
   id: string;
@@ -225,6 +225,10 @@ export default function RegisterPage() {
         });
       } else {
         // Verified categories (Researcher, Civil Society)
+        if (response.token?.access_token) {
+          setAuthToken(response.token.access_token);
+        }
+
         if (response.user) {
           setUser(response.user);
         } else {

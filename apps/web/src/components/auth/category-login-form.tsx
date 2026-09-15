@@ -26,7 +26,7 @@ import {
   ChevronRight,
   Globe2,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 
 export type PortalCategory = 'researcher' | 'policymaker' | 'government' | 'civil-society' | 'admin';
 
@@ -200,6 +200,10 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
           password: data.password,
         }),
       });
+
+      if (response.token?.access_token) {
+        setAuthToken(response.token.access_token);
+      }
 
       if (response.user) {
         setUser(response.user);

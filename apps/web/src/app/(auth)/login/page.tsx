@@ -26,7 +26,7 @@ import {
   ExternalLink,
   Sparkles,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 
 const PORTAL_SHORTCUTS = [
   {
@@ -117,6 +117,10 @@ export default function CentralLoginPage() {
           password: data.password,
         }),
       });
+
+      if (response.token?.access_token) {
+        setAuthToken(response.token.access_token);
+      }
 
       if (response.user) {
         setUser(response.user);

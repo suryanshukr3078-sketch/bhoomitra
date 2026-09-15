@@ -18,7 +18,10 @@ class UserRead(UserBase):
     is_active: bool
     is_superuser: bool = False
     status: str = "active"
-    created_at: datetime
+    created_at: datetime | None = None
+    organization_id: str | None = None
+    organization_name: str | None = None
+    organization_slug: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

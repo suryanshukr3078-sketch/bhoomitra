@@ -8,20 +8,37 @@ if (typeof window !== 'undefined') {
 }
 
 export function getAuthToken(): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp('(^| )access_token=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
+  if (typeof window === 'undefined') return null;
+  try {
+    const local = localStorage.getItem('access_token');
+    if (local && local.trim()) return local.trim();
+  } catch {}
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(new RegExp('(^| )access_token=([^;]+)'));
+    if (match) return decodeURIComponent(match[2]);
+  }
+  return null;
 }
 
 export function setAuthToken(token: string): void {
-  if (typeof document !== 'undefined') {
-    document.cookie = `access_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax; Secure`;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('access_token', token);
+    } catch {}
+    if (typeof document !== 'undefined') {
+      document.cookie = `access_token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax; Secure`;
+    }
   }
 }
 
 export function clearAuthToken(): void {
-  if (typeof document !== 'undefined') {
-    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure';
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('access_token');
+    } catch {}
+    if (typeof document !== 'undefined') {
+      document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure';
+    }
   }
 }
 
