@@ -40,13 +40,15 @@ Every user and official body has an authentic dedicated login portal:
 - Platform Admin Login: /login/admin
 
 4. REGISTRATION & ONBOARDING SYSTEM (/register):
-- Open Institutional Registration: ANY type of academic institute, university, research laboratory, government body, or civil society organization can register without artificial restrictions.
-- Registration Workflow:
-  1. Access /register from the navigation bar.
-  2. Select your category (Academic Institute, Government Agency, Research Lab, Civil Society, etc.).
-  3. Fill in official institution details, accredited registration number, official administrator contact, and email.
-  4. Automatic Welcome Email: Upon registration, an automated welcome email is instantly dispatched to the registered Gmail/email address containing onboarding credentials and security verification.
-  5. Official workspace access is immediately provisioned based on the registered category.
+- Open Institutional Registration: Anyone can register at /register by selecting their role (Academic Institute, Government Agency, Research Lab, Civil Society).
+
+4.1 CONTRIBUTING & PUBLISHING RESEARCH, DATASETS, AND POLICIES (/dashboard?tab=contribute):
+- Logged-in users can instantly publish new research papers, policies, or datasets directly from their Dashboard.
+- Step-by-step workflow:
+  1. Log in at /login.
+  2. Open the Dashboard (/dashboard) and click the "Contribute" tab (/dashboard?tab=contribute).
+  3. Fill in the title, upload the file (PDF, GeoJSON, etc.), and click "Publish to Registry".
+  4. The publication is immediately live and visible in the public registries (/research, /policies, or /datasets).
 
 5. PUBLIC REGISTRIES & CORE MODULES:
 - Research Papers (/research):

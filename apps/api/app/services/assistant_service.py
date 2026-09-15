@@ -17,7 +17,7 @@ INSUFFICIENT_INFO_ANSWER: str = (
     "as it is outside the scope of land governance, cadastral systems, and Bhoomitra platform records."
 )
 
-ASSISTANT_PROMPT_TEMPLATE = """You are the official AI assistant for the Bhoomitra Land Governance Platform. Answer questions about land governance, cadastral systems, platform features, and related research.
+ASSISTANT_PROMPT_TEMPLATE = """You are the helpful, friendly AI assistant for the Bhoomitra Land Governance Platform.
 
 === PLATFORM KNOWLEDGE ===
 {platform_knowledge}
@@ -25,14 +25,25 @@ ASSISTANT_PROMPT_TEMPLATE = """You are the official AI assistant for the Bhoomit
 === RELEVANT EVIDENCE ===
 {context}
 
-=== RESPONSE RULES ===
-- Be SHORT and DIRECT. Lead with the answer immediately — no preamble.
-- Simple questions: answer in 1–3 sentences max.
-- Complex questions: use a short bullet list (max 5 bullets), no verbose explanations.
-- Include a page link (e.g. /maps, /policies) only if directly relevant.
-- Cite sources with [1], [2] only when specific evidence is referenced.
-- Never repeat the question back. Never add fluff or sign-offs.
-- If off-topic (unrelated to land governance or this platform): reply with exactly "That's outside my scope. I only cover land governance and the Bhoomitra platform."
+=== STRICT LANGUAGE & TONE RULES ===
+1. USE SIMPLE, PLAIN LANGUAGE:
+   - Do NOT use complex academic words, legal jargon, or stiff bureaucratic language (never say words like "utilize", "statutory mandates", "accredited registration", "spatial topology modeling", "cryptographic provenance ledger", "immutable SHA-256").
+   - Explain everything simply, clearly, and conversationally, like explaining to a student or team member.
+2. SHORT & TO THE POINT:
+   - Maximum 2 to 4 short bullet points or 2 to 3 sentences total.
+   - Lead directly with the exact answer. No greetings, no fluff, no long introductions.
+3. HOW TO PUBLISH / UPLOAD / CONTRIBUTE PAPERS OR DATA:
+   - If asked how to publish, upload, or contribute a research paper, dataset, or policy:
+     Always give this simple 3-step answer:
+     1. Log in at [/login](/login).
+     2. In your **[Dashboard](/dashboard)**, click the **[Contribute](/dashboard?tab=contribute)** tab.
+     3. Fill in the title, upload your file (PDF, etc.), and click **Publish to Registry**.
+     Your paper is published immediately and appears under [/research](/research)!
+4. BILINGUAL / HINGLISH SUPPORT:
+   - If the user asks in Hindi or Hinglish, answer in simple, natural Hinglish/Hindi.
+   - If the user asks in English, answer in simple, plain English.
+5. OUT OF SCOPE:
+   - If completely unrelated to land governance or Bhoomitra, reply: "I can only help with questions about the Bhoomitra platform and land governance."
 
 Question: {question}
 
@@ -67,44 +78,56 @@ def format_context_block(resources: list[dict[str, Any]]) -> str:
 def build_fallback_answer(question: str, resources: list[dict[str, Any]]) -> str:
     q = (question or "").lower()
 
+    if any(k in q for k in ["publish", "upload", "contribute", "paper", "submit", "post"]):
+        return (
+            "To publish a research paper or document:\n"
+            "1. Log in at [/login](/login).\n"
+            "2. In your **[Dashboard](/dashboard)**, click the **[Contribute](/dashboard?tab=contribute)** tab.\n"
+            "3. Fill in the title, upload your file (PDF, GeoJSON, etc.), and click **Publish to Registry**.\n"
+            "Your paper will immediately appear in the [/research](/research) registry!"
+        )
+
     if any(k in q for k in ["register", "sign up", "onboard", "enroll", "registration"]):
         return (
-            "Register at [/register](/register). Choose your category (Academic, Government, Research Lab, Civil Society), "
-            "fill in your institutional details, and submit. A welcome email is sent instantly and your workspace is provisioned."
+            "To register an account:\n"
+            "1. Visit [/register](/register).\n"
+            "2. Select your category (Academic, Government, Research Lab, Civil Society).\n"
+            "3. Fill in your details and submit. Your workspace is ready immediately."
         )
 
     if any(k in q for k in ["login", "sign in", "log in"]):
         return (
-            "Sign in at [/login](/login). Role-specific portals: "
-            "[/login/government](/login/government), [/login/researcher](/login/researcher), "
-            "[/login/policymaker](/login/policymaker), [/login/civil-society](/login/civil-society)."
+            "You can log in at [/login](/login).\n"
+            "Direct portals: [/login/researcher](/login/researcher) (Researchers), "
+            "[/login/government](/login/government) (Government), [/login/policymaker](/login/policymaker) (Policy Makers)."
         )
 
     if any(k in q for k in ["workspace", "dashboard", "portal"]):
         return (
-            "Bhoomitra has 5 workspaces: **Government** ([/workspace/government](/workspace/government)), "
-            "**Researcher** ([/workspace/researcher](/workspace/researcher)), "
-            "**Policy** ([/workspace/policymaker](/workspace/policymaker)), "
-            "**Civil Society** ([/workspace/civil-society](/workspace/civil-society)), "
-            "and **Admin** ([/admin](/admin))."
+            "Available workspaces:\n"
+            "- **Researcher GIS Lab**: [/workspace/researcher](/workspace/researcher)\n"
+            "- **Government Agency**: [/workspace/government](/workspace/government)\n"
+            "- **Policy Directorate**: [/workspace/policymaker](/workspace/policymaker)\n"
+            "- **Civil Society**: [/workspace/civil-society](/workspace/civil-society)\n"
+            "- **Official Dashboard**: [/dashboard](/dashboard)"
         )
 
     if resources:
-        lines = [f"Found {len(resources)} relevant source(s):"]
-        for idx, res in enumerate(resources, 1):
+        lines = [f"Found {len(resources)} relevant record(s):"]
+        for idx, res in enumerate(resources[:3], 1):
             title = res.get("title", "Untitled")
             abstract = (res.get("abstract") or "").strip()
-            short_abstract = abstract[:120] + "..." if len(abstract) > 120 else abstract
+            short_abstract = abstract[:100] + "..." if len(abstract) > 100 else abstract
             lines.append(f"[{idx}] **{title}**: {short_abstract}")
         return "\n".join(lines)
 
     if any(k in q for k in ["land", "cadastr", "survey", "mutation", "policy", "forest", "tenure", "title", "deed"]):
         return (
-            "Bhoomitra indexes cadastral records, land policies, and spatial data. "
-            "Search [/policies](/policies), [/research](/research), or [/maps](/maps) for specifics."
+            "Bhoomitra indexes land policies, cadastral maps, and research papers. "
+            "Explore [/policies](/policies), [/research](/research), or [/maps](/maps) for details."
         )
 
-    return "That's outside my scope. I only cover land governance and the Bhoomitra platform."
+    return "I can only help with questions about the Bhoomitra platform and land governance."
 
 
 def generate_rag_answer(
@@ -174,9 +197,15 @@ def generate_rag_answer(
 
             for model_candidate in models_to_try:
                 try:
+                    from google.genai import types as genai_types
+                    gen_config = genai_types.GenerateContentConfig(
+                        max_output_tokens=300,
+                        temperature=0.2,
+                    )
                     response = client.models.generate_content(
                         model=model_candidate,
                         contents=prompt,
+                        config=gen_config,
                     )
                     if response and response.text:
                         return {
