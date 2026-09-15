@@ -85,6 +85,13 @@ class QueryPathRewriteMiddleware:
                             scope["raw_path"] = clean_matched.encode("latin-1")
                             break
 
+            # 3. Normalize trailing slashes for paths longer than 1 char (e.g. /health/ -> /health)
+            final_path = scope.get("path", "")
+            if len(final_path) > 1 and final_path.endswith("/"):
+                clean_path = final_path.rstrip("/")
+                scope["path"] = clean_path
+                scope["raw_path"] = clean_path.encode("latin-1")
+
         await self.app(scope, receive, send)
 
 
