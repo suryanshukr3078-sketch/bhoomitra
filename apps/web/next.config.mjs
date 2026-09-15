@@ -42,10 +42,14 @@ const nextConfig = {
         },
       ],
       afterFiles: [
-        {
-          source: '/api/:path*',
-          destination: 'https://land-governance-platform-virid.vercel.app/api/:path*',
-        },
+        ...(process.env.NODE_ENV === 'development'
+          ? [
+              {
+                source: '/api/:path*',
+                destination: 'https://land-governance-platform-virid.vercel.app/api/:path*',
+              },
+            ]
+          : []),
       ],
       fallback: [],
     };
