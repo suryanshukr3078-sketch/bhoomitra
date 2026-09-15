@@ -46,6 +46,7 @@ if settings.is_serverless:
         connect_args={
             "application_name": settings.app_name,
             "options": serverless_options,
+            "connect_timeout": 15,
         },
     )
 else:
@@ -62,6 +63,7 @@ else:
         connect_args={
             "application_name": settings.app_name,
             "options": connection_options,
+            "connect_timeout": 15,
         },
     )
 

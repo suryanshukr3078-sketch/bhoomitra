@@ -225,11 +225,12 @@ class Settings(BaseSettings):
 
             # Strip Prisma-specific query parameters like pgbouncer=true which cause libpq/psycopg errors
             parsed = urlparse(db_url)
-            if "pgbouncer" in parsed.query:
-                qs = parse_qs(parsed.query, keep_blank_values=True)
-                qs.pop("pgbouncer", None)
-                new_query = urlencode(qs, doseq=True)
-                db_url = urlunparse(parsed._replace(query=new_query))
+            qs = parse_qs(parsed.query, keep_blank_values=True)
+            qs.pop("pgbouncer", None)
+            if "connect_timeout" not in qs:
+                qs["connect_timeout"] = ["15"]
+            new_query = urlencode(qs, doseq=True)
+            db_url = urlunparse(parsed._replace(query=new_query))
 
             data["database_url"] = db_url
             data["db_connection_source"] = source
