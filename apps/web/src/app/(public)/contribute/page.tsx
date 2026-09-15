@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,7 @@ import {
 import { env } from '@/lib/environment';
 import { getAuthToken } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth-context';
+import { getRoleContributeConfig } from '@/lib/role-contribute-config';
 
 import Link from 'next/link';
 
@@ -48,6 +49,10 @@ export default function ContributePage() {
   } | null>(null);
   const { toast } = useToast();
 
+  const roleConfig = useMemo(() => {
+    return getRoleContributeConfig(user?.role, user?.is_superuser);
+  }, [user?.role, user?.is_superuser]);
+
   const {
     register,
     handleSubmit,
@@ -59,13 +64,18 @@ export default function ContributePage() {
     defaultValues: {
       title: '',
       publisher: '',
-      resourceType: 'research_paper',
+      resourceType: roleConfig.defaultType,
       abstract: '',
       jurisdiction: 'IN-MH',
       visibility: 'public',
     },
   });
 
+  useEffect(() => {
+    if (roleConfig) {
+      setValue('resourceType', roleConfig.defaultType);
+    }
+  }, [roleConfig, setValue]);
 
   useEffect(() => {
     if (user && !isDirty) {
@@ -239,14 +249,16 @@ export default function ContributePage() {
             <UploadCloud className="w-3.5 h-3.5" />
             Decentralized Registry Submission
           </div>
-          <Badge variant="success">Open Governance Node</Badge>
+          <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${roleConfig.badgeColor}`}>
+            {roleConfig.badgeLabel}
+          </div>
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Contribute Land Governance Records
+          {roleConfig.formTitle}
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-          Publish research publications, legal policy statutes, or spatial cadastral layers. Uploaded documents are automatically validated for magic-bytes integrity and SHA-256 cryptographic provenance.
+          {roleConfig.formSubtitle} Uploaded documents are automatically validated for magic-bytes integrity and SHA-256 cryptographic provenance.
         </p>
       </div>
 
@@ -256,11 +268,11 @@ export default function ContributePage() {
           {/* Document Title */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Document / Dataset Title
+              Document / Dataset Title <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
-              placeholder="e.g. Pune Metropolitan Cadastral Survey & Mutation Guidelines 2026"
+              placeholder={roleConfig.titlePlaceholder}
               className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
                 errors.title ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
               }`}
@@ -294,17 +306,36 @@ export default function ContributePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Resource Category
+                Resource Category <span className="text-rose-500">*</span>
               </label>
-              <select
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                {...register('resourceType')}
-              >
-                <option value="research_paper">Academic Research Paper</option>
-                <option value="policy">Statutory Policy / Revenue Code</option>
-                <option value="spatial_layer">Spatial GIS Layer / Cadastre</option>
-                <option value="dataset">Open Land Dataset</option>
-              </select>
+              {roleConfig.isTypeLocked ? (
+                <div className="space-y-1.5">
+                  <div className="w-full px-4 py-2.5 text-sm rounded-xl border border-indigo-200 bg-indigo-50/40 text-indigo-950 font-medium flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <span>{roleConfig.allowedTypes[0].icon}</span>
+                      <span className="font-semibold">{roleConfig.allowedTypes[0].label}</span>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200 shadow-2xs">
+                      Locked to {roleConfig.roleName}
+                    </span>
+                    <input type="hidden" value={roleConfig.defaultType} {...register('resourceType')} />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {roleConfig.lockedReason}
+                  </p>
+                </div>
+              ) : (
+                <select
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  {...register('resourceType')}
+                >
+                  {roleConfig.allowedTypes.map((opt: { value: string; label: string }) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -330,11 +361,11 @@ export default function ContributePage() {
           {/* Abstract / Scope */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Executive Abstract / Legal Scope
+              Executive Abstract / Scope <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={4}
-              placeholder="Detail the technical methodology, legal enactments, EPSG projection, or cadastral coordinates..."
+              placeholder={roleConfig.abstractPlaceholder}
               className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                 errors.abstract ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
               }`}

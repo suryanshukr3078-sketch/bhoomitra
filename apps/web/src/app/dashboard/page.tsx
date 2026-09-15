@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -38,6 +38,7 @@ import { apiRequest, getAuthToken } from '@/lib/api/client';
 import { env } from '@/lib/environment';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardOverview, DimensionTab } from './types';
+import { getRoleContributeConfig } from '@/lib/role-contribute-config';
 import { OverviewTab } from './components/OverviewTab';
 import { ResearchTab } from './components/ResearchTab';
 import { PolicyTab } from './components/PolicyTab';
@@ -253,6 +254,10 @@ export default function DashboardPage() {
     fetchMetrics();
   }, [fetchMetrics]);
 
+  const roleConfig = useMemo(() => {
+    return getRoleContributeConfig(user?.role, user?.is_superuser);
+  }, [user?.role, user?.is_superuser]);
+
   const {
     register,
     handleSubmit,
@@ -264,12 +269,18 @@ export default function DashboardPage() {
     defaultValues: {
       title: '',
       publisher: '',
-      resourceType: 'research_paper',
+      resourceType: roleConfig.defaultType,
       abstract: '',
       jurisdiction: 'IN-MH',
       visibility: 'public',
     },
   });
+
+  useEffect(() => {
+    if (roleConfig) {
+      setValue('resourceType', roleConfig.defaultType);
+    }
+  }, [roleConfig, setValue]);
 
   useEffect(() => {
     if (user) {
@@ -595,13 +606,18 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
-                      <UploadCloud className="w-5 h-5" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-slate-900">{roleConfig.formTitle}</h2>
+                        <p className="text-xs text-slate-500">{roleConfig.formSubtitle}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-base font-bold text-slate-900">Submit Research, Policy, or Dataset</h2>
-                      <p className="text-xs text-slate-500">Upload PDFs, images, GeoJSON, or spatial layers to the national registry</p>
+                    <div className={`self-start sm:self-auto px-3 py-1 rounded-full text-xs font-semibold border ${roleConfig.badgeColor}`}>
+                      {roleConfig.badgeLabel}
                     </div>
                   </div>
 
@@ -613,7 +629,7 @@ export default function DashboardPage() {
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Pune Metropolitan Cadastral Survey & Mutation Guidelines 2026"
+                        placeholder={roleConfig.titlePlaceholder}
                         className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
                           errors.title ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
                         }`}
@@ -646,15 +662,34 @@ export default function DashboardPage() {
                           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                             Resource Type <span className="text-rose-500">*</span>
                           </label>
-                          <select
-                            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                            {...register('resourceType')}
-                          >
-                            <option value="research_paper">📄 Research Paper</option>
-                            <option value="policy">⚖️ Policy Document</option>
-                            <option value="dataset">📊 Open Dataset</option>
-                            <option value="spatial_layer">🗺️ Spatial GIS Layer</option>
-                          </select>
+                          {roleConfig.isTypeLocked ? (
+                            <div className="space-y-1.5">
+                              <div className="w-full px-4 py-2.5 text-sm rounded-xl border border-indigo-200 bg-indigo-50/40 text-indigo-950 font-medium flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  <span>{roleConfig.allowedTypes[0].icon}</span>
+                                  <span className="font-semibold">{roleConfig.allowedTypes[0].label}</span>
+                                </span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200 shadow-2xs">
+                                  Locked to {roleConfig.roleName}
+                                </span>
+                                <input type="hidden" value={roleConfig.defaultType} {...register('resourceType')} />
+                              </div>
+                              <p className="text-[11px] text-slate-500">
+                                {roleConfig.lockedReason}
+                              </p>
+                            </div>
+                          ) : (
+                            <select
+                              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                              {...register('resourceType')}
+                            >
+                              {roleConfig.allowedTypes.map((opt: { value: string; label: string }) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                         <div className="space-y-1.5">
                           <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
@@ -676,7 +711,7 @@ export default function DashboardPage() {
                         </label>
                         <textarea
                           rows={4}
-                          placeholder="Provide a summary of this resource — scope, methodology, geographic coverage, or legal basis..."
+                          placeholder={roleConfig.abstractPlaceholder}
                           className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
                             errors.abstract ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
                           }`}
