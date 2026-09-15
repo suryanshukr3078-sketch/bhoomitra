@@ -62,14 +62,75 @@ class Settings(BaseSettings):
     max_upload_size_bytes: int = 50 * 1024 * 1024
 
     # SMTP Email Configuration (e.g. Gmail SMTP or custom relays)
-    smtp_host: str = Field(default="smtp.gmail.com", validation_alias=AliasChoices("smtp_host", "mail_server"))
-    smtp_port: int = Field(default=587, validation_alias=AliasChoices("smtp_port", "mail_port"))
-    smtp_user: str | None = Field(default=None, validation_alias=AliasChoices("smtp_user", "smtp_username", "mail_username"))
-    smtp_password: str | None = Field(default=None, validation_alias=AliasChoices("smtp_password", "mail_password"))
-    smtp_from_email: str | None = Field(default=None, validation_alias=AliasChoices("smtp_from_email", "mail_from"))
-    smtp_from_name: str = Field(default="Bhoomitra Land Governance Platform", validation_alias=AliasChoices("smtp_from_name", "mail_from_name"))
-    smtp_tls: bool = Field(default=True, validation_alias=AliasChoices("smtp_tls", "mail_starttls"))
-    smtp_ssl: bool = Field(default=False, validation_alias=AliasChoices("smtp_ssl", "mail_ssl_tls"))
+    smtp_host: str = Field(
+        default="smtp.gmail.com",
+        validation_alias=AliasChoices("smtp_host", "mail_server", "mail_host", "email_host"),
+    )
+    smtp_port: int = Field(
+        default=587,
+        validation_alias=AliasChoices("smtp_port", "mail_port", "email_port"),
+    )
+    smtp_user: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("smtp_user", "smtp_username", "mail_username", "mail_user", "email_host_user", "gmail_user"),
+    )
+    smtp_password: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("smtp_password", "smtp_pass", "mail_password", "mail_pass", "email_host_password", "gmail_app_password", "gmail_password"),
+    )
+    smtp_from_email: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("smtp_from_email", "mail_from", "email_from", "mail_default_sender"),
+    )
+    smtp_from_name: str = Field(
+        default="Bhoomitra Land Governance Platform",
+        validation_alias=AliasChoices("smtp_from_name", "mail_from_name", "email_from_name"),
+    )
+    smtp_tls: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("smtp_tls", "mail_starttls", "email_use_tls"),
+    )
+    smtp_ssl: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("smtp_ssl", "mail_ssl_tls", "email_use_ssl"),
+    )
+
+    @field_validator("smtp_user", mode="before")
+    @classmethod
+    def clean_smtp_user(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        cleaned = str(v).strip().strip("'\"")
+        return cleaned if cleaned else None
+
+    @field_validator("smtp_password", mode="before")
+    @classmethod
+    def clean_smtp_password(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        cleaned = str(v).strip().strip("'\"")
+        # Google App Passwords often have spaces (e.g. 'xxxx xxxx xxxx xxxx') which causes 535 rejection
+        if " " in cleaned and len(cleaned.replace(" ", "")) == 16:
+            cleaned = cleaned.replace(" ", "")
+        elif " " in cleaned and len(cleaned.strip()) > 0:
+            cleaned = cleaned.replace(" ", "")
+        return cleaned if cleaned else None
+
+    @field_validator("smtp_from_email", mode="before")
+    @classmethod
+    def clean_smtp_from_email(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        cleaned = str(v).strip().strip("'\"")
+        return cleaned if cleaned else None
+
+    @field_validator("smtp_host", mode="before")
+    @classmethod
+    def clean_smtp_host(cls, v: Any) -> str:
+        if v is None:
+            return "smtp.gmail.com"
+        cleaned = str(v).strip().strip("'\"")
+        return cleaned or "smtp.gmail.com"
 
     # Google Gemini AI & Vector Embeddings Configuration
     gemini_api_key: str | None = Field(

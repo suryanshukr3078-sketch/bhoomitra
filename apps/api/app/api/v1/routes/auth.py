@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import re
 import uuid
 from datetime import UTC, datetime
@@ -8,7 +10,14 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.email import send_welcome_email
+from app.services.email import (
+    get_smtp_status,
+    is_smtp_configured,
+    send_email_sync,
+    send_welcome_email,
+)
+
+logger = logging.getLogger("bhoomitra.auth")
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.db import get_db
@@ -176,16 +185,34 @@ async def register(
     resolved_created_at = getattr(user, "created_at", None) or user_created_at
     category_title = CATEGORY_DISPLAY_TITLES.get(category_raw, category_raw.replace("_", " ").title())
 
-    # Dispatch welcome email asynchronously in background
-    background_tasks.add_task(
-        send_welcome_email,
-        to_email=user.email,
-        full_name=user.full_name,
-        org_name=org.name,
-        category_title=category_title,
-        role_title=role_title,
-        is_pending=is_pending,
-    )
+    # Dispatch welcome email safely before response is returned
+    # This guarantees completion in serverless environments (AWS Lambda/Vercel) before container freeze
+    email_status = "simulated" if not is_smtp_configured() else "pending"
+    email_message = "Simulated delivery (SMTP credentials not configured)." if not is_smtp_configured() else ""
+
+    try:
+        email_result = await asyncio.wait_for(
+            asyncio.to_thread(
+                send_welcome_email,
+                to_email=user.email,
+                full_name=user.full_name,
+                org_name=org.name,
+                category_title=category_title,
+                role_title=role_title,
+                is_pending=is_pending,
+            ),
+            timeout=5.0,
+        )
+        if isinstance(email_result, dict):
+            email_status = str(email_result.get("status", "unknown"))
+            email_message = str(email_result.get("message", ""))
+        else:
+            email_status = "sent" if email_result else "failed"
+            email_message = "Delivered successfully." if email_result else "Failed to send."
+    except Exception as email_exc:
+        logger.warning(f"[AuthRoute] Welcome email dispatch non-blocking notice: {email_exc}")
+        email_status = "failed"
+        email_message = f"Email delivery encounter: {email_exc}"
 
     if is_pending:
         # Pending verification: do NOT issue access token cookie
@@ -202,6 +229,8 @@ async def register(
             "status": "pending",
             "message": "Registration submitted for verification, you will be notified once approved.",
             "requires_verification": True,
+            "email_status": email_status,
+            "email_message": email_message,
         }
 
     # Verified immediately: issue HttpOnly access token cookie
@@ -229,6 +258,8 @@ async def register(
         "status": "success",
         "message": "Registration successful, you can now log in",
         "requires_verification": False,
+        "email_status": email_status,
+        "email_message": email_message,
     }
 
 
@@ -337,4 +368,81 @@ async def logout(
         secure=settings.is_production,
     )
     return {"status": "success", "message": "Successfully logged out."}
+
+
+class TestSmtpPayload(BaseModel):
+    to_email: EmailStr
+    subject: str = "Bhoomitra SMTP Verification Diagnostic Test"
+
+
+@router.get(
+    "/smtp-status",
+    summary="Check platform SMTP configuration status",
+)
+async def get_smtp_configuration_status() -> dict[str, Any]:
+    return get_smtp_status()
+
+
+@router.post(
+    "/test-smtp",
+    summary="Send a test email to verify SMTP configuration",
+)
+@limiter.limit("5/minute")
+async def test_smtp_dispatch(
+    request: Request,
+    response: Response,
+    payload: TestSmtpPayload,
+) -> dict[str, Any]:
+    if not is_smtp_configured():
+        return {
+            "success": False,
+            "status": "unconfigured",
+            "message": "SMTP credentials (SMTP_USER/SMTP_PASSWORD) are not configured on the server.",
+            "smtp_status": get_smtp_status(),
+        }
+
+    test_html = f"""<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, sans-serif; padding: 24px; color: #0f172a; background-color: #f8fafc;">
+  <div style="max-width: 500px; background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+    <h2 style="color: #047857; margin-top: 0;">🏛️ Bhoomitra SMTP Diagnostic Test</h2>
+    <p>This automated test message confirms that your SMTP relay configuration is active and transmitting properly.</p>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+      <tr><td style="padding: 6px 0; color: #64748b;">Host:</td><td style="font-weight: 600;">{settings.smtp_host}:{settings.smtp_port}</td></tr>
+      <tr><td style="padding: 6px 0; color: #64748b;">Recipient:</td><td style="font-weight: 600;">{payload.to_email}</td></tr>
+      <tr><td style="padding: 6px 0; color: #64748b;">Timestamp:</td><td style="font-weight: 600;">{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}</td></tr>
+    </table>
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
+    <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Bhoomitra National Land Governance Platform</p>
+  </div>
+</body>
+</html>"""
+    test_text = f"Bhoomitra SMTP Diagnostic Test\n\nVerified delivery to {payload.to_email} at {datetime.now(UTC).isoformat()}."
+
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                send_email_sync,
+                to_email=payload.to_email,
+                subject=payload.subject,
+                html_body=test_html,
+                text_body=test_text,
+            ),
+            timeout=10.0,
+        )
+        return {
+            "success": result.success,
+            "status": result.status,
+            "message": result.message,
+            "details": result.get("details", {}),
+            "smtp_status": get_smtp_status(),
+        }
+    except Exception as exc:
+        return {
+            "success": False,
+            "status": "failed",
+            "message": f"SMTP test failed with error: {type(exc).__name__}: {exc}",
+            "smtp_status": get_smtp_status(),
+        }
+
 

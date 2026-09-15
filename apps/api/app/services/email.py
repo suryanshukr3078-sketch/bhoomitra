@@ -1,5 +1,6 @@
 import logging
 import smtplib
+import socket
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -8,6 +9,42 @@ from typing import Any
 from app.core.config import settings
 
 logger = logging.getLogger("bhoomitra.email")
+
+
+class EmailDeliveryResult(dict):
+    """
+    Result container for email operations.
+    Inherits from dict and evaluates as boolean based on 'success'.
+    Allows both bool(result) checks and dict property access.
+    """
+    def __init__(
+        self,
+        success: bool,
+        status: str,
+        message: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            success=success,
+            status=status,
+            message=message,
+            details=details or {},
+        )
+
+    def __bool__(self) -> bool:
+        return bool(self.get("success", False))
+
+    @property
+    def success(self) -> bool:
+        return bool(self.get("success", False))
+
+    @property
+    def status(self) -> str:
+        return str(self.get("status", "unknown"))
+
+    @property
+    def message(self) -> str:
+        return str(self.get("message", ""))
 
 
 def _build_welcome_email_html(
@@ -203,31 +240,117 @@ The Bhoomitra Team
 """
 
 
+def is_smtp_configured() -> bool:
+    """Returns True if both SMTP username and password are provided."""
+    return bool(settings.smtp_user and settings.smtp_password)
+
+
+def get_smtp_status() -> dict[str, Any]:
+    """Provides public diagnostic status without exposing sensitive credentials."""
+    user = settings.smtp_user
+    masked_user = None
+    if user:
+        if "@" in user:
+            local, domain = user.split("@", 1)
+            masked_user = f"{local[:2]}***@{domain}"
+        else:
+            masked_user = f"{user[:2]}***"
+
+    effective_port = settings.smtp_port
+    effective_ssl = bool(settings.smtp_ssl or effective_port == 465)
+    effective_tls = bool(settings.smtp_tls and not effective_ssl)
+
+    return {
+        "configured": is_smtp_configured(),
+        "host": settings.smtp_host,
+        "port": effective_port,
+        "protocol": "SSL" if effective_ssl else ("STARTTLS" if effective_tls else "PLAIN"),
+        "from_email": settings.smtp_from_email or user or "support@bhoomitra.gov.in",
+        "from_name": settings.smtp_from_name,
+        "user_masked": masked_user,
+    }
+
+
+def _attempt_smtp_dispatch(
+    host: str,
+    port: int,
+    use_ssl: bool,
+    use_tls: bool,
+    user: str,
+    password: str,
+    from_email: str,
+    to_email: str,
+    msg_str: str,
+    timeout: float = 8.0,
+) -> tuple[bool, str]:
+    """Attempts a single SMTP connection, authentication, and transmission."""
+    try:
+        if use_ssl:
+            ctx = ssl.create_default_context()
+            server: smtplib.SMTP = smtplib.SMTP_SSL(host, port, context=ctx, timeout=timeout)
+        else:
+            server = smtplib.SMTP(host, port, timeout=timeout)
+            server.ehlo()
+            if use_tls:
+                ctx = ssl.create_default_context()
+                server.starttls(context=ctx)
+                server.ehlo()
+
+        server.login(user, password)
+        server.sendmail(from_email, [to_email], msg_str)
+        server.quit()
+        return True, f"Successfully dispatched email to {to_email} via {host}:{port} ({'SSL' if use_ssl else 'STARTTLS'})"
+    except smtplib.SMTPAuthenticationError as auth_err:
+        err_msg = str(auth_err.smtp_error or auth_err)
+        if "5.7.8" in err_msg or "5.7.9" in err_msg or "BadCredentials" in err_msg or "Application-specific password" in err_msg:
+            return False, (
+                f"SMTP Authentication Error ({auth_err.smtp_code}): Google rejected the credentials. "
+                "For Gmail, you MUST use a 16-character Google App Password (not your primary password) "
+                "generated under Google Account Security -> 2-Step Verification -> App Passwords."
+            )
+        return False, f"SMTP Authentication Error ({auth_err.smtp_code}): {err_msg}"
+    except (socket.timeout, TimeoutError):
+        return False, f"SMTP connection timed out connecting to {host}:{port} after {timeout}s"
+    except (ConnectionRefusedError, socket.gaierror) as conn_err:
+        return False, f"SMTP network error connecting to {host}:{port}: {conn_err}"
+    except Exception as exc:
+        return False, f"SMTP dispatch failed: {type(exc).__name__}: {exc}"
+
+
 def send_email_sync(
     to_email: str,
     subject: str,
     html_body: str,
     text_body: str | None = None,
-) -> bool:
+) -> EmailDeliveryResult:
     """
-    Sends an email using standard SMTP.
-    If SMTP credentials are not configured, logs the email and safely returns True.
-    Never raises an unhandled exception to prevent disrupting calling requests.
+    Sends an email using standard SMTP with automatic protocol detection and Gmail failover.
+    If SMTP credentials are not configured, logs simulated delivery and returns a simulated result.
+    Never raises an unhandled exception.
     """
     if not to_email:
         logger.warning("[EmailService] No recipient email specified.")
-        return False
+        return EmailDeliveryResult(
+            success=False,
+            status="failed",
+            message="No recipient email specified.",
+        )
 
     smtp_user = settings.smtp_user
     smtp_password = settings.smtp_password
 
     # If SMTP credentials are not configured, simulate email dispatch safely
-    if not smtp_user or not smtp_password:
+    if not is_smtp_configured():
         logger.info(
             f"[EmailService] SMTP credentials not set (SMTP_USER/SMTP_PASSWORD). "
             f"Simulated welcome email delivery to: {to_email} (Subject: '{subject}')"
         )
-        return True
+        return EmailDeliveryResult(
+            success=True,
+            status="simulated",
+            message="Simulated email delivery: SMTP_USER or SMTP_PASSWORD not configured on server.",
+            details={"to": to_email, "subject": subject},
+        )
 
     from_email = settings.smtp_from_email or smtp_user
     from_name = settings.smtp_from_name
@@ -241,28 +364,78 @@ def send_email_sync(
     if text_body:
         msg.attach(MIMEText(text_body, "plain", "utf-8"))
     msg.attach(MIMEText(html_body, "html", "utf-8"))
+    msg_str = msg.as_string()
 
-    try:
-        host = settings.smtp_host
-        port = settings.smtp_port
+    host = settings.smtp_host
+    port = settings.smtp_port
+    use_ssl = bool(settings.smtp_ssl or port == 465)
+    use_tls = bool(settings.smtp_tls and not use_ssl)
 
-        if settings.smtp_ssl:
-            server = smtplib.SMTP_SSL(host, port, timeout=15)
+    success, message = _attempt_smtp_dispatch(
+        host=host,
+        port=port,
+        use_ssl=use_ssl,
+        use_tls=use_tls,
+        user=smtp_user,
+        password=smtp_password,
+        from_email=from_email,
+        to_email=to_email,
+        msg_str=msg_str,
+        timeout=8.0,
+    )
+
+    # If primary attempt failed and host is smtp.gmail.com, attempt failover between port 587 and 465
+    if not success and host.lower() == "smtp.gmail.com":
+        alt_port = 465 if port != 465 else 587
+        alt_ssl = (alt_port == 465)
+        alt_tls = not alt_ssl
+        logger.info(f"[EmailService] Primary port {port} attempt returned: {message}. Trying fallback port {alt_port}...")
+        alt_success, alt_message = _attempt_smtp_dispatch(
+            host=host,
+            port=alt_port,
+            use_ssl=alt_ssl,
+            use_tls=alt_tls,
+            user=smtp_user,
+            password=smtp_password,
+            from_email=from_email,
+            to_email=to_email,
+            msg_str=msg_str,
+            timeout=8.0,
+        )
+        if alt_success:
+            logger.info(f"[EmailService] Fallback to port {alt_port} succeeded!")
+            return EmailDeliveryResult(
+                success=True,
+                status="sent",
+                message=alt_message,
+                details={"host": host, "port": alt_port, "failover_used": True},
+            )
         else:
-            server = smtplib.SMTP(host, port, timeout=15)
-            if settings.smtp_tls:
-                context = ssl.create_default_context()
-                server.starttls(context=context)
+            final_message = alt_message if "Authentication Error" in alt_message else message
+            logger.error(f"[EmailService] Both primary ({port}) and fallback ({alt_port}) failed. Reason: {final_message}")
+            return EmailDeliveryResult(
+                success=False,
+                status="failed",
+                message=final_message,
+                details={"host": host, "ports_tested": [port, alt_port]},
+            )
 
-        server.login(smtp_user, smtp_password)
-        server.sendmail(from_email, [to_email], msg.as_string())
-        server.quit()
-
+    if success:
         logger.info(f"[EmailService] Successfully sent email to {to_email}: '{subject}'")
-        return True
-    except Exception as err:
-        logger.error(f"[EmailService] Failed to send email to {to_email}: {type(err).__name__}: {err}")
-        return False
+        return EmailDeliveryResult(
+            success=True,
+            status="sent",
+            message=message,
+            details={"host": host, "port": port},
+        )
+    else:
+        logger.error(f"[EmailService] Failed to send email to {to_email}: {message}")
+        return EmailDeliveryResult(
+            success=False,
+            status="failed",
+            message=message,
+            details={"host": host, "port": port},
+        )
 
 
 def send_welcome_email(
@@ -272,10 +445,10 @@ def send_welcome_email(
     category_title: str,
     role_title: str,
     is_pending: bool,
-) -> bool:
+) -> EmailDeliveryResult:
     """
     Constructs and dispatches the bespoke welcome email.
-    Designed to be enqueued directly in FastAPI BackgroundTasks.
+    Returns EmailDeliveryResult which acts as both a dict and a boolean.
     """
     subject = f"Welcome to Bhoomitra, {full_name} | Institutional Registration"
     html_body = _build_welcome_email_html(

@@ -133,6 +133,8 @@ interface RegistrationSuccessResult {
   email: string;
   orgName: string;
   categoryTitle: string;
+  emailStatus?: string;
+  emailMessage?: string;
 }
 
 export default function RegisterPage() {
@@ -184,6 +186,8 @@ export default function RegisterPage() {
         status: string;
         message: string;
         requires_verification: boolean;
+        email_status?: string;
+        email_message?: string;
       }>('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -197,6 +201,8 @@ export default function RegisterPage() {
       });
 
       const categoryTitle = selectedCategoryObj?.title || 'Collaborative Workspace';
+      const emailStatus = response?.email_status || 'simulated';
+      const emailMessage = response?.email_message || '';
 
       if (response.requires_verification) {
         // Pending categories (Government Agency, Policy Maker)
@@ -206,11 +212,15 @@ export default function RegisterPage() {
           email: data.email.trim(),
           orgName: data.organizationName.trim(),
           categoryTitle,
+          emailStatus,
+          emailMessage,
         });
 
         toast({
-          title: 'Verification Pending & Receipt Dispatched',
-          description: `Receipt sent to ${data.email.trim()}. You will be notified once approved.`,
+          title: 'Verification Pending',
+          description: emailStatus === 'sent'
+            ? `Receipt sent to ${data.email.trim()}. You will be notified once approved.`
+            : `Registration submitted. Note: Email service in simulated mode.`,
           variant: 'default',
         });
       } else {
@@ -227,11 +237,15 @@ export default function RegisterPage() {
           email: data.email.trim(),
           orgName: data.organizationName.trim(),
           categoryTitle,
+          emailStatus,
+          emailMessage,
         });
 
         toast({
-          title: 'Registration Successful & Welcome Email Sent',
-          description: `Welcome onboarding email dispatched to ${data.email.trim()}.`,
+          title: 'Registration Successful',
+          description: emailStatus === 'sent'
+            ? `Welcome onboarding email dispatched to ${data.email.trim()}.`
+            : `Account active! (SMTP email service running in simulated mode).`,
           variant: 'success',
         });
       }
@@ -308,14 +322,38 @@ export default function RegisterPage() {
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-left text-xs text-amber-900 leading-relaxed flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+              <div className={`p-4 rounded-xl text-left text-xs leading-relaxed flex items-start gap-3 ${
+                registeredResult.emailStatus === 'sent'
+                  ? 'bg-amber-50/80 border border-amber-200 text-amber-900'
+                  : registeredResult.emailStatus === 'failed'
+                  ? 'bg-red-50 border border-red-200 text-red-900'
+                  : 'bg-blue-50/80 border border-blue-200 text-blue-900'
+              }`}>
+                <div className={`p-2 rounded-lg shrink-0 mt-0.5 ${
+                  registeredResult.emailStatus === 'sent'
+                    ? 'bg-amber-100 text-amber-800'
+                    : registeredResult.emailStatus === 'failed'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="font-bold text-amber-950">Welcome &amp; Verification Receipt Dispatched</p>
-                  <p className="text-amber-800 mt-0.5">
-                    A formal verification receipt with your institutional registration summary has been sent to your registered address (<strong className="font-semibold text-slate-900">{registeredResult.email}</strong>). Please check your Gmail / mail inbox and spam folder.
+                  <p className="font-bold">
+                    {registeredResult.emailStatus === 'sent'
+                      ? 'Welcome & Verification Receipt Dispatched'
+                      : registeredResult.emailStatus === 'failed'
+                      ? 'Verification Summary (Email Notice Not Delivered)'
+                      : 'Verification Summary (Simulated Email Mode)'}
+                  </p>
+                  <p className="mt-0.5 opacity-90">
+                    {registeredResult.emailStatus === 'sent' ? (
+                      <>A formal verification receipt with your institutional registration summary has been sent to your registered address (<strong className="font-semibold text-slate-900">{registeredResult.email}</strong>). Please check your Gmail / mail inbox and spam folder.</>
+                    ) : registeredResult.emailStatus === 'failed' ? (
+                      <>Your application has been recorded. Note: Mail notification could not be delivered to <strong>{registeredResult.email}</strong> ({registeredResult.emailMessage || 'SMTP check failed'}). Please contact administrator.</>
+                    ) : (
+                      <>Your institutional verification request has been safely recorded. Note: Live email transmission is in simulation mode because SMTP credentials (SMTP_USER/SMTP_PASSWORD) are not yet configured on the server.</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -367,14 +405,38 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 text-left text-xs text-emerald-900 leading-relaxed flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700 shrink-0 mt-0.5">
+              <div className={`p-4 rounded-xl text-left text-xs leading-relaxed flex items-start gap-3 ${
+                registeredResult.emailStatus === 'sent'
+                  ? 'bg-emerald-50/80 border border-emerald-200 text-emerald-900'
+                  : registeredResult.emailStatus === 'failed'
+                  ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                  : 'bg-blue-50/80 border border-blue-200 text-blue-900'
+              }`}>
+                <div className={`p-2 rounded-lg shrink-0 mt-0.5 ${
+                  registeredResult.emailStatus === 'sent'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : registeredResult.emailStatus === 'failed'
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="font-bold text-emerald-950">Welcome Email Dispatched</p>
-                  <p className="text-emerald-800 mt-0.5">
-                    A welcome confirmation and platform onboarding briefing has been sent to your registered address (<strong className="font-semibold text-slate-900">{registeredResult.email}</strong>). Please check your Gmail / mail inbox and spam folder.
+                  <p className="font-bold">
+                    {registeredResult.emailStatus === 'sent'
+                      ? 'Welcome Email Dispatched'
+                      : registeredResult.emailStatus === 'failed'
+                      ? 'Account Active (Email Notice Failed)'
+                      : 'Account Active (Simulated Email Mode)'}
+                  </p>
+                  <p className="mt-0.5 opacity-90">
+                    {registeredResult.emailStatus === 'sent' ? (
+                      <>A welcome confirmation and platform onboarding briefing has been sent to your registered address (<strong className="font-semibold text-slate-900">{registeredResult.email}</strong>). Please check your Gmail / mail inbox and spam folder.</>
+                    ) : registeredResult.emailStatus === 'failed' ? (
+                      <>Your account is ready for sign in. Note: Mail notification could not be delivered to <strong>{registeredResult.email}</strong> ({registeredResult.emailMessage || 'SMTP check failed'}).</>
+                    ) : (
+                      <>Your account is active immediately. Note: Live email transmission is in simulation mode because SMTP credentials (SMTP_USER/SMTP_PASSWORD) are not yet configured on the server.</>
+                    )}
                   </p>
                 </div>
               </div>
