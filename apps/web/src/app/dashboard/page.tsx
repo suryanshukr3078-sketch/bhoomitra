@@ -25,6 +25,8 @@ import {
   Clock,
   Sparkles,
   ExternalLink,
+  UploadCloud,
+  FileUp,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -167,7 +169,7 @@ const DEFAULT_OVERVIEW: DashboardOverview = {
   cached: false,
 };
 
-const tabs: { id: DimensionTab; label: string; icon: React.ElementType }[] = [
+const BASE_TABS: { id: DimensionTab; label: string; icon: React.ElementType }[] = [
   { id: 'all', label: 'Executive Overview', icon: LayoutDashboard },
   { id: 'research', label: 'Research Outputs', icon: BookOpen },
   { id: 'policy', label: 'Policy Indicators', icon: Scale },
@@ -185,10 +187,15 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardOverview>(DEFAULT_OVERVIEW);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [isContributeOpen, setIsContributeOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Build tabs dynamically: authenticated users get the Contribute tab
+  const tabs = isAuthenticated
+    ? [...BASE_TABS, { id: 'contribute' as DimensionTab, label: 'Contribute', icon: UploadCloud }]
+    : BASE_TABS;
 
   const fetchMetrics = useCallback(async (showToast = false) => {
     try {
@@ -297,7 +304,7 @@ export default function DashboardPage() {
 
       reset();
       setUploadFile(null);
-      setIsContributeOpen(false);
+      setSubmitSuccess(true);
       fetchMetrics();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to publish resource';
@@ -341,25 +348,22 @@ export default function DashboardPage() {
             Refresh
           </button>
 
-          {data.permissions.can_submit_data ? (
+          {isAuthenticated ? (
             <button
               type="button"
-              onClick={() => setIsContributeOpen(true)}
+              onClick={() => setActiveTab('contribute')}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Contribute Resource
+              <UploadCloud className="w-3.5 h-3.5" />
+              Contribute
             </button>
           ) : (
             <Link
-              href={isAuthenticated ? '#' : '/login'}
+              href="/login?redirect=/dashboard"
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm transition-colors"
-              onClick={() => {
-                if (isAuthenticated) setIsContributeOpen(true);
-              }}
             >
               <Plus className="w-3.5 h-3.5" />
-              {isAuthenticated ? 'Contribute Resource' : 'Sign In to Contribute'}
+              Sign In to Contribute
             </Link>
           )}
         </div>
@@ -491,6 +495,187 @@ export default function DashboardPage() {
             {activeTab === 'geospatial' && (
               <GeospatialTab data={data.geospatial} permissions={data.permissions} />
             )}
+            {activeTab === 'contribute' && (
+              <div className="py-6 space-y-6 max-w-2xl">
+                {submitSuccess ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-4">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+                    <h3 className="text-lg font-bold text-emerald-900">Contribution Published!</h3>
+                    <p className="text-sm text-emerald-700">Your document has been indexed in the national registry.</p>
+                    <button
+                      type="button"
+                      onClick={() => { setSubmitSuccess(false); }}
+                      className="inline-flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition-colors"
+                    >
+                      <UploadCloud className="w-4 h-4" />
+                      Submit Another Resource
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-slate-900">Submit Research, Policy, or Dataset</h2>
+                        <p className="text-xs text-slate-500">Upload PDFs, images, GeoJSON, or spatial layers to the national registry</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSubmit(onContributeSubmit)} className="space-y-5" noValidate>
+                      {/* Title */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                          Document / Dataset Title <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Pune Metropolitan Cadastral Survey & Mutation Guidelines 2026"
+                          className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
+                            errors.title ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
+                          }`}
+                          {...register('title')}
+                        />
+                        {errors.title && (
+                          <p role="alert" className="text-xs text-rose-600 font-medium">{errors.title.message}</p>
+                        )}
+                      </div>
+
+                      {/* Type & Jurisdiction */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Resource Type <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                            {...register('resourceType')}
+                          >
+                            <option value="research_paper">📄 Research Paper</option>
+                            <option value="policy">⚖️ Policy Document</option>
+                            <option value="dataset">📊 Open Dataset</option>
+                            <option value="spatial_layer">🗺️ Spatial GIS Layer</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            Jurisdiction Code
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. IN-MH, IN-KA, IN-AP"
+                            className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            {...register('jurisdiction')}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Abstract */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                          Abstract / Description <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                          rows={4}
+                          placeholder="Provide a summary of this resource — scope, methodology, geographic coverage, or legal basis..."
+                          className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
+                            errors.abstract ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
+                          }`}
+                          {...register('abstract')}
+                        />
+                        {errors.abstract && (
+                          <p role="alert" className="text-xs text-rose-600 font-medium">{errors.abstract.message}</p>
+                        )}
+                      </div>
+
+                      {/* File Upload */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                          Attach File (PDF, Image, GeoJSON, TIFF)
+                        </label>
+                        <label
+                          htmlFor="contrib-file-input"
+                          className="flex items-center gap-3 px-4 py-3 border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl cursor-pointer transition-colors group"
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-emerald-50 flex items-center justify-center shrink-0 transition-colors">
+                            <FileUp className="w-4 h-4 text-slate-500 group-hover:text-emerald-600 transition-colors" />
+                          </div>
+                          <div className="min-w-0">
+                            {uploadFile ? (
+                              <p className="text-sm font-semibold text-emerald-700 truncate">{uploadFile.name}</p>
+                            ) : (
+                              <p className="text-sm text-slate-500">Click to browse or drag & drop</p>
+                            )}
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Supported: PDF, PNG, JPG, GeoJSON, TIFF · Max 50MB
+                            </p>
+                          </div>
+                        </label>
+                        <input
+                          id="contrib-file-input"
+                          type="file"
+                          accept="application/pdf,image/png,image/jpeg,image/jpg,.pdf,.geojson,.json,.tif,.tiff,.png,.jpg,.jpeg"
+                          onChange={(e) => {
+                            setUploadFile(e.target.files ? e.target.files[0] : null);
+                          }}
+                          className="sr-only"
+                        />
+                        {uploadFile && (
+                          <div className="flex items-center justify-between px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                            <span className="text-xs text-emerald-700 font-mono truncate">
+                              {uploadFile.name} — {(uploadFile.size / 1024).toFixed(1)} KB
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setUploadFile(null)}
+                              className="ml-2 text-emerald-600 hover:text-rose-600 transition-colors shrink-0"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Visibility */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                          Visibility
+                        </label>
+                        <select
+                          className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                          {...register('visibility')}
+                        >
+                          <option value="public">🌐 Public — visible to everyone</option>
+                          <option value="restricted">🔒 Restricted — authenticated users only</option>
+                        </select>
+                      </div>
+
+                      {/* Submit */}
+                      <div className="pt-2 flex items-center gap-3">
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-6 text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm disabled:opacity-70 transition-colors"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Publishing to Registry...
+                            </>
+                          ) : (
+                            <>
+                              <UploadCloud className="w-4 h-4" />
+                              Publish to Registry
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -567,154 +752,6 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
-
-      {/* Contribute Modal Dialog */}
-      {isContributeOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in"
-        >
-          <div className="max-w-lg w-full bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6 animate-in zoom-in-95">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 id="modal-title" className="text-xl font-bold text-slate-900">
-                  Publish Cadastral Resource
-                </h3>
-                <p className="text-xs text-slate-500">Record a new policy, research paper, or spatial layer</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsContributeOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                aria-label="Close dialog"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit(onContributeSubmit)} className="space-y-4" noValidate>
-              {/* Title */}
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700 uppercase">
-                  Document / Layer Title
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Pune Metropolitan Cadastral Survey 2026"
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  {...register('title')}
-                />
-                {errors.title && (
-                  <p role="alert" className="text-xs text-rose-600 font-medium">
-                    {errors.title.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Resource Type & Jurisdiction */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase">
-                    Resource Type
-                  </label>
-                  <select
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                    {...register('resourceType')}
-                  >
-                    <option value="research_paper">Research Paper</option>
-                    <option value="policy">Policy Document</option>
-                    <option value="spatial_layer">Spatial GIS Layer</option>
-                    <option value="dataset">Open Dataset</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase">
-                    Jurisdiction Code
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. IN-MH"
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    {...register('jurisdiction')}
-                  />
-                  {errors.jurisdiction && (
-                    <p role="alert" className="text-xs text-rose-600 font-medium">
-                      {errors.jurisdiction.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Abstract */}
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700 uppercase">
-                  Abstract / Scope Summary
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Provide technical scope, coordinates, or legal basis..."
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  {...register('abstract')}
-                />
-                {errors.abstract && (
-                  <p role="alert" className="text-xs text-rose-600 font-medium">
-                    {errors.abstract.message}
-                  </p>
-                )}
-              </div>
-
-              {/* File Attachment */}
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700 uppercase">
-                  Document Attachment (PDF, GeoJSON, TIFF)
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="dash-file-upload"
-                    type="file"
-                    accept="application/pdf,image/png,image/jpeg,image/jpg,.pdf,.geojson,.json,.tif,.tiff,.png,.jpg,.jpeg"
-                    onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
-                    className="text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
-                  />
-                </div>
-                {uploadFile && (
-                  <p className="text-[11px] text-emerald-700 font-mono">
-                    Attached: {uploadFile.name} ({(uploadFile.size / 1024).toFixed(1)} KB)
-                  </p>
-                )}
-              </div>
-
-              {/* Modal Buttons */}
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsContributeOpen(false)}
-                  className="flex-1 py-2.5 px-4 text-sm font-medium text-slate-700 border border-slate-300 rounded-xl hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-sm disabled:opacity-70"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    'Publish Record'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -41,7 +41,6 @@ export function Header() {
     { href: '/research', label: 'Research', icon: BookOpen },
     { href: '/datasets', label: 'Datasets', icon: Database },
     { href: '/evidence', label: 'Provenance', icon: ShieldCheck },
-    ...(isAuthenticated ? [{ href: '/contribute', label: 'Contribute', icon: UploadCloud }] : []),
     { href: '/assistant', label: 'AI Assistant', icon: Bot },
     { href: '/about', label: 'About', icon: Landmark },
   ];

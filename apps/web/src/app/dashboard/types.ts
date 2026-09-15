@@ -1,4 +1,4 @@
-﻿export type DimensionTab =
+export type DimensionTab =
   | 'all'
   | 'research'
   | 'policy'
@@ -6,7 +6,8 @@
   | 'climate'
   | 'disputes'
   | 'projects'
-  | 'geospatial';
+  | 'geospatial'
+  | 'contribute';
 
 export interface ResearchMetrics {
   total_papers: number;
