@@ -155,9 +155,16 @@ def create_application() -> FastAPI:
             "Content-Type",
             "Accept",
             "X-Request-ID",
+            "X-Access-Token",
+            "X-Auth-Token",
+            "Origin",
+            "Cache-Control",
+            "Pragma",
+            "X-Requested-With",
         ],
         expose_headers=[
             "X-Request-ID",
+            "Retry-After",
         ],
     )
 

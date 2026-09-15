@@ -22,6 +22,25 @@ def test_liveness_endpoint(client: TestClient) -> None:
     assert "version" in data
 
 
+def test_health_overview_endpoint_success(client: TestClient) -> None:
+    fake_db_info: dict[str, Any] = {
+        "database_name": "land_governance",
+        "database_user": "land_admin",
+        "postgis_version": "3.6.0",
+    }
+    with patch(
+        "app.api.v1.routes.health.check_database_connection",
+        new=AsyncMock(return_value=fake_db_info),
+    ):
+        for path in ["/api/v1/health", "/api/v1/health/"]:
+            response = client.get(path)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "ready"
+            assert "database" in data
+            assert data["database"]["database_name"] == "land_governance"
+
+
 def test_readiness_endpoint_success(client: TestClient) -> None:
     fake_db_info: dict[str, Any] = {
         "database_name": "land_governance",

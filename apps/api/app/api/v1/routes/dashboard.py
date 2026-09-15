@@ -331,6 +331,21 @@ async def build_dashboard_data(
 
 
 @router.get(
+    "",
+    response_model=DashboardOverviewResponse,
+    include_in_schema=False,
+)
+@router.get(
+    "/",
+    response_model=DashboardOverviewResponse,
+    include_in_schema=False,
+)
+@router.get(
+    "/overview",
+    response_model=DashboardOverviewResponse,
+    include_in_schema=False,
+)
+@router.get(
     "/metrics",
     response_model=DashboardOverviewResponse,
     summary="Get multi-dimensional interactive dashboard metrics with role-based visibility",

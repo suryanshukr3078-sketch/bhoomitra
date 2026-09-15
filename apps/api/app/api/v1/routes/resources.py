@@ -270,7 +270,7 @@ async def list_resources(
                 "status": item.status.value,
                 "visibility": item.visibility.value,
                 "publisher": getattr(item, "publisher", None) or "National Land Records Modernization Directorate",
-                "created_at": item.created_at.isoformat(),
+                "created_at": item.created_at.isoformat() if item.created_at else None,
                 "is_demo": item.is_demo,
             }
             for item in items
@@ -393,7 +393,7 @@ async def get_resource(
         "status": resource.status.value,
         "visibility": resource.visibility.value,
         "publisher": getattr(resource, "publisher", None) or "National Land Records Modernization Directorate",
-        "created_at": resource.created_at.isoformat(),
+        "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "published_at": resource.published_at.isoformat() if resource.published_at else None,
         "is_demo": resource.is_demo,
         "source_url": resource.source_url,
@@ -405,7 +405,7 @@ async def get_resource(
                 "mime_type": v.mime_type,
                 "file_size_bytes": v.file_size_bytes,
                 "checksum_sha256": v.checksum_sha256,
-                "created_at": v.created_at.isoformat(),
+                "created_at": v.created_at.isoformat() if v.created_at else None,
                 "download_url": f"/api/v1/resources/{resource.id}/download",
                 "view_url": f"/api/v1/resources/{resource.id}/view",
             }

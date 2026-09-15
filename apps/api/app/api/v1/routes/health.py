@@ -12,6 +12,18 @@ router = APIRouter(
 
 
 @router.get(
+    "",
+    summary="Health overview",
+)
+@router.get(
+    "/",
+    summary="Health overview",
+)
+async def health_overview() -> dict[str, Any]:
+    return await readiness()
+
+
+@router.get(
     "/live",
     summary="Liveness check",
 )

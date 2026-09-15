@@ -768,6 +768,11 @@ class TestSmtpPayload(BaseModel):
     "/smtp-status",
     summary="Check platform SMTP configuration status",
 )
+@router.get(
+    "/smtp/status",
+    summary="Check platform SMTP configuration status",
+    include_in_schema=False,
+)
 async def get_smtp_configuration_status() -> dict[str, Any]:
     return get_smtp_status()
 
