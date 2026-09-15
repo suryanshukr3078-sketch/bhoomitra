@@ -183,7 +183,11 @@ const BASE_TABS: { id: DimensionTab; label: string; icon: React.ElementType }[] 
 export default function DashboardPage() {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<DimensionTab>('all');
+  const searchParams = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : null;
+  const initialTab = (searchParams?.get('tab') as DimensionTab) || 'all';
+  const [activeTab, setActiveTab] = useState<DimensionTab>(initialTab);
   const [data, setData] = useState<DashboardOverview>(DEFAULT_OVERVIEW);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -191,6 +195,13 @@ export default function DashboardPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.replace('/login?redirect=/dashboard');
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
 
   // Build tabs dynamically: authenticated users get the Contribute tab
   const tabs = isAuthenticated
