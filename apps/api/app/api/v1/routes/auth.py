@@ -102,6 +102,8 @@ class AuthResponse(BaseModel):
     message: str | None = None
     requires_verification: bool = False
     email_sent: bool = True
+    email_status: str | None = None
+    email_message: str | None = None
 
 
 @router.post(
