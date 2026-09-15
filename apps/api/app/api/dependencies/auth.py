@@ -17,33 +17,48 @@ def extract_raw_token(request: Request, auth: HTTPAuthorizationCredentials | Non
     """
     Extracts an authentication token from multiple standard and fallback sources:
     1. HTTP Bearer Authorization header
-    2. HTTP Cookie 'access_token'
-    3. URL Query Parameter 'token' or 'access_token'
+    2. HTTP Cookie 'access_token' or 'token'
+    3. URL Query Parameter 'token', 'access_token', or 'bearer'
     4. Custom header 'X-Access-Token' or 'X-Auth-Token'
     5. Direct Authorization header value
     """
+    token_str: str | None = None
+
     if auth and auth.credentials:
-        return auth.credentials.strip()
+        token_str = auth.credentials
 
-    cookie_token = request.cookies.get("access_token")
-    if cookie_token and cookie_token.strip():
-        return cookie_token.strip()
+    if not token_str:
+        cookie_token = request.cookies.get("access_token") or request.cookies.get("token")
+        if cookie_token and cookie_token.strip():
+            token_str = cookie_token
 
-    query_token = request.query_params.get("token") or request.query_params.get("access_token")
-    if query_token and query_token.strip():
-        return query_token.strip()
+    if not token_str:
+        query_token = (
+            request.query_params.get("token")
+            or request.query_params.get("access_token")
+            or request.query_params.get("bearer")
+        )
+        if query_token and query_token.strip():
+            token_str = query_token
 
-    header_token = request.headers.get("x-access-token") or request.headers.get("x-auth-token")
-    if header_token and header_token.strip():
-        return header_token.strip()
+    if not token_str:
+        header_token = request.headers.get("x-access-token") or request.headers.get("x-auth-token")
+        if header_token and header_token.strip():
+            token_str = header_token
 
-    raw_auth = request.headers.get("authorization")
-    if raw_auth and raw_auth.strip():
-        parts = raw_auth.strip().split()
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            return parts[1].strip()
-        elif len(parts) == 1:
-            return parts[0].strip()
+    if not token_str:
+        raw_auth = request.headers.get("authorization")
+        if raw_auth and raw_auth.strip():
+            parts = raw_auth.strip().split()
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                token_str = parts[1]
+            elif len(parts) == 1:
+                token_str = parts[0]
+
+    if token_str:
+        cleaned = token_str.strip().strip('"').strip("'")
+        if cleaned:
+            return cleaned
 
     return None
 

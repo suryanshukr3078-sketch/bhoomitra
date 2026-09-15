@@ -2,10 +2,13 @@ import asyncio
 import logging
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,11 +22,11 @@ from app.services.email import (
 
 logger = logging.getLogger("bhoomitra.auth")
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.auth import extract_raw_token, get_current_user, security_bearer
 from app.api.dependencies.db import get_db
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.models.enums import MembershipStatus, OrganizationType, UserStatus
 from app.models.identity import Organization, OrganizationMembership, User
 from app.schemas.identity import Token, UserRead
@@ -269,6 +272,314 @@ async def register(
     }
 
 
+async def resolve_user_membership_and_org(
+    db: AsyncSession,
+    user: User,
+) -> tuple[str, str | None, str | None, str | None]:
+    role_label = "admin" if user.is_superuser else "CITIZEN"
+    org_id_val = None
+    org_name_val = None
+    org_slug_val = None
+
+    try:
+        stmt_membership = (
+            select(OrganizationMembership, Organization)
+            .outerjoin(Organization, OrganizationMembership.organization_id == Organization.id)
+            .where(OrganizationMembership.user_id == user.id)
+        )
+        membership_res = await db.execute(stmt_membership)
+        membership_row = membership_res.first()
+        if membership_row is not None:
+            m = membership_row[0] if len(membership_row) > 0 else None
+            o = membership_row[1] if len(membership_row) > 1 else None
+            if m is not None:
+                title_attr = getattr(m, "title", None) or getattr(m, "role", None)
+                if title_attr and isinstance(title_attr, str) and title_attr.strip():
+                    role_label = title_attr.strip()
+            if o is not None:
+                if hasattr(o, "id") and o.id:
+                    org_id_val = str(o.id)
+                if hasattr(o, "name") and o.name:
+                    org_name_val = str(o.name)
+                if hasattr(o, "slug") and o.slug:
+                    org_slug_val = str(o.slug)
+    except Exception as exc:
+        logger.warning(f"Failed to resolve user organization membership: {exc}")
+
+    return role_label, org_id_val, org_name_val, org_slug_val
+
+
+def render_auth_me_html(
+    user: UserRead | None,
+    is_authenticated: bool,
+    is_demo: bool = False,
+) -> str:
+    web_base_url = "https://web-rho-gules-89.vercel.app"
+
+    if is_authenticated and user:
+        status_badge = (
+            '<span class="badge badge-demo">Demo Preview Session</span>'
+            if is_demo
+            else '<span class="badge badge-success">&#x25CF; Authenticated Active Session</span>'
+        )
+        role_badge = f'<span class="badge badge-role">{user.role}</span>'
+        org_markup = ""
+        if user.organization_name:
+            org_markup = f"""
+            <div class="field-row">
+                <span class="field-label">Organization</span>
+                <span class="field-value">{user.organization_name} <span class="text-dim">({user.organization_slug or "verified"})</span></span>
+            </div>
+            """
+
+        main_content = f"""
+        <div class="card card-glow">
+            <div class="card-header">
+                <div>
+                    <h2 class="user-name">{user.full_name}</h2>
+                    <p class="user-email">{user.email}</p>
+                </div>
+                <div>{status_badge}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="field-grid">
+                <div class="field-row">
+                    <span class="field-label">Platform Role</span>
+                    <span class="field-value">{role_badge}</span>
+                </div>
+                <div class="field-row">
+                    <span class="field-label">Account Status</span>
+                    <span class="field-value"><span class="badge badge-active">{user.status.upper()}</span></span>
+                </div>
+                {org_markup}
+                <div class="field-row">
+                    <span class="field-label">User ID</span>
+                    <span class="field-value mono">{user.id}</span>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="button-group">
+                <a href="{web_base_url}/workspaces" class="btn btn-primary" target="_blank">&#x2197; Launch Web Workspaces</a>
+                <a href="?format=json" class="btn btn-secondary">&#x2935; View Raw JSON</a>
+                <a href="{web_base_url}/login" class="btn btn-outline" target="_blank">Switch Account</a>
+            </div>
+        </div>
+        """
+    else:
+        main_content = f"""
+        <div class="card card-glow">
+            <div class="card-header">
+                <div>
+                    <h2 class="user-name">&#x1F512; Authentication Gateway</h2>
+                    <p class="user-email">Endpoint: <code>/api/v1/auth/me</code> (HTTP 401 Protected)</p>
+                </div>
+                <div><span class="badge badge-warning">&#x25CF; No Session Detected</span></div>
+            </div>
+            <p class="description">
+                This endpoint provides authenticated user credentials, verified organizational memberships, and role-based permissions.
+                To inspect identity data, sign in through your portal or test with a simulated demo session.
+            </p>
+
+            <div class="notice-box" id="local-token-notice" style="display: none;">
+                <p>&#x2728; <strong>Browser Session Detected:</strong> Found an active access token in your browser storage.</p>
+                <button type="button" onclick="useStoredToken()" class="btn btn-sm btn-primary" style="margin-top: 8px;">Apply Stored Token</button>
+            </div>
+
+            <div class="token-form">
+                <label class="field-label">Test with JWT Bearer Token:</label>
+                <div class="input-row">
+                    <input type="text" id="token-input" placeholder="Paste access_token (eyJ...)" />
+                    <button type="button" onclick="submitToken()" class="btn btn-primary">Inspect</button>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="button-group">
+                <a href="{web_base_url}/login" class="btn btn-primary" target="_blank">&#x2197; Sign In to Web Portal</a>
+                <a href="?demo=true" class="btn btn-secondary">&#x26A1; Preview Demo Session</a>
+                <a href="?format=json" class="btn btn-outline">&#x2935; Raw JSON 401</a>
+            </div>
+        </div>
+
+        <div class="portals-section">
+            <h3 class="section-title">Direct Portal Access</h3>
+            <div class="portals-grid">
+                <a href="{web_base_url}/login/researcher" class="portal-card" target="_blank">
+                    <span class="portal-icon">&#x1F393;</span>
+                    <strong>Researcher & Academic</strong>
+                    <p>Cadastral analytics, spatial datasets & research</p>
+                </a>
+                <a href="{web_base_url}/login/government" class="portal-card" target="_blank">
+                    <span class="portal-icon">&#x1F3DB;</span>
+                    <strong>Government Official</strong>
+                    <p>Parcel records, mutation clearance & statutory registry</p>
+                </a>
+                <a href="{web_base_url}/login/policymaker" class="portal-card" target="_blank">
+                    <span class="portal-icon">&#x2696;</span>
+                    <strong>Policy Maker</strong>
+                    <p>Tenure policy intelligence & legislative analytics</p>
+                </a>
+                <a href="{web_base_url}/login/civil-society" class="portal-card" target="_blank">
+                    <span class="portal-icon">&#x1F91D;</span>
+                    <strong>Civil Society & NGO</strong>
+                    <p>Community advocacy, tenure disputes & grievances</p>
+                </a>
+                <a href="{web_base_url}/login/admin" class="portal-card" target="_blank">
+                    <span class="portal-icon">&#x1F6E1;</span>
+                    <strong>System Administrator</strong>
+                    <p>Institutional verification & platform governance</p>
+                </a>
+            </div>
+        </div>
+        """
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhoomitra · Session & Auth Inspector (/api/v1/auth/me)</title>
+    <style>
+        :root {{
+            --bg: #090d16;
+            --card-bg: #131b2e;
+            --border: #1e293b;
+            --border-hover: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --primary: #10b981;
+            --primary-hover: #059669;
+            --accent: #3b82f6;
+            --warning: #f59e0b;
+        }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }}
+        .container {{ width: 100%; max-width: 820px; }}
+        .header {{ text-align: center; margin-bottom: 30px; }}
+        .header h1 {{ font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: #fff; margin-bottom: 6px; }}
+        .header p {{ color: var(--text-muted); font-size: 14px; }}
+        .card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            margin-bottom: 24px;
+        }}
+        .card-glow {{ border-color: rgba(16, 185, 129, 0.3); }}
+        .card-header {{ display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }}
+        .user-name {{ font-size: 22px; font-weight: 600; color: #fff; }}
+        .user-email {{ color: var(--text-muted); font-size: 14px; margin-top: 4px; }}
+        .description {{ color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }}
+        .divider {{ height: 1px; background: var(--border); margin: 20px 0; }}
+        .field-grid {{ display: grid; grid-template-columns: 1fr; gap: 14px; }}
+        @media (min-width: 600px) {{ .field-grid {{ grid-template-columns: 1fr 1fr; }} }}
+        .field-row {{ display: flex; flex-direction: column; gap: 4px; }}
+        .field-label {{ font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); font-weight: 600; }}
+        .field-value {{ font-size: 14px; color: #fff; font-weight: 500; }}
+        .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; color: #cbd5e1; }}
+        .badge {{
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 9999px;
+            font-size: 12px; font-weight: 600;
+        }}
+        .badge-success {{ background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }}
+        .badge-warning {{ background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }}
+        .badge-demo {{ background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }}
+        .badge-role {{ background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); }}
+        .badge-active {{ background: rgba(16, 185, 129, 0.2); color: #10b981; }}
+        .button-group {{ display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }}
+        .btn {{
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            text-decoration: none; cursor: pointer; transition: all 0.15s ease; border: none;
+        }}
+        .btn-primary {{ background: var(--primary); color: #022c22; }}
+        .btn-primary:hover {{ background: var(--primary-hover); }}
+        .btn-secondary {{ background: #1e293b; color: #f8fafc; border: 1px solid #334155; }}
+        .btn-secondary:hover {{ background: #334155; }}
+        .btn-outline {{ background: transparent; color: var(--text-muted); border: 1px solid var(--border); }}
+        .btn-outline:hover {{ color: #fff; border-color: #475569; }}
+        .btn-sm {{ padding: 6px 12px; font-size: 12px; }}
+        .token-form {{ margin-top: 16px; }}
+        .input-row {{ display: flex; gap: 8px; margin-top: 6px; }}
+        .input-row input {{
+            flex: 1; background: #0b1120; border: 1px solid var(--border);
+            padding: 10px 14px; border-radius: 8px; color: #fff; font-size: 13px;
+            font-family: monospace; outline: none;
+        }}
+        .input-row input:focus {{ border-color: var(--primary); }}
+        .notice-box {{
+            background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);
+            padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; color: #a7f3d0;
+        }}
+        .portals-section {{ margin-top: 30px; }}
+        .section-title {{ font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 14px; font-weight: 600; }}
+        .portals-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }}
+        .portal-card {{
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; text-decoration: none; color: inherit; transition: all 0.2s ease;
+        }}
+        .portal-card:hover {{ border-color: var(--border-hover); transform: translateY(-2px); }}
+        .portal-icon {{ font-size: 22px; display: block; margin-bottom: 8px; }}
+        .portal-card strong {{ font-size: 14px; color: #fff; display: block; margin-bottom: 4px; }}
+        .portal-card p {{ font-size: 12px; color: var(--text-dim); line-height: 1.4; }}
+        .footer {{ text-align: center; margin-top: 40px; font-size: 12px; color: var(--text-dim); }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🌱 Bhoomitra Land Governance Platform</h1>
+            <p>Spatial Cadastral Repository · Identity & Role Clearance Gateway</p>
+        </header>
+
+        {main_content}
+
+        <footer class="footer">
+            <p>Bhoomitra National Land Governance Platform &bull; REST API v1.0 &bull; Secure Encrypted Session</p>
+        </footer>
+    </div>
+
+    <script>
+        (function() {{
+            try {{
+                var localToken = localStorage.getItem('access_token');
+                if (localToken && !window.location.search.includes('token=') && !window.location.search.includes('demo=')) {{
+                    var notice = document.getElementById('local-token-notice');
+                    if (notice) notice.style.display = 'block';
+                }}
+            }} catch(e) {{}}
+        }})();
+
+        function useStoredToken() {{
+            var localToken = localStorage.getItem('access_token');
+            if (localToken) {{
+                window.location.href = window.location.pathname + '?token=' + encodeURIComponent(localToken.trim());
+            }}
+        }}
+
+        function submitToken() {{
+            var val = document.getElementById('token-input').value.trim();
+            if (val) {{
+                window.location.href = window.location.pathname + '?token=' + encodeURIComponent(val);
+            }}
+        }}
+    </script>
+</body>
+</html>"""
+
+
 @router.post(
     "/login",
     response_model=AuthResponse,
@@ -322,29 +633,7 @@ async def login(
         path="/",
     )
 
-    role_label = "admin" if user.is_superuser else "CITIZEN"
-    org_id_val = None
-    org_name_val = None
-    org_slug_val = None
-
-    try:
-        stmt_membership = (
-            select(OrganizationMembership, Organization)
-            .outerjoin(Organization, OrganizationMembership.organization_id == Organization.id)
-            .where(OrganizationMembership.user_id == user.id)
-        )
-        membership_res = await db.execute(stmt_membership)
-        membership_row = membership_res.first()
-        if membership_row and isinstance(membership_row, (tuple, list)) and len(membership_row) >= 2:
-            m, o = membership_row[0], membership_row[1]
-            if m and hasattr(m, "role") and isinstance(getattr(m, "role", None), str):
-                role_label = m.role
-            if o and hasattr(o, "id") and hasattr(o, "name") and isinstance(getattr(o, "name", None), str):
-                org_id_val = str(o.id)
-                org_name_val = str(o.name)
-                org_slug_val = str(getattr(o, "slug", None) or "")
-    except Exception:
-        pass
+    role_label, org_id_val, org_name_val, org_slug_val = await resolve_user_membership_and_org(db, user)
 
     return {
         "token": Token(access_token=access_token, token_type="bearer"),
@@ -370,45 +659,85 @@ async def login(
     summary="Get current user profile",
 )
 async def get_me(
-    current_user: User = Depends(get_current_user),
+    request: Request,
+    auth: HTTPAuthorizationCredentials | None = Depends(security_bearer),
     db: AsyncSession = Depends(get_db),
+    demo: bool = False,
+    preview: bool = False,
+    format: str | None = None,
 ) -> Any:
-    role_label = "admin" if current_user.is_superuser else "CITIZEN"
-    org_id_val = None
-    org_name_val = None
-    org_slug_val = None
+    accept_header = request.headers.get("accept", "").lower()
+    wants_html = ("text/html" in accept_header) and (format != "json")
 
-    try:
-        stmt_membership = (
-            select(OrganizationMembership, Organization)
-            .outerjoin(Organization, OrganizationMembership.organization_id == Organization.id)
-            .where(OrganizationMembership.user_id == current_user.id)
+    # 1. Demo Mode
+    if demo or preview:
+        demo_user = UserRead(
+            id="00000000-0000-0000-0000-000000000001",
+            email="demo.researcher@bhoomitra.gov.in",
+            full_name="Dr. Aarav Sharma (Demo Researcher)",
+            role="Academic Researcher",
+            is_active=True,
+            is_superuser=False,
+            status="active",
+            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            organization_id="00000000-0000-0000-0000-000000000002",
+            organization_name="National Cadastral Research Institute",
+            organization_slug="national-cadastral-research-institute",
         )
-        membership_res = await db.execute(stmt_membership)
-        membership_row = membership_res.first()
-        if membership_row and isinstance(membership_row, (tuple, list)) and len(membership_row) >= 2:
-            m, o = membership_row[0], membership_row[1]
-            if m and hasattr(m, "role") and isinstance(getattr(m, "role", None), str):
-                role_label = m.role
-            if o and hasattr(o, "id") and hasattr(o, "name") and isinstance(getattr(o, "name", None), str):
-                org_id_val = str(o.id)
-                org_name_val = str(o.name)
-                org_slug_val = str(getattr(o, "slug", None) or "")
-    except Exception:
-        pass
+        if wants_html:
+            return HTMLResponse(
+                content=render_auth_me_html(user=demo_user, is_authenticated=True, is_demo=True),
+                status_code=200,
+            )
+        return demo_user
 
-    return UserRead(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
-        role=role_label,
-        is_active=current_user.status == UserStatus.ACTIVE,
-        is_superuser=current_user.is_superuser,
-        status=current_user.status.value,
-        created_at=current_user.created_at,
-        organization_id=org_id_val,
-        organization_name=org_name_val,
-        organization_slug=org_slug_val,
+    # 2. Extract Token and Authenticate User
+    raw_token = extract_raw_token(request, auth)
+    current_user: User | None = None
+
+    if raw_token:
+        payload = decode_access_token(raw_token)
+        if payload and "sub" in payload:
+            try:
+                user_id = UUID(payload["sub"])
+                result = await db.execute(select(User).where(User.id == user_id))
+                current_user = result.scalar_one_or_none()
+            except (ValueError, TypeError):
+                pass
+
+    if current_user:
+        role_label, org_id_val, org_name_val, org_slug_val = await resolve_user_membership_and_org(db, current_user)
+        user_read = UserRead(
+            id=str(current_user.id),
+            email=current_user.email,
+            full_name=current_user.full_name,
+            role=role_label,
+            is_active=current_user.status == UserStatus.ACTIVE,
+            is_superuser=current_user.is_superuser,
+            status=current_user.status.value,
+            created_at=current_user.created_at,
+            organization_id=org_id_val,
+            organization_name=org_name_val,
+            organization_slug=org_slug_val,
+        )
+        if wants_html:
+            return HTMLResponse(
+                content=render_auth_me_html(user=user_read, is_authenticated=True, is_demo=False),
+                status_code=200,
+            )
+        return user_read
+
+    # 3. Unauthenticated Handling
+    if wants_html:
+        return HTMLResponse(
+            content=render_auth_me_html(user=None, is_authenticated=False, is_demo=False),
+            status_code=200,
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing authentication credentials. Please provide a Bearer token in the Authorization header, an access_token cookie, or a ?token= parameter. To test with a demo profile, append ?demo=true or visit this URL in your web browser.",
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 
