@@ -6,6 +6,8 @@ from typing import Any
 
 import structlog
 from fastapi import FastAPI, Request
+from fastapi.exceptions import HTTPException as FastAPIHTTPException, RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -108,6 +110,17 @@ def create_application() -> FastAPI:
 
     @application.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> ORJSONResponse:
+        if isinstance(exc, (FastAPIHTTPException, StarletteHTTPException)):
+            return ORJSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+                headers=getattr(exc, "headers", None),
+            )
+        if isinstance(exc, RequestValidationError):
+            return ORJSONResponse(
+                status_code=422,
+                content={"detail": exc.errors()},
+            )
         request_id = request.headers.get("X-Request-ID")
         logger.error(
             "Unhandled application exception",

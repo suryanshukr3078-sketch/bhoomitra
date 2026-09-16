@@ -195,7 +195,7 @@ async def register(
                     full_name=body.full_name.strip(),
                     action_type="register",
                 ),
-                timeout=5.0,
+                timeout=15.0,
             )
             if isinstance(email_result, dict):
                 email_status = str(email_result.get("status", "unknown"))
@@ -725,7 +725,7 @@ async def login(
                     full_name=user.full_name,
                     action_type="login",
                 ),
-                timeout=5.0,
+                timeout=15.0,
             )
             if isinstance(email_result, dict):
                 email_status = str(email_result.get("status", "unknown"))
@@ -1032,6 +1032,7 @@ async def verify_otp_endpoint(
 @limiter.limit("5/minute")
 async def resend_otp_endpoint(
     request: Request,
+    response: Response,
     body: ResendOtpRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
@@ -1073,7 +1074,7 @@ async def resend_otp_endpoint(
                 full_name=full_name,
                 action_type=action,
             ),
-            timeout=5.0,
+            timeout=15.0,
         )
         if isinstance(email_result, dict):
             email_status = str(email_result.get("status", "unknown"))
