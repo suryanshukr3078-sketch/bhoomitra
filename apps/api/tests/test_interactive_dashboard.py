@@ -140,6 +140,14 @@ def dashboard_env() -> Generator[dict[str, Any], None, None]:
             # Default numeric counts for aggregation queries
             mock_res.scalar_one.return_value = 12
             mock_res.scalar_one_or_none.return_value = None
+            mock_res.mappings.return_value.one.return_value = {
+                "total_papers": 12,
+                "total_spatial": 8,
+                "total_policies": 15,
+                "enacted_policies": 10,
+                "under_review": 3,
+                "draft_policies": 2,
+            }
             return mock_res
 
     async def override_get_db() -> AsyncGenerator[FakeSession, None]:

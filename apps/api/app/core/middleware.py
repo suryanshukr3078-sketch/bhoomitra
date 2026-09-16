@@ -155,19 +155,29 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         response = await call_next(request)
 
+        # Always add Vary: Origin so cached responses never bleed across origins
+        response.headers["Vary"] = "Origin, Accept-Encoding"
+
         # Only cache successful GET requests without sensitive authentication
         if request.method == "GET" and response.status_code == 200:
+            path = request.url.path
+
+            # Dashboard metrics must always be fresh and never edge-cached
+            if "dashboard/metrics" in path:
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+                response.headers["Vary"] = "Origin, Authorization"
+                return response
+
             has_auth = bool(
                 request.headers.get("Authorization")
+                or request.headers.get("x-access-token")
                 or request.cookies.get("access_token")
                 or request.cookies.get("auth_token")
             )
-            path = request.url.path
 
             if not has_auth and any(path.startswith(p) for p in self.PUBLIC_CACHE_PREFIXES):
                 response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=300"
-            elif path.endswith("/dashboard/metrics") and not has_auth:
-                response.headers["Cache-Control"] = "public, s-maxage=30, stale-while-revalidate=60"
+                response.headers["Vary"] = "Origin, Accept-Encoding"
 
         return response
 

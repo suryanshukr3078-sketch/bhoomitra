@@ -104,20 +104,41 @@ export async function apiRequest<T>(
     }
   }
 
+  const isSameOrigin =
+    typeof window !== 'undefined' &&
+    ((!url.startsWith('http://') && !url.startsWith('https://')) ||
+      url.startsWith(window.location.origin));
+
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(options.headers as Record<string, string>),
   };
 
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (token) {
+    if (!headers['Authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (!headers['X-Access-Token']) {
+      headers['X-Access-Token'] = token;
+    }
   }
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
+  const credentialsMode: RequestCredentials =
+    options.credentials ?? (isSameOrigin ? 'include' : 'same-origin');
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+      credentials: credentialsMode,
+    });
+  } catch (networkErr: any) {
+    const err = new Error(networkErr?.message || 'Network connection to LandGov API failed');
+    (err as any).status = 0;
+    (err as any).isNetworkError = true;
+    throw err;
+  }
 
   if (!res.ok) {
     let errorDetail = `Request failed with status ${res.status}`;

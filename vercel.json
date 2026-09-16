@@ -52,7 +52,44 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, s-maxage=30, stale-while-revalidate=60"
+          "value": "no-store, no-cache, must-revalidate, max-age=0"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Authorization, Content-Type, Accept, Origin, X-Request-ID, X-Access-Token, X-Auth-Token, Cache-Control, Pragma, X-Requested-With"
+        },
+        {
+          "key": "Access-Control-Expose-Headers",
+          "value": "X-Request-ID, Retry-After"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Authorization, Content-Type, Accept, Origin, X-Request-ID, X-Access-Token, X-Auth-Token, Cache-Control, Pragma, X-Requested-With"
+        },
+        {
+          "key": "Access-Control-Expose-Headers",
+          "value": "X-Request-ID, Retry-After"
         }
       ]
     }

@@ -140,7 +140,11 @@ def create_application() -> FastAPI:
 
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origin_list,
+        allow_origins=[
+            *settings.cors_origin_list,
+            "https://web-rho-gules-89.vercel.app",
+            "https://land-governance-platform-virid.vercel.app",
+        ],
         allow_origin_regex=r"https://.*\.vercel\.app",
         allow_credentials=True,
         allow_methods=[
@@ -152,16 +156,7 @@ def create_application() -> FastAPI:
             "OPTIONS",
         ],
         allow_headers=[
-            "Authorization",
-            "Content-Type",
-            "Accept",
-            "X-Request-ID",
-            "X-Access-Token",
-            "X-Auth-Token",
-            "Origin",
-            "Cache-Control",
-            "Pragma",
-            "X-Requested-With",
+            "*",
         ],
         expose_headers=[
             "X-Request-ID",
