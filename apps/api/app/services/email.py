@@ -8,6 +8,11 @@ from typing import Any
 
 from app.core.config import settings
 
+try:
+    from app.static.logo_base64 import TEAM_CODENOVA_LOGO_BASE64
+except ImportError:
+    TEAM_CODENOVA_LOGO_BASE64 = ""
+
 logger = logging.getLogger("bhoomitra.email")
 
 
@@ -661,3 +666,172 @@ def send_welcome_email(
         html_body=html_body,
         text_body=text_body,
     )
+
+
+def _build_otp_email_html(
+    to_email: str,
+    otp_code: str,
+    full_name: str,
+    action_type: str = "login",
+) -> str:
+    action_title = "Two-Factor Verification Code" if action_type == "login" else "Registration Verification Code"
+    action_purpose = (
+        "Your One-Time Password (OTP) for authenticating your session into Bhoomitra is:"
+        if action_type == "login"
+        else "Your One-Time Password (OTP) for completing your platform registration is:"
+    )
+
+    logo_src = (
+        f"data:image/png;base64,{TEAM_CODENOVA_LOGO_BASE64}"
+        if TEAM_CODENOVA_LOGO_BASE64
+        else "https://web-rho-gules-89.vercel.app/images/team-codenova-logo.png"
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{action_title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0b1120; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0b1120; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 540px; background-color: #111827; border-radius: 18px; overflow: hidden; border: 1px solid #1f2937; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);">
+          
+          <!-- TEAM CODENOVA Branded Header -->
+          <tr>
+            <td style="background-color: #ffffff; padding: 24px 32px; text-align: center; border-bottom: 3px solid #10b981;">
+              <img src="{logo_src}" alt="TEAM CODENOVA" style="max-height: 52px; width: auto; display: inline-block;" />
+            </td>
+          </tr>
+
+          <!-- Sub-header Title -->
+          <tr>
+            <td style="background: linear-gradient(180deg, #111827 0%, #1e293b 100%); padding: 24px 32px 12px 32px; text-align: center;">
+              <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #38bdf8; letter-spacing: -0.3px;">
+                Bhoomitra Land Governance Platform
+              </h1>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8; font-weight: 500;">
+                Powered by Team CodeNova Security Architecture
+              </p>
+            </td>
+          </tr>
+
+          <!-- OTP Content Body -->
+          <tr>
+            <td style="padding: 24px 32px 32px 32px;">
+              <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #ffffff;">
+                Hello {full_name or 'User'},
+              </h2>
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #cbd5e1;">
+                {action_purpose}
+              </p>
+
+              <!-- 6-Digit OTP Box (Matches reference screenshot style) -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 0 0 24px 0;">
+                <tr>
+                  <td align="center">
+                    <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px 24px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                      <div style="font-size: 38px; font-weight: 800; letter-spacing: 12px; color: #ffffff; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);">
+                        {otp_code}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Expiry Alert -->
+              <div style="background-color: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 24px;">
+                <p style="margin: 0; font-size: 13px; color: #fbbf24; line-height: 1.5; font-weight: 500;">
+                  ⏳ <strong>This OTP is valid for 10 minutes.</strong> Please do not share this one-time code with anyone.
+                </p>
+              </div>
+
+              <!-- Automated message note -->
+              <p style="margin: 0 0 16px 0; font-size: 12px; line-height: 1.5; color: #64748b;">
+                This is an automated 2-Factor Authentication message from Bhoomitra &bull; Team CodeNova. If you did not initiate this request, please change your credentials immediately or contact support.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer with Branding -->
+          <tr>
+            <td style="background-color: #0f172a; border-top: 1px solid #1e293b; padding: 20px 32px; font-size: 11px; color: #64748b; line-height: 1.5; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-weight: 600; color: #94a3b8;">
+                TEAM CODENOVA &bull; Bhoomitra National Cadastral Platform
+              </p>
+              <p style="margin: 0;">
+                All Rights Reserved &bull; Secure 2FA Protocol Enabled
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def _build_otp_email_text(
+    to_email: str,
+    otp_code: str,
+    full_name: str,
+    action_type: str = "login",
+) -> str:
+    action_title = "Two-Factor Verification Code" if action_type == "login" else "Registration Verification Code"
+    return f"""TEAM CODENOVA - Bhoomitra 2FA Verification
+==================================================
+
+Hello {full_name or 'User'},
+
+{action_title} for Bhoomitra:
+
+    >>>  {otp_code}  <<<
+
+This OTP is valid for 10 minutes. Please do not share it with anyone.
+
+If you did not request this verification code, please ignore this email or secure your account.
+
+Regards,
+Team CodeNova & Bhoomitra Platform
+https://web-rho-gules-89.vercel.app
+"""
+
+
+def send_otp_email(
+    to_email: str,
+    otp_code: str,
+    full_name: str = "",
+    action_type: str = "login",
+) -> EmailDeliveryResult:
+    """
+    Constructs and dispatches the 2FA OTP email containing Team CodeNova branding.
+    """
+    action_desc = "Login 2FA" if action_type == "login" else "Registration 2FA"
+    subject = f"{otp_code} is your Bhoomitra {action_desc} Code | Team CodeNova"
+    html_body = _build_otp_email_html(
+        to_email=to_email,
+        otp_code=otp_code,
+        full_name=full_name,
+        action_type=action_type,
+    )
+    text_body = _build_otp_email_text(
+        to_email=to_email,
+        otp_code=otp_code,
+        full_name=full_name,
+        action_type=action_type,
+    )
+
+    return send_email_sync(
+        to_email=to_email,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
+    )
+

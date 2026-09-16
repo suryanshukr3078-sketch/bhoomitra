@@ -27,6 +27,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiRequest, setAuthToken } from '@/lib/api/client';
+import { OtpVerificationDialog } from '@/components/auth/otp-verification-dialog';
 
 const PORTAL_SHORTCUTS = [
   {
@@ -86,6 +87,9 @@ export default function CentralLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [redirectParam, setRedirectParam] = useState<string | null>(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingOtpEmail, setPendingOtpEmail] = useState('');
+  const [pendingDebugOtp, setPendingDebugOtp] = useState<string | null>(null);
   const { toast } = useToast();
   const { setUser, refreshUser } = useAuth();
   const router = useRouter();
@@ -118,8 +122,13 @@ export default function CentralLoginPage() {
 
     try {
       const response = await apiRequest<{
-        token: { access_token: string; token_type: string };
-        user: { id: string; email: string; full_name: string; role: string; is_active: boolean; is_superuser?: boolean };
+        token?: { access_token: string; token_type: string };
+        user?: { id: string; email: string; full_name: string; role: string; is_active: boolean; is_superuser?: boolean };
+        status?: string;
+        message?: string;
+        otp_required?: boolean;
+        debug_otp?: string | null;
+        email?: string;
       }>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,6 +137,18 @@ export default function CentralLoginPage() {
           password: data.password,
         }),
       });
+
+      if (response.otp_required) {
+        setPendingOtpEmail(data.email.trim());
+        setPendingDebugOtp(response.debug_otp || null);
+        setOtpDialogOpen(true);
+        toast({
+          title: 'Two-Factor Authentication Code Sent',
+          description: `A 6-digit security code with Team CodeNova branding was dispatched to ${data.email.trim()}.`,
+          variant: 'default',
+        });
+        return;
+      }
 
       if (response.token?.access_token) {
         setAuthToken(response.token.access_token);
@@ -417,6 +438,32 @@ export default function CentralLoginPage() {
           </p>
         </div>
       </div>
+
+      {/* 2FA Verification Dialog with Team CodeNova branding */}
+      <OtpVerificationDialog
+        isOpen={otpDialogOpen}
+        email={pendingOtpEmail}
+        action="login"
+        debugOtp={pendingDebugOtp}
+        onCancel={() => setOtpDialogOpen(false)}
+        onSuccess={(authData) => {
+          setOtpDialogOpen(false);
+          const redirectUrl =
+            redirectParam ||
+            (typeof window !== 'undefined'
+              ? (new URLSearchParams(window.location.search).get('redirect') ||
+                 new URLSearchParams(window.location.search).get('returnUrl'))
+              : null);
+
+          if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+            router.push(redirectUrl);
+          } else if (authData.user?.is_superuser) {
+            router.push('/admin');
+          } else {
+            router.push('/dashboard');
+          }
+        }}
+      />
     </div>
   );
 }

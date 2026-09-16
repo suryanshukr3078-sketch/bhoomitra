@@ -32,6 +32,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiRequest, setAuthToken } from '@/lib/api/client';
+import { OtpVerificationDialog } from '@/components/auth/otp-verification-dialog';
 
 interface CategoryOption {
   id: string;
@@ -142,6 +143,10 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [registeredResult, setRegisteredResult] = useState<RegistrationSuccessResult | null>(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingOtpEmail, setPendingOtpEmail] = useState('');
+  const [pendingDebugOtp, setPendingDebugOtp] = useState<string | null>(null);
+  const [pendingFormData, setPendingFormData] = useState<RegisterFormData | null>(null);
   const { toast } = useToast();
   const { setUser, refreshUser } = useAuth();
   const router = useRouter();
@@ -182,10 +187,13 @@ export default function RegisterPage() {
     try {
       const response = await apiRequest<{
         token: { access_token: string; token_type: string } | null;
-        user: { id: string; email: string; full_name: string; role: string; is_active: boolean };
+        user: { id: string; email: string; full_name: string; role: string; is_active: boolean } | null;
         status: string;
         message: string;
         requires_verification: boolean;
+        otp_required?: boolean;
+        debug_otp?: string | null;
+        email?: string;
         email_status?: string;
         email_message?: string;
       }>('/auth/register', {
@@ -199,6 +207,20 @@ export default function RegisterPage() {
           organization_category: data.organizationCategory,
         }),
       });
+
+      // 2FA Verification step
+      if (response.otp_required) {
+        setPendingOtpEmail(data.email.trim());
+        setPendingDebugOtp(response.debug_otp || null);
+        setPendingFormData(data);
+        setOtpDialogOpen(true);
+        toast({
+          title: 'Verification Code Dispatched',
+          description: `A 6-digit verification code with Team CodeNova branding was sent to ${data.email.trim()}.`,
+          variant: 'default',
+        });
+        return;
+      }
 
       const categoryTitle = selectedCategoryObj?.title || 'Collaborative Workspace';
       const emailStatus = response?.email_status || 'simulated';
@@ -849,6 +871,43 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
+
+      {/* 2FA OTP Verification Dialog with Team CodeNova branding */}
+      <OtpVerificationDialog
+        isOpen={otpDialogOpen}
+        email={pendingOtpEmail}
+        action="register"
+        debugOtp={pendingDebugOtp}
+        onCancel={() => setOtpDialogOpen(false)}
+        onSuccess={(authData) => {
+          setOtpDialogOpen(false);
+          const categoryTitle = selectedCategoryObj?.title || 'Collaborative Workspace';
+          const emailStatus = authData?.email_status || 'simulated';
+          const emailMessage = authData?.email_message || '';
+
+          if (authData.requires_verification) {
+            setRegisteredResult({
+              requiresVerification: true,
+              message: 'Registration submitted for verification, you will be notified once approved.',
+              email: pendingOtpEmail,
+              orgName: pendingFormData?.organizationName || 'Institutional Organization',
+              categoryTitle,
+              emailStatus,
+              emailMessage,
+            });
+          } else {
+            setRegisteredResult({
+              requiresVerification: false,
+              message: 'Registration successful, you can now log in',
+              email: pendingOtpEmail,
+              orgName: pendingFormData?.organizationName || 'Institutional Organization',
+              categoryTitle,
+              emailStatus,
+              emailMessage,
+            });
+          }
+        }}
+      />
     </div>
   );
 }

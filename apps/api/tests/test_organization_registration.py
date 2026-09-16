@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.api.dependencies.db import get_db
 from app.core.limiter import limiter
 from app.main import app
+from app.services.otp import get_otp_for_debugging
 
 
 @pytest.fixture(autouse=True)
@@ -89,7 +90,7 @@ def test_researcher_registration_and_immediate_login(auth_client: TestClient) ->
     email = f"researcher_{ts}@university.edu"
     password = "ResearchPassword123!"
 
-    # 1. Register as Researcher
+    # 1. Register as Researcher (initiates 2FA OTP)
     resp = auth_client.post(
         "/api/v1/auth/register",
         json={
@@ -102,21 +103,38 @@ def test_researcher_registration_and_immediate_login(auth_client: TestClient) ->
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert data["requires_verification"] is False
-    assert data["status"] == "success"
-    assert "Registration successful" in data["message"]
-    assert data["token"] is not None
-    assert data["user"]["is_active"] is True
-    assert "access_token" in resp.headers.get("set-cookie", "")
+    assert data["otp_required"] is True
+    assert data["status"] == "otp_required"
 
-    # 2. Confirm immediate login works
+    # Verify registration OTP
+    otp_code = get_otp_for_debugging(email)
+    verify_resp = auth_client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "otp": otp_code, "action": "register"},
+    )
+    assert verify_resp.status_code == 200
+    vdata = verify_resp.json()
+    assert vdata["requires_verification"] is False
+    assert vdata["token"] is not None
+    assert vdata["user"]["is_active"] is True
+
+    # 2. Confirm 2FA login works
     login_resp = auth_client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},
     )
     assert login_resp.status_code == 200
-    assert login_resp.json()["token"] is not None
-    assert login_resp.json()["user"]["email"] == email
+    ldata = login_resp.json()
+    assert ldata["otp_required"] is True
+
+    login_otp = get_otp_for_debugging(email)
+    verify_login = auth_client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "otp": login_otp, "action": "login"},
+    )
+    assert verify_login.status_code == 200
+    assert verify_login.json()["token"] is not None
+    assert verify_login.json()["user"]["email"] == email
 
 
 def test_government_agency_registration_and_pending_login_block(auth_client: TestClient) -> None:
@@ -136,12 +154,20 @@ def test_government_agency_registration_and_pending_login_block(auth_client: Tes
         },
     )
     assert resp.status_code == 201
-    data = resp.json()
-    assert data["requires_verification"] is True
-    assert data["status"] == "pending"
-    assert "Registration submitted for verification" in data["message"]
-    assert data["token"] is None
-    assert data["user"]["is_active"] is False
+    assert resp.json()["otp_required"] is True
+
+    # Complete OTP verification
+    reg_otp = get_otp_for_debugging(email)
+    verify_resp = auth_client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "otp": reg_otp, "action": "register"},
+    )
+    assert verify_resp.status_code == 200
+    vdata = verify_resp.json()
+    assert vdata["requires_verification"] is True
+    assert vdata["status"] == "pending"
+    assert vdata["token"] is None
+    assert vdata["user"]["is_active"] is False
 
     # 2. Confirm login is blocked with 403 Forbidden pending verification
     login_resp = auth_client.post(
@@ -169,9 +195,17 @@ def test_policy_maker_registration_requires_verification(auth_client: TestClient
         },
     )
     assert resp.status_code == 201
-    data = resp.json()
-    assert data["requires_verification"] is True
-    assert data["status"] == "pending"
+    assert resp.json()["otp_required"] is True
+
+    reg_otp = get_otp_for_debugging(email)
+    verify_resp = auth_client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "otp": reg_otp, "action": "register"},
+    )
+    assert verify_resp.status_code == 200
+    vdata = verify_resp.json()
+    assert vdata["requires_verification"] is True
+    assert vdata["status"] == "pending"
 
     # Confirm login is blocked with pending verification message
     login_resp = auth_client.post(
@@ -198,16 +232,25 @@ def test_civil_society_registration_active_immediately(auth_client: TestClient) 
         },
     )
     assert resp.status_code == 201
-    data = resp.json()
-    assert data["requires_verification"] is False
-    assert data["token"] is not None
+    assert resp.json()["otp_required"] is True
 
-    # Immediate login works
+    reg_otp = get_otp_for_debugging(email)
+    verify_resp = auth_client.post(
+        "/api/v1/auth/verify-otp",
+        json={"email": email, "otp": reg_otp, "action": "register"},
+    )
+    assert verify_resp.status_code == 200
+    vdata = verify_resp.json()
+    assert vdata["requires_verification"] is False
+    assert vdata["token"] is not None
+
+    # Immediate login triggers 2FA
     login_resp = auth_client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},
     )
     assert login_resp.status_code == 200
+    assert login_resp.json()["otp_required"] is True
 
 
 def test_organization_reuse_across_users(auth_client: TestClient) -> None:

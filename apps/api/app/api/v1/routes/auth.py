@@ -22,7 +22,14 @@ from app.services.email import (
     is_smtp_configured,
     reset_runtime_smtp,
     send_email_sync,
+    send_otp_email,
     send_welcome_email,
+)
+from app.services.otp import (
+    can_resend_otp,
+    get_otp_for_debugging,
+    store_otp,
+    verify_stored_otp,
 )
 
 logger = logging.getLogger("bhoomitra.auth")
@@ -83,11 +90,24 @@ class RegisterRequest(BaseModel):
     organization_name: str | None = Field(default=None, max_length=250)
     organization_category: str | None = Field(default=None, max_length=100)
     organization_type: str | None = Field(default=None, max_length=100)
+    otp: str | None = Field(default=None, max_length=10)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    otp: str | None = Field(default=None, max_length=10)
+
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=4, max_length=10)
+    action: str = Field(default="login")  # 'login' or 'register'
+
+
+class ResendOtpRequest(BaseModel):
+    email: EmailStr
+    action: str = Field(default="login")  # 'login' or 'register'
 
 
 CATEGORY_DISPLAY_TITLES = {
@@ -105,10 +125,13 @@ CATEGORY_DISPLAY_TITLES = {
 
 class AuthResponse(BaseModel):
     token: Token | None = None
-    user: UserRead
+    user: UserRead | None = None
     status: str = "success"
     message: str | None = None
     requires_verification: bool = False
+    otp_required: bool = False
+    debug_otp: str | None = None
+    email: str | None = None
     email_sent: bool = True
     email_status: str | None = None
     email_message: str | None = None
@@ -144,6 +167,70 @@ async def register(
     org_name = (body.organization_name or "").strip()
     if not org_name:
         org_name = f"{body.full_name.strip()}'s Organization"
+
+    # 2-Factor Authentication (2FA) verification gate for Sign-Up / Registration
+    if not body.otp:
+        otp_code, expires_at = store_otp(
+            email=body.email,
+            action="register",
+            payload={
+                "email": body.email.lower().strip(),
+                "full_name": body.full_name.strip(),
+                "password": body.password,
+                "organization_name": org_name,
+                "organization_category": category_raw,
+                "organization_type": body.organization_type,
+            },
+        )
+
+        email_status = "simulated" if not is_smtp_configured() else "pending"
+        email_message = "Simulated delivery (SMTP credentials not configured)." if not is_smtp_configured() else ""
+
+        try:
+            email_result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    send_otp_email,
+                    to_email=body.email.lower().strip(),
+                    otp_code=otp_code,
+                    full_name=body.full_name.strip(),
+                    action_type="register",
+                ),
+                timeout=5.0,
+            )
+            if isinstance(email_result, dict):
+                email_status = str(email_result.get("status", "unknown"))
+                email_message = str(email_result.get("message", ""))
+            else:
+                email_status = "sent" if email_result else "failed"
+                email_message = "Delivered successfully." if email_result else "Failed to send."
+        except Exception as email_exc:
+            logger.warning(f"[AuthRoute] Registration OTP email encounter: {email_exc}")
+            email_status = "failed"
+            email_message = f"Email delivery notice: {email_exc}"
+
+        return {
+            "token": None,
+            "user": None,
+            "status": "otp_required",
+            "message": "Registration verification code sent to your email.",
+            "otp_required": True,
+            "email": body.email.lower().strip(),
+            "debug_otp": otp_code if (not is_smtp_configured() or settings.debug) else None,
+            "email_status": email_status,
+            "email_message": email_message,
+        }
+
+    # If an OTP was provided in body, verify it
+    is_valid, verify_msg, _ = verify_stored_otp(
+        email=body.email,
+        otp=body.otp,
+        action="register",
+    )
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=verify_msg,
+        )
 
     try:
         # Find or create Organization
@@ -618,6 +705,63 @@ async def login(
             detail="User account is inactive or suspended.",
         )
 
+    # 2-Factor Authentication (2FA) enforcement
+    if not body.otp:
+        otp_code, expires_at = store_otp(
+            email=user.email,
+            action="login",
+            payload={"user_id": str(user.id)},
+        )
+
+        email_status = "simulated" if not is_smtp_configured() else "pending"
+        email_message = "Simulated delivery (SMTP credentials not configured)." if not is_smtp_configured() else ""
+
+        try:
+            email_result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    send_otp_email,
+                    to_email=user.email,
+                    otp_code=otp_code,
+                    full_name=user.full_name,
+                    action_type="login",
+                ),
+                timeout=5.0,
+            )
+            if isinstance(email_result, dict):
+                email_status = str(email_result.get("status", "unknown"))
+                email_message = str(email_result.get("message", ""))
+            else:
+                email_status = "sent" if email_result else "failed"
+                email_message = "Delivered successfully." if email_result else "Failed to send."
+        except Exception as email_exc:
+            logger.warning(f"[AuthRoute] Login OTP email encounter: {email_exc}")
+            email_status = "failed"
+            email_message = f"Email delivery notice: {email_exc}"
+
+        return {
+            "token": None,
+            "user": None,
+            "status": "otp_required",
+            "message": "Two-factor authentication code sent to your email.",
+            "otp_required": True,
+            "email": user.email,
+            "debug_otp": otp_code if (not is_smtp_configured() or settings.debug) else None,
+            "email_status": email_status,
+            "email_message": email_message,
+        }
+
+    # If an OTP was provided directly in login body, verify it
+    is_valid, verify_msg, _ = verify_stored_otp(
+        email=user.email,
+        otp=body.otp,
+        action="login",
+    )
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=verify_msg,
+        )
+
     try:
         user.last_login_at = datetime.now(UTC)
         await db.commit()
@@ -655,6 +799,300 @@ async def login(
             organization_name=org_name_val,
             organization_slug=org_slug_val,
         ),
+        "status": "success",
+        "message": "Authentication successful.",
+        "otp_required": False,
+    }
+
+
+@router.post(
+    "/verify-otp",
+    response_model=AuthResponse,
+    summary="Verify 2FA OTP code and issue session token",
+)
+@limiter.limit("10/minute")
+async def verify_otp_endpoint(
+    request: Request,
+    response: Response,
+    body: VerifyOtpRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    action = body.action.lower().strip()
+    is_valid, error_msg, payload = verify_stored_otp(
+        email=body.email,
+        otp=body.otp,
+        action=action,
+    )
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )
+
+    # 1. Action: LOGIN
+    if action == "login":
+        stmt = select(User).where(User.email == body.email.lower().strip())
+        user = (await db.execute(stmt)).scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User account no longer exists.",
+            )
+
+        if user.status != UserStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is pending verification or suspended.",
+            )
+
+        try:
+            user.last_login_at = datetime.now(UTC)
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+
+        access_token = create_access_token({"sub": str(user.id), "email": user.email})
+        cookie_samesite = "none" if settings.is_production else "lax"
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            max_age=86400,
+            httponly=True,
+            samesite=cookie_samesite,
+            secure=settings.is_production,
+            path="/",
+        )
+
+        role_label, org_id_val, org_name_val, org_slug_val = await resolve_user_membership_and_org(db, user)
+
+        return {
+            "token": Token(access_token=access_token, token_type="bearer"),
+            "user": UserRead(
+                id=str(user.id),
+                email=user.email,
+                full_name=user.full_name,
+                role=role_label,
+                is_active=user.status == UserStatus.ACTIVE,
+                is_superuser=user.is_superuser,
+                status=user.status.value,
+                created_at=user.created_at,
+                organization_id=org_id_val,
+                organization_name=org_name_val,
+                organization_slug=org_slug_val,
+            ),
+            "status": "success",
+            "message": "Login 2FA verified successfully.",
+            "otp_required": False,
+        }
+
+    # 2. Action: REGISTER
+    elif action == "register":
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registration data expired. Please start registration again.",
+            )
+
+        # Check existing user again to prevent race conditions
+        stmt = select(User).where(User.email == body.email.lower().strip())
+        existing = (await db.execute(stmt)).scalar_one_or_none()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User with this email address already exists.",
+            )
+
+        category_raw = payload.get("organization_category") or payload.get("organization_type") or "civil_society"
+        org_type, is_pending, role_title = resolve_organization_category(category_raw)
+        org_name = payload.get("organization_name") or f"{payload.get('full_name')}'s Organization"
+
+        try:
+            # Find or create Organization
+            stmt_org = select(Organization).where(func.lower(Organization.name) == org_name.lower())
+            org = (await db.execute(stmt_org)).scalar_one_or_none()
+            if not org:
+                org = Organization(
+                    id=uuid.uuid4(),
+                    name=org_name,
+                    slug=slugify_org_name(org_name),
+                    organization_type=org_type,
+                    country_code="IN",
+                    is_active=True,
+                )
+                db.add(org)
+                await db.flush()
+
+            user_status = UserStatus.PENDING if is_pending else UserStatus.ACTIVE
+            user_created_at = datetime.now(UTC)
+            user = User(
+                id=uuid.uuid4(),
+                email=payload["email"],
+                full_name=payload["full_name"],
+                password_hash=hash_password(payload["password"]),
+                status=user_status,
+                is_superuser=False,
+            )
+            user.created_at = user_created_at
+            db.add(user)
+            await db.flush()
+
+            membership_status = MembershipStatus.PENDING if is_pending else MembershipStatus.ACTIVE
+            membership = OrganizationMembership(
+                user_id=user.id,
+                organization_id=org.id,
+                title=role_title,
+                status=membership_status,
+            )
+            db.add(membership)
+
+            await db.commit()
+            await db.refresh(user)
+        except Exception:
+            await db.rollback()
+            raise
+
+        resolved_created_at = getattr(user, "created_at", None) or user_created_at
+        category_title = CATEGORY_DISPLAY_TITLES.get(category_raw, category_raw.replace("_", " ").title())
+
+        # Welcome onboarding email dispatch
+        try:
+            asyncio.create_task(
+                asyncio.to_thread(
+                    send_welcome_email,
+                    to_email=user.email,
+                    full_name=user.full_name,
+                    org_name=org.name,
+                    category_title=category_title,
+                    role_title=role_title,
+                    is_pending=is_pending,
+                )
+            )
+        except Exception as email_exc:
+            logger.warning(f"[AuthRoute] Async welcome email dispatch notice: {email_exc}")
+
+        if is_pending:
+            return {
+                "token": None,
+                "user": UserRead(
+                    id=str(user.id),
+                    email=user.email,
+                    full_name=user.full_name,
+                    role=role_title,
+                    is_active=False,
+                    created_at=resolved_created_at,
+                ),
+                "status": "pending",
+                "message": "Registration verified and submitted for administrative approval.",
+                "requires_verification": True,
+                "otp_required": False,
+            }
+
+        access_token = create_access_token({"sub": str(user.id), "email": user.email})
+        cookie_samesite = "none" if settings.is_production else "lax"
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            max_age=86400,
+            httponly=True,
+            samesite=cookie_samesite,
+            secure=settings.is_production,
+            path="/",
+        )
+
+        return {
+            "token": Token(access_token=access_token, token_type="bearer"),
+            "user": UserRead(
+                id=str(user.id),
+                email=user.email,
+                full_name=user.full_name,
+                role=role_title,
+                is_active=True,
+                created_at=resolved_created_at,
+                organization_id=str(org.id) if org else None,
+                organization_name=org.name if org else None,
+                organization_slug=org.slug if org else None,
+            ),
+            "status": "success",
+            "message": "Registration verified and account activated successfully.",
+            "requires_verification": False,
+            "otp_required": False,
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Unknown action context for OTP verification.",
+    )
+
+
+@router.post(
+    "/resend-otp",
+    summary="Resend 2FA OTP code with Team CodeNova branding",
+)
+@limiter.limit("5/minute")
+async def resend_otp_endpoint(
+    request: Request,
+    body: ResendOtpRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    email = body.email.lower().strip()
+    action = body.action.lower().strip()
+
+    can_resend, remaining_secs = can_resend_otp(email)
+    if not can_resend:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Please wait {remaining_secs} seconds before requesting another verification code.",
+        )
+
+    full_name = "User"
+    if action == "login":
+        stmt = select(User).where(User.email == email)
+        user = (await db.execute(stmt)).scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        full_name = user.full_name
+        otp_code, _ = store_otp(email=email, action="login", payload={"user_id": str(user.id)})
+    else:
+        # For register, refresh the existing OTP
+        from app.services.otp import _OTP_CACHE
+        record = _OTP_CACHE.get(email)
+        payload = record.get("payload", {}) if record else {}
+        full_name = payload.get("full_name", "User")
+        otp_code, _ = store_otp(email=email, action="register", payload=payload)
+
+    email_status = "simulated" if not is_smtp_configured() else "pending"
+    email_message = "Simulated delivery (SMTP credentials not configured)." if not is_smtp_configured() else ""
+
+    try:
+        email_result = await asyncio.wait_for(
+            asyncio.to_thread(
+                send_otp_email,
+                to_email=email,
+                otp_code=otp_code,
+                full_name=full_name,
+                action_type=action,
+            ),
+            timeout=5.0,
+        )
+        if isinstance(email_result, dict):
+            email_status = str(email_result.get("status", "unknown"))
+            email_message = str(email_result.get("message", ""))
+        else:
+            email_status = "sent" if email_result else "failed"
+            email_message = "Delivered successfully." if email_result else "Failed to send."
+    except Exception as email_exc:
+        logger.warning(f"[AuthRoute] Resend OTP email encounter: {email_exc}")
+        email_status = "failed"
+        email_message = f"Email delivery notice: {email_exc}"
+
+    return {
+        "success": True,
+        "status": "sent" if email_status == "sent" else "simulated",
+        "message": f"A new verification code has been dispatched to {email}.",
+        "email_status": email_status,
+        "email_message": email_message,
+        "debug_otp": otp_code if (not is_smtp_configured() or settings.debug) else None,
     }
 
 

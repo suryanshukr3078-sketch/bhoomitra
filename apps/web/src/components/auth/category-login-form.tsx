@@ -27,6 +27,7 @@ import {
   Globe2,
 } from 'lucide-react';
 import { apiRequest, setAuthToken } from '@/lib/api/client';
+import { OtpVerificationDialog } from '@/components/auth/otp-verification-dialog';
 
 export type PortalCategory = 'researcher' | 'policymaker' | 'government' | 'civil-society' | 'admin';
 
@@ -161,6 +162,9 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingOtpEmail, setPendingOtpEmail] = useState('');
+  const [pendingDebugOtp, setPendingDebugOtp] = useState<string | null>(null);
   const { toast } = useToast();
   const { setUser, refreshUser } = useAuth();
   const router = useRouter();
@@ -183,8 +187,8 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
 
     try {
       const response = await apiRequest<{
-        token: { access_token: string; token_type: string };
-        user: {
+        token?: { access_token: string; token_type: string };
+        user?: {
           id: string;
           email: string;
           full_name: string;
@@ -192,6 +196,11 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
           is_active: boolean;
           is_superuser?: boolean;
         };
+        status?: string;
+        message?: string;
+        otp_required?: boolean;
+        debug_otp?: string | null;
+        email?: string;
       }>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,6 +209,18 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
           password: data.password,
         }),
       });
+
+      if (response.otp_required) {
+        setPendingOtpEmail(data.email.trim());
+        setPendingDebugOtp(response.debug_otp || null);
+        setOtpDialogOpen(true);
+        toast({
+          title: 'Two-Factor Authentication Code Sent',
+          description: `A 6-digit security code with Team CodeNova branding was dispatched to ${data.email.trim()}.`,
+          variant: 'default',
+        });
+        return;
+      }
 
       if (response.token?.access_token) {
         setAuthToken(response.token.access_token);
@@ -495,6 +516,29 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
           </div>
         </div>
       </div>
+
+      {/* 2FA Verification Dialog with Team CodeNova branding */}
+      <OtpVerificationDialog
+        isOpen={otpDialogOpen}
+        email={pendingOtpEmail}
+        action="login"
+        debugOtp={pendingDebugOtp}
+        onCancel={() => setOtpDialogOpen(false)}
+        onSuccess={() => {
+          setOtpDialogOpen(false);
+          const redirectUrl =
+            typeof window !== 'undefined'
+              ? (new URLSearchParams(window.location.search).get('redirect') ||
+                 new URLSearchParams(window.location.search).get('returnUrl'))
+              : null;
+
+          if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+            router.push(redirectUrl);
+          } else {
+            router.push(config.redirectPath);
+          }
+        }}
+      />
     </div>
   );
 }

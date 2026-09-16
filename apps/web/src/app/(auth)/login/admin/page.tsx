@@ -19,8 +19,9 @@ import {
   Server,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth-context';
+import { OtpVerificationDialog } from '@/components/auth/otp-verification-dialog';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -33,6 +34,9 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingOtpEmail, setPendingOtpEmail] = useState('');
+  const [pendingDebugOtp, setPendingDebugOtp] = useState<string | null>(null);
 
   const handleQuickFill = () => {
     setEmail('admin@landgov.gov.in');
@@ -56,18 +60,39 @@ export default function AdminLoginPage() {
         const response = await apiRequest<{
           token?: { access_token: string; token_type: string };
           user?: any;
+          otp_required?: boolean;
+          debug_otp?: string | null;
         }>('/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: email.trim(), password }),
         });
+
+        if (response.otp_required) {
+          setPendingOtpEmail(email.trim());
+          setPendingDebugOtp(response.debug_otp || null);
+          setOtpDialogOpen(true);
+          toast({
+            title: 'Administrator 2FA Code Dispatched',
+            description: `A 6-digit security code with Team CodeNova branding was sent to ${email.trim()}.`,
+            variant: 'default',
+          });
+          return;
+        }
+
+        if (response.token?.access_token) {
+          setAuthToken(response.token.access_token);
+        }
 
         if (response.user) {
           setUser(response.user);
         } else {
           await refreshUser();
         }
-      } catch (backendErr) {
+      } catch (backendErr: any) {
+        if (backendErr?.message?.includes('Invalid email or password')) {
+          throw backendErr;
+        }
         setUser({
           id: 'admin-superuser-001',
           email,
@@ -265,6 +290,19 @@ export default function AdminLoginPage() {
       <div className="max-w-4xl mx-auto w-full text-center text-xs text-slate-500 z-10 pt-4">
         PostgreSQL Row-Level Security (RLS) &bull; Zero Trust Administration Architecture
       </div>
+
+      {/* 2FA Verification Dialog with Team CodeNova branding */}
+      <OtpVerificationDialog
+        isOpen={otpDialogOpen}
+        email={pendingOtpEmail}
+        action="login"
+        debugOtp={pendingDebugOtp}
+        onCancel={() => setOtpDialogOpen(false)}
+        onSuccess={() => {
+          setOtpDialogOpen(false);
+          router.push('/admin');
+        }}
+      />
     </div>
   );
 }
