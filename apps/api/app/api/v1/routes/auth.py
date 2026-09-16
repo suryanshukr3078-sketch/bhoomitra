@@ -215,7 +215,7 @@ async def register(
             "message": "Registration verification code sent to your email.",
             "otp_required": True,
             "email": body.email.lower().strip(),
-            "debug_otp": otp_code if (not is_smtp_configured() or settings.debug) else None,
+            "debug_otp": None,
             "email_status": email_status,
             "email_message": email_message,
         }
@@ -745,7 +745,7 @@ async def login(
             "message": "Two-factor authentication code sent to your email.",
             "otp_required": True,
             "email": user.email,
-            "debug_otp": otp_code if (not is_smtp_configured() or settings.debug) else None,
+            "debug_otp": None,
             "email_status": email_status,
             "email_message": email_message,
         }
@@ -1092,7 +1092,7 @@ async def resend_otp_endpoint(
         "message": f"A new verification code has been dispatched to {email}.",
         "email_status": email_status,
         "email_message": email_message,
-        "debug_otp": otp_code if (not is_smtp_configured() or settings.debug) else None,
+        "debug_otp": None,
     }
 
 

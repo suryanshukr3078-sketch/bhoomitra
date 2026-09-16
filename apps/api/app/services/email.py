@@ -1,3 +1,4 @@
+import json
 import logging
 import smtplib
 import socket
@@ -250,18 +251,63 @@ _RUNTIME_CONFIG: dict[str, Any] = {}
 _EMAIL_LOGS: list[dict[str, Any]] = []
 
 
-def get_runtime_smtp_config() -> dict[str, Any]:
+def get_effective_email_config() -> dict[str, Any]:
+    global _RUNTIME_CONFIG
+    if _RUNTIME_CONFIG.get("password") or _RUNTIME_CONFIG.get("api_key"):
+        return dict(_RUNTIME_CONFIG)
+    try:
+        import psycopg
+        raw_url = str(settings.database_url)
+        sync_url = raw_url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+asyncpg://", "postgresql://")
+        with psycopg.connect(sync_url, connect_timeout=4) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT value FROM system_settings WHERE key = 'smtp_config'")
+                row = cur.fetchone()
+                if row and row[0]:
+                    val = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+                    if isinstance(val, dict):
+                        _RUNTIME_CONFIG.update(val)
+    except Exception as e:
+        logger.debug(f"[EmailService] Could not load DB smtp config: {e}")
     return dict(_RUNTIME_CONFIG)
+
+
+def get_runtime_smtp_config() -> dict[str, Any]:
+    return get_effective_email_config()
 
 
 def configure_runtime_smtp(config: dict[str, Any]) -> None:
     global _RUNTIME_CONFIG
-    _RUNTIME_CONFIG = dict(config)
+    _RUNTIME_CONFIG.update(config)
+    try:
+        import psycopg
+        raw_url = str(settings.database_url)
+        sync_url = raw_url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+asyncpg://", "postgresql://")
+        with psycopg.connect(sync_url, connect_timeout=4) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO system_settings (key, value, updated_at) VALUES ('smtp_config', %s, NOW()) "
+                    "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
+                    (json.dumps(_RUNTIME_CONFIG),),
+                )
+                conn.commit()
+    except Exception as e:
+        logger.warning(f"[EmailService] Failed to persist SMTP config in DB: {e}")
 
 
 def reset_runtime_smtp() -> None:
     global _RUNTIME_CONFIG
     _RUNTIME_CONFIG = {}
+    try:
+        import psycopg
+        raw_url = str(settings.database_url)
+        sync_url = raw_url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+asyncpg://", "postgresql://")
+        with psycopg.connect(sync_url, connect_timeout=4) as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM system_settings WHERE key = 'smtp_config'")
+                conn.commit()
+    except Exception as e:
+        logger.warning(f"[EmailService] Failed to delete SMTP config from DB: {e}")
 
 
 def get_email_logs(limit: int = 50) -> list[dict[str, Any]]:
@@ -303,14 +349,15 @@ def record_email_log(
 
 def is_smtp_configured() -> bool:
     """Returns True if email credentials (SMTP or API key) are configured."""
-    if _RUNTIME_CONFIG.get("api_key") or (_RUNTIME_CONFIG.get("user") and _RUNTIME_CONFIG.get("password")):
+    cfg = get_effective_email_config()
+    if cfg.get("api_key") or (cfg.get("user") and cfg.get("password")):
         return True
     return bool(settings.smtp_user and settings.smtp_password)
 
 
 def get_smtp_status() -> dict[str, Any]:
     """Provides public diagnostic status without exposing sensitive credentials."""
-    cfg = _RUNTIME_CONFIG
+    cfg = get_effective_email_config()
     user = cfg.get("user") or settings.smtp_user
     host = cfg.get("host") or settings.smtp_host
     port = int(cfg.get("port") or settings.smtp_port or 587)
@@ -481,7 +528,7 @@ def send_email_sync(
         record_email_log(to_email, subject, html_body, "failed", "No recipient email specified.", "none")
         return res
 
-    cfg = {**_RUNTIME_CONFIG, **(runtime_config or {})}
+    cfg = {**get_effective_email_config(), **(runtime_config or {})}
     api_key = cfg.get("api_key") or ""
     provider = cfg.get("provider") or ("resend" if api_key.startswith("re_") else ("brevo" if api_key.startswith("xkeysib-") else ""))
 

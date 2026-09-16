@@ -11,7 +11,6 @@ import {
   RotateCcw,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
 } from 'lucide-react';
 import { apiRequest, setAuthToken } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth-context';
@@ -39,16 +38,9 @@ export function OtpVerificationDialog({
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [error, setError] = useState<string | null>(null);
-  const [activeDebugOtp, setActiveDebugOtp] = useState<string | null>(debugOtp || null);
 
   const { toast } = useToast();
   const { setUser, refreshUser } = useAuth();
-
-  useEffect(() => {
-    if (debugOtp) {
-      setActiveDebugOtp(debugOtp);
-    }
-  }, [debugOtp]);
 
   // Resend countdown timer
   useEffect(() => {
@@ -130,9 +122,6 @@ export function OtpVerificationDialog({
       });
 
       setCountdown(60);
-      if (res.debug_otp) {
-        setActiveDebugOtp(res.debug_otp);
-      }
 
       toast({
         title: 'Verification Code Dispatched',
@@ -185,26 +174,7 @@ export function OtpVerificationDialog({
             </div>
           )}
 
-          {activeDebugOtp && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>
-                  Simulated OTP:{' '}
-                  <strong className="font-mono text-sm tracking-wider font-bold text-amber-950">
-                    {activeDebugOtp}
-                  </strong>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOtp(activeDebugOtp)}
-                className="px-2 py-1 text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors cursor-pointer"
-              >
-                Auto-fill
-              </button>
-            </div>
-          )}
+
 
           <form onSubmit={handleVerify} className="space-y-5">
             <div className="space-y-2">

@@ -71,7 +71,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("smtp_port", "mail_port", "email_port"),
     )
     smtp_user: str | None = Field(
-        default=None,
+        default="suryanshukr3078@gmail.com",
         validation_alias=AliasChoices("smtp_user", "smtp_username", "mail_username", "mail_user", "email_host_user", "gmail_user"),
     )
     smtp_password: str | None = Field(
@@ -79,11 +79,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("smtp_password", "smtp_pass", "mail_password", "mail_pass", "email_host_password", "gmail_app_password", "gmail_password"),
     )
     smtp_from_email: str | None = Field(
-        default=None,
+        default="suryanshukr3078@gmail.com",
         validation_alias=AliasChoices("smtp_from_email", "mail_from", "email_from", "mail_default_sender"),
     )
     smtp_from_name: str = Field(
-        default="Bhoomitra Land Governance Platform",
+        default="Team CodeNova • Bhoomitra Platform",
         validation_alias=AliasChoices("smtp_from_name", "mail_from_name", "email_from_name"),
     )
     smtp_tls: bool = Field(
