@@ -9,7 +9,10 @@ from app.api.v1.routes.policies import router as policies_router
 from app.api.v1.routes.resources import router as resources_router
 from app.api.v1.routes.search import router as search_router
 from app.api.v1.routes.spatial import router as spatial_router
+from app.api.v1.routes.acquisition import router as acquisition_router
+from app.api.v1.routes.digitization import router as digitization_router
 from app.api.v1.routes.uploads import router as uploads_router
+from app.api.v1.routes.watershed import router as watershed_router
 from app.api.v1.routes.workspace import router as workspace_router
 
 router = APIRouter()
@@ -25,6 +28,9 @@ router.include_router(dashboard_router)
 router.include_router(spatial_router)
 router.include_router(uploads_router)
 router.include_router(workspace_router)
+router.include_router(watershed_router)
+router.include_router(digitization_router)
+router.include_router(acquisition_router)
 
 # Documents router alias for direct compatibility with /documents and /documents/{id}
 from app.api.v1.routes.resources import (

@@ -19,6 +19,11 @@ import {
   ExternalLink,
   ChevronRight,
   Globe2,
+  Satellite,
+  ScanLine,
+  BarChart3,
+  MessageSquare,
+  Cpu,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
@@ -244,6 +249,171 @@ export default function WorkspacesDirectoryPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* MoRD / DoLR Flagship Operational Portals */}
+      <div className="space-y-4 pt-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <span className="text-[11px] font-bold tracking-wider text-emerald-700 uppercase bg-emerald-100 px-2.5 py-0.5 rounded-full">
+              National Mission Portals
+            </span>
+            <h2 className="text-xl font-bold text-slate-900 mt-1">
+              MoRD / DoLR Flagship Analytical Systems
+            </h2>
+            <p className="text-xs text-slate-600">
+              Direct operational integration with SRISHTI-DRISHTI 30m Satellite GIS, DILRMP Intelligent Digitization, and RFCTLARR Act 2013 Land Acquisition.
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-slate-500">
+            Govt. of India Certified
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Watershed / SRISHTI */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-50/70 to-teal-50/50 border border-emerald-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                  <Satellite className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-200/70 text-emerald-900 px-2.5 py-0.5 rounded-full">
+                  WDC-PMKSY 2.0
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Watershed &amp; SRISHTI Analysis
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                SRISHTI-DRISHTI 30m multi-temporal satellite data, drainage stream orders, vegetation indices (NDVI/EVI), and geocoded water structure audits.
+              </p>
+            </div>
+            <div className="pt-5 mt-4 border-t border-emerald-200/60">
+              <Link
+                href="/watershed"
+                className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 group"
+              >
+                <span>Launch Satellite GIS Studio</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Digitization AI Studio */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50/70 to-indigo-50/50 border border-blue-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                  <ScanLine className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-200/70 text-blue-900 px-2.5 py-0.5 rounded-full">
+                  DILRMP AI
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Land Record Digitization Studio
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Multilingual OCR for Indian languages (Hindi, Bengali, Telugu, Marathi, Kannada) with dual-pane human-in-the-loop review and business rule validation.
+              </p>
+            </div>
+            <div className="pt-5 mt-4 border-t border-blue-200/60">
+              <Link
+                href="/digitization"
+                className="inline-flex items-center gap-2 text-xs font-bold text-blue-800 hover:text-blue-950 group"
+              >
+                <span>Open Dual-Pane OCR Studio</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Acquisition & Delay Analytics */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-50/70 to-orange-50/50 border border-amber-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-sm">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-200/70 text-amber-900 px-2.5 py-0.5 rounded-full">
+                  RFCTLARR Act 2013
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Land Acquisition &amp; Delay AI
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                9-Stage statutory acquisition lifecycle tracker, GIS parcel alignment corridor, and AI Delay Analytics (GBDT risk scoring &amp; preventive recommendations).
+              </p>
+            </div>
+            <div className="pt-5 mt-4 border-t border-amber-200/60">
+              <Link
+                href="/acquisition"
+                className="inline-flex items-center gap-2 text-xs font-bold text-amber-800 hover:text-amber-950 group"
+              >
+                <span>Access Acquisition Tracker</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* DoLR PME Division Research Tracking & Policy Deliberation Forums */}
+      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-emerald-600" />
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                DoLR PME Division Research Tracking &amp; Policy Deliberation Forum
+              </h3>
+              <p className="text-xs text-slate-500">
+                Collaborative research pipeline connecting universities, autonomous policy institutions, and the Ministry of Rural Development.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/research"
+            className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+          >
+            <span>Explore All Research</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-800">Active DoLR PME Research Grants</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">14 Projects Active</span>
+            </div>
+            <p className="text-slate-600 text-[11px] leading-relaxed">
+              Track project milestones, peer review schedules, fund dispatches, and policy briefs authored under the Department of Land Resources (DoLR) research grants scheme.
+            </p>
+            <div className="pt-2 flex items-center gap-3 text-slate-500">
+              <span>Next Milestone Review: <strong>25 Oct 2026</strong></span>
+              <span>&bull;</span>
+              <span>18 Participating Universities</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-800">Policy Innovation &amp; Evidence Forum</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">Interactive</span>
+            </div>
+            <p className="text-slate-600 text-[11px] leading-relaxed">
+              Submit whitepapers, engage in moderated stakeholder discussions, and vote on evidence-backed land policy reforms spanning tenancy laws, digitised records, and SVAMITVA.
+            </p>
+            <div className="pt-2 flex items-center gap-3 text-slate-500">
+              <span>9 Active Consultation Threads</span>
+              <span>&bull;</span>
+              <span>3 Draft Model Acts</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Platform Architecture & Trust Footer Card */}

@@ -51,6 +51,9 @@ export function Header() {
   ];
 
   const moreNavLinks = [
+    { href: '/watershed', label: 'Watershed (SRISHTI)', icon: MapPin, desc: 'SRISHTI-DRISHTI 30m satellite & GIS drainage' },
+    { href: '/digitization', label: 'Digitization AI', icon: FileText, desc: 'Multilingual OCR & Land Record Dual-Pane Studio' },
+    { href: '/acquisition', label: 'Land Acquisition (LAMS)', icon: Scale, desc: 'RFCTLARR Act 2013 & AI Delay Analytics' },
     { href: '/innovation', label: 'Innovation & Grants', icon: Lightbulb, desc: 'Hackathons, grants & pilot projects' },
     { href: '/evidence', label: 'Provenance & Lineage', icon: ShieldCheck, desc: 'W3C PROV-O audit trails' },
     { href: '/developers', label: 'Developer & GIS APIs', icon: Code2, desc: 'OGC WMS/WFS & REST endpoints' },
