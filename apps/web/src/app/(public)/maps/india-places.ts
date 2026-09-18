@@ -668,60 +668,107 @@ export interface GeocodedPlaceResult {
 }
 
 /**
- * Real-time pan-India geocoding via OpenStreetMap Nominatim API.
- * Free, open, no API key required, indexes all cities, tehsils, villages, and pin codes in India.
+ * Real-time pan-India geocoding.
+ * Tries server-side /api/geocode endpoint first (powered by Photon + Nominatim with custom User-Agent).
+ * Automatically falls back to client-side Photon OSM API (CORS enabled for all browsers).
  */
 export async function geocodePanIndia(query: string): Promise<GeocodedPlaceResult[]> {
   const cleanQuery = query.trim();
   if (!cleanQuery || cleanQuery.length < 2) return [];
 
-  const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&addressdetails=1&limit=6&q=${encodeURIComponent(
-    cleanQuery
-  )}`;
-
+  // 1. Try our internal server route /api/geocode
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-    const res = await fetch(url, {
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(cleanQuery)}`, {
       signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: { Accept: 'application/json' },
     });
     clearTimeout(timeoutId);
 
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-
-    return data.map((item: any) => {
-      const lat = parseFloat(item.lat);
-      const lon = parseFloat(item.lon);
-      const address = item.address || {};
-      const state = address.state || address.state_district || '';
-      const name =
-        address.city ||
-        address.town ||
-        address.village ||
-        address.suburb ||
-        address.county ||
-        item.name ||
-        item.display_name.split(',')[0];
-
-      return {
-        id: `GEO-${item.place_id || Math.random().toString(36).slice(2, 9)}`,
-        displayName: item.display_name,
-        name: name || cleanQuery,
-        state,
-        coordinates: [lon, lat],
-        importance: item.importance,
-        type: item.type,
-      };
-    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data?.results) && data.results.length > 0) {
+        return data.results.map((r: any) => ({
+          id: r.id || `GEO-${Math.random().toString(36).slice(2, 9)}`,
+          displayName: r.displayName || r.name,
+          name: r.name || cleanQuery,
+          state: r.state || '',
+          coordinates: r.coordinates,
+          importance: r.importance,
+          type: r.type,
+        }));
+      }
+    }
   } catch {
-    return [];
+    // Silently proceed to direct Photon fallback
   }
+
+  // 2. Direct browser fallback via Photon OpenStreetMap Geocoder
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(
+      cleanQuery
+    )}&limit=6&bbox=68.1,6.5,97.4,35.5`;
+
+    const pRes = await fetch(photonUrl, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+    clearTimeout(timeoutId);
+
+    if (pRes.ok) {
+      const pData = await pRes.json();
+      if (Array.isArray(pData?.features) && pData.features.length > 0) {
+        const results: GeocodedPlaceResult[] = [];
+        for (const feat of pData.features) {
+          const props = feat.properties || {};
+          const geom = feat.geometry || {};
+          if (
+            geom.type === 'Point' &&
+            Array.isArray(geom.coordinates) &&
+            geom.coordinates.length >= 2
+          ) {
+            const [lng, lat] = geom.coordinates;
+            // Validate bounding box of India
+            if (lng >= 68.0 && lng <= 97.5 && lat >= 6.5 && lat <= 37.5) {
+              const name = props.name || cleanQuery;
+              const state = props.state || '';
+              const district = props.district || props.county || '';
+              const parts = [name, district, state, 'India'].filter(Boolean);
+
+              results.push({
+                id: `PHOTON-${props.osm_id || Math.random().toString(36).slice(2, 9)}`,
+                name,
+                displayName: parts.join(', '),
+                state,
+                coordinates: [lng, lat],
+                type: props.type || props.osm_value,
+              });
+            }
+          }
+        }
+        if (results.length > 0) return results;
+      }
+    }
+  } catch {
+    // Silently fall back to local lookup
+  }
+
+  // 3. Fallback: Search local catalog
+  const local = searchLocalIndianPlaces(cleanQuery);
+  return local.map((p) => ({
+    id: p.id,
+    name: p.name,
+    displayName: `${p.name}, ${p.district || p.state}`,
+    state: p.state,
+    coordinates: p.coordinates,
+    importance: 0.9,
+    type: 'preset',
+  }));
 }
 
 /**

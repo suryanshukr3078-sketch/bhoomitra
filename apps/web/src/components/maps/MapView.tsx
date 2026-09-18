@@ -421,16 +421,19 @@ export function MapView({
     }
   }, [activeLayers, mapLoaded, selectedFeatureId]);
 
+  const centerLng = center?.[0];
+  const centerLat = center?.[1];
+
   // Update center and zoom when props change
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current) return;
+    if (!mapLoaded || !mapRef.current || centerLng === undefined || centerLat === undefined) return;
     mapRef.current.flyTo({
-      center,
-      zoom,
+      center: [centerLng, centerLat],
+      zoom: zoom ?? 13,
       essential: true,
-      duration: 1200,
+      duration: 1400,
     });
-  }, [center, zoom, mapLoaded]);
+  }, [centerLng, centerLat, zoom, mapLoaded]);
 
   // Update highlight on selected parcel
   useEffect(() => {
