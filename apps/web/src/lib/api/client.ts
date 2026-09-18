@@ -157,7 +157,21 @@ export async function apiRequest<T>(
     throw err;
   }
 
-  const data = (await res.json()) as T;
+  if (res.status === 204) {
+    return {} as T;
+  }
+
+  const text = await res.text();
+  if (!text || !text.trim()) {
+    return {} as T;
+  }
+
+  let data: T;
+  try {
+    data = JSON.parse(text) as T;
+  } catch {
+    data = (text as unknown) as T;
+  }
 
   // Save to client-side in-memory cache
   if (typeof window !== 'undefined' && isGet && !shouldSkipCache) {

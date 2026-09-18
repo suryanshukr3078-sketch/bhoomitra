@@ -109,8 +109,7 @@ export default function AcquisitionPage() {
         if (projData?.projects) {
           setProjects(projData.projects);
           setLifecycleStages(projData.standard_lifecycle_stages || []);
-          const defaultProj =
-            projData.projects.find((p: any) => p.id === selectedProjectId) || projData.projects[0];
+          const defaultProj = projData.projects[0];
           setActiveProject(defaultProj);
           if (defaultProj) loadDelayPrediction(defaultProj.id);
         }
@@ -120,6 +119,7 @@ export default function AcquisitionPage() {
       }
     }
     loadAcquisitionData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadDelayPrediction = async (projectId: string) => {

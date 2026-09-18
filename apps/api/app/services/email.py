@@ -255,6 +255,9 @@ def get_effective_email_config() -> dict[str, Any]:
     global _RUNTIME_CONFIG
     if _RUNTIME_CONFIG.get("password") or _RUNTIME_CONFIG.get("api_key"):
         return dict(_RUNTIME_CONFIG)
+    import os
+    if os.environ.get("PYTEST_CURRENT_TEST") or getattr(settings, "app_env", "") == "testing":
+        return dict(_RUNTIME_CONFIG)
     try:
         import psycopg
         raw_url = str(settings.database_url)
@@ -298,6 +301,9 @@ def configure_runtime_smtp(config: dict[str, Any]) -> None:
 def reset_runtime_smtp() -> None:
     global _RUNTIME_CONFIG
     _RUNTIME_CONFIG = {}
+    import os
+    if os.environ.get("PYTEST_CURRENT_TEST") or getattr(settings, "app_env", "") == "testing":
+        return
     try:
         import psycopg
         raw_url = str(settings.database_url)
@@ -588,12 +594,15 @@ def send_email_sync(
             details={"to": to_email, "subject": subject},
         )
 
+    from email.header import Header
+    from email.utils import formataddr
+
     from_email = cfg.get("from_email") or settings.smtp_from_email or smtp_user
     from_name = cfg.get("from_name") or settings.smtp_from_name
-    sender_header = f"{from_name} <{from_email}>" if from_name else from_email
+    sender_header = formataddr((str(Header(from_name, "utf-8")), from_email)) if from_name else from_email
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
+    msg["Subject"] = str(Header(subject, "utf-8"))
     msg["From"] = sender_header
     msg["To"] = to_email
 

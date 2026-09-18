@@ -14,7 +14,15 @@ from app.services.email import (
     is_smtp_configured,
     send_email_sync,
     send_welcome_email,
+    reset_runtime_smtp,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_runtime_email_state():
+    reset_runtime_smtp()
+    yield
+    reset_runtime_smtp()
 
 
 def test_email_delivery_result_semantics() -> None:

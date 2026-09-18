@@ -315,6 +315,8 @@ class Settings(BaseSettings):
                 hosts.append("*.koyeb.app")
             if "*.vercel.app" not in hosts:
                 hosts.append("*.vercel.app")
+            if self.is_serverless:
+                hosts.append("*")
         return hosts
 
     @property
