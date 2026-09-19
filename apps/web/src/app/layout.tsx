@@ -6,6 +6,8 @@ import { PageTransition } from '@/components/layout/page-transition';
 import { Toaster } from '@/components/ui/toast';
 import { AuthProvider } from '@/lib/auth-context';
 
+import { GovFooter } from '@/components/layout/gov-footer';
+
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['500', '600', '700', '800'],
@@ -24,26 +26,29 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#047857',
+  themeColor: '#1a3c6e',
 };
 
 export const metadata: Metadata = {
   title: {
-    default: 'Land Governance & Cadastral Platform',
-    template: '%s | Land Governance Platform',
+    default: 'भू-मित्र BHOOMITRA | National Land Governance & Cadastral Platform | Government of India',
+    template: '%s | BHOOMITRA - Government of India',
   },
   description:
-    'Enterprise Land Rights, Boundary Verification, GIS Cadastral Administration, and Evidence-based Land Policy Infrastructure.',
+    'Government of India citizen engagement & cadastral governance platform. Bhu-Aadhaar (ULPIN), SVAMITVA rural land property cards, and PostGIS spatial boundaries.',
   keywords: [
+    'Bhoomitra',
+    'MyGov',
     'land governance',
     'cadastral administration',
+    'SVAMITVA',
+    'Bhu-Aadhaar',
+    'ULPIN',
+    'Government of India',
     'GIS boundaries',
-    'land tenure',
-    'policy research',
     'PostGIS',
-    'spatial features',
   ],
-  authors: [{ name: 'Land Governance Initiative' }],
+  authors: [{ name: 'Ministry of Rural Development, Government of India' }],
   icons: {
     icon: '/icon.svg',
     shortcut: '/icon.svg',
@@ -51,18 +56,12 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    locale: 'en_US',
-    url: 'https://landgov.platform',
-    title: 'Land Governance & Cadastral Platform',
+    locale: 'en_IN',
+    url: 'https://web-rho-gules-89.vercel.app',
+    title: 'भू-मित्र BHOOMITRA | National Land Governance Platform | Government of India',
     description:
-      'Enterprise Land Rights, GIS Parcel Verification, and Evidence-based Land Policy Administration.',
-    siteName: 'Land Governance Platform',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Land Governance & Cadastral Platform',
-    description:
-      'Enterprise Land Rights, GIS Parcel Verification, and Evidence-based Land Policy Administration.',
+      'Citizen engagement and spatial cadastral governance portal under Department of Land Resources, Ministry of Rural Development.',
+    siteName: 'Bhoomitra - Government of India',
   },
 };
 
@@ -76,83 +75,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-50/50 text-slate-900 font-sans antialiased overflow-x-hidden w-full max-w-full">
         <AuthProvider>
           <Header />
-          <main className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col">
+          <main id="main-content" className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col focus:outline-none" tabIndex={-1}>
             <PageTransition>{children}</PageTransition>
           </main>
-          <footer className="border-t border-slate-200 bg-white pt-12 pb-8 text-xs text-slate-500 w-full max-w-full overflow-x-hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 text-left">
-                {/* Col 1 */}
-                <div className="space-y-3">
-                  <div className="font-bold text-slate-900 text-sm">Platform</div>
-                  <ul className="space-y-2 text-[11px]">
-                    <li><a href="/" className="hover:text-emerald-700">Home</a></li>
-                    <li><a href="/workspace" className="hover:text-emerald-700 font-bold text-emerald-800">All Workspaces</a></li>
-                    <li><a href="/maps" className="hover:text-emerald-700">Cadastral Maps</a></li>
-                    <li><a href="/policies" className="hover:text-emerald-700">Policies Registry</a></li>
-                    <li><a href="/research" className="hover:text-emerald-700">Research Papers</a></li>
-                    <li><a href="/datasets" className="hover:text-emerald-700">Open GIS Datasets</a></li>
-                  </ul>
-                </div>
-
-                {/* Col 2 */}
-                <div className="space-y-3">
-                  <div className="font-bold text-slate-900 text-sm">Official Workspaces</div>
-                  <ul className="space-y-1.5 text-[11px]">
-                    <li><a href="/workspace/government" className="hover:text-amber-800 text-amber-700 font-medium">Government Agency</a></li>
-                    <li><a href="/workspace/researcher" className="hover:text-emerald-800 text-emerald-700 font-medium">Researcher GIS Lab</a></li>
-                    <li><a href="/workspace/policymaker" className="hover:text-blue-800 text-blue-700 font-medium">Policy Directorate</a></li>
-                    <li><a href="/workspace/civil-society" className="hover:text-teal-800 text-teal-700 font-medium">Civil Society Desk</a></li>
-                    <li><a href="/admin" className="hover:text-purple-800 text-purple-700 font-medium">Admin Management</a></li>
-                  </ul>
-                </div>
-
-                {/* Col 3 */}
-                <div className="space-y-3">
-                  <div className="font-bold text-slate-900 text-sm">Trust & Provenance</div>
-                  <ul className="space-y-2 text-[11px]">
-                    <li><a href="/evidence" className="hover:text-emerald-700">Evidence & DAG Trail</a></li>
-                    <li><a href="/assistant" className="hover:text-emerald-700">AI Policy Assistant</a></li>
-                    <li><a href="/dashboard" className="hover:text-emerald-700">Governance Dashboard</a></li>
-                  </ul>
-                </div>
-
-                {/* Col 4 */}
-                <div className="space-y-3">
-                  <div className="font-bold text-slate-900 text-sm">Information</div>
-                  <ul className="space-y-2 text-[11px]">
-                    <li><a href="/about" className="hover:text-emerald-700">About Platform</a></li>
-                    <li><a href="/faq" className="hover:text-emerald-700">Frequently Asked</a></li>
-                    <li><a href="/contact" className="hover:text-emerald-700">Contact & Support</a></li>
-                  </ul>
-                </div>
-
-                {/* Col 5 */}
-                <div className="space-y-3">
-                  <div className="font-bold text-slate-900 text-sm">Category Portals</div>
-                  <ul className="space-y-1.5 text-[11px]">
-                    <li><a href="/login" className="hover:text-emerald-700 font-semibold">Universal Sign In Hub</a></li>
-                    <li><a href="/login/government" className="hover:text-amber-700">Government Login</a></li>
-                    <li><a href="/login/researcher" className="hover:text-emerald-700">Researcher Login</a></li>
-                    <li><a href="/login/policymaker" className="hover:text-blue-700">Policy Maker Login</a></li>
-                    <li><a href="/login/civil-society" className="hover:text-teal-700">Civil Society Login</a></li>
-                    <li><a href="/login/admin" className="hover:text-purple-700">Admin Login</a></li>
-                    <li className="pt-1"><a href="/register" className="text-emerald-700 font-bold hover:underline">Register Official Account</a></li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Disclaimer Banner */}
-              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-[11px] leading-relaxed text-left">
-                <strong>Notice of Non-Official Synthetic Demonstration Data:</strong> This platform demonstrates open cadastral technology and automated PostGIS topological validation. All sample parcels, boundary polygons, policy drafts, and mutation entries are synthetic test records. Official statutory land rights are governed exclusively by jurisdictional state revenue departments.
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 text-center sm:text-left">
-                <p>© {new Date().getFullYear()} LandGov Cadastral Administration. All rights reserved.</p>
-                <p>PostGIS 3.6 & Append-Only Cryptographic Ledger</p>
-              </div>
-            </div>
-          </footer>
+          <GovFooter />
           <Toaster />
         </AuthProvider>
       </body>

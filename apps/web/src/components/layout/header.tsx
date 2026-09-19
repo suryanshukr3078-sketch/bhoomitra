@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
-  Landmark,
   Menu,
   X,
   MapPin,
@@ -27,276 +27,221 @@ import {
   SlidersHorizontal,
   Lightbulb,
   Code2,
-  MoreHorizontal,
+  Search,
+  CheckCircle2,
+  HelpCircle,
+  Vote,
+  MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
+import { GovTopBar } from '@/components/layout/gov-top-bar';
+import { AshokaEmblem } from '@/components/layout/gov-emblem';
+
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman & Nicobar', 'Chandigarh', 'Dadra & Nagar Haveli and Daman & Diu',
+  'Delhi', 'Jammu & Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [portalMenuOpen, setPortalMenuOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [involvedMenuOpen, setInvolvedMenuOpen] = useState(false);
+  const [schemesMenuOpen, setSchemesMenuOpen] = useState(false);
+  const [statesMenuOpen, setStatesMenuOpen] = useState(false);
+  const [researchMenuOpen, setResearchMenuOpen] = useState(false);
+  const [searchCategory, setSearchCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
   const { user, isAuthenticated, logout } = useAuth();
   const prefersReduced = useReducedMotion();
+  const router = useRouter();
 
-  const primaryNavLinks = [
-    { href: '/', label: 'Home', icon: Landmark },
-    { href: '/workspace', label: 'Workspaces', icon: Building2 },
-    { href: '/maps', label: 'Maps', icon: MapPin },
-    { href: '/policies', label: 'Policies', icon: FileText },
-    { href: '/research', label: 'Research', icon: BookOpen },
-    { href: '/datasets', label: 'Datasets', icon: Database },
-    { href: '/simulation', label: 'Simulation', icon: SlidersHorizontal },
-    { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-  ];
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
 
-  const moreNavLinks = [
-    { href: '/watershed', label: 'Watershed (SRISHTI)', icon: MapPin, desc: 'SRISHTI-DRISHTI 30m satellite & GIS drainage' },
-    { href: '/digitization', label: 'Digitization AI', icon: FileText, desc: 'Multilingual OCR & Land Record Dual-Pane Studio' },
-    { href: '/acquisition', label: 'Land Acquisition (LAMS)', icon: Scale, desc: 'RFCTLARR Act 2013 & AI Delay Analytics' },
-    { href: '/innovation', label: 'Innovation & Grants', icon: Lightbulb, desc: 'Hackathons, grants & pilot projects' },
-    { href: '/evidence', label: 'Provenance & Lineage', icon: ShieldCheck, desc: 'W3C PROV-O audit trails' },
-    { href: '/developers', label: 'Developer & GIS APIs', icon: Code2, desc: 'OGC WMS/WFS & REST endpoints' },
-    { href: '/assistant', label: 'AI Research Assistant', icon: Bot, desc: 'Synthesis & trend intelligence' },
-    { href: '/about', label: 'About Bhoomitra', icon: Landmark, desc: 'Platform mission & architecture' },
-  ];
-
-  const allNavLinks = [
-    ...primaryNavLinks,
-    ...moreNavLinks.map(({ href, label, icon }) => ({ href, label, icon })),
-  ];
+    if (searchCategory === 'maps') {
+      router.push(`/maps?q=${encodeURIComponent(searchQuery)}`);
+    } else if (searchCategory === 'research') {
+      router.push(`/research?q=${encodeURIComponent(searchQuery)}`);
+    } else if (searchCategory === 'policies') {
+      router.push(`/policies?q=${encodeURIComponent(searchQuery)}`);
+    } else if (searchCategory === 'datasets') {
+      router.push(`/datasets?q=${encodeURIComponent(searchQuery)}`);
+    } else {
+      router.push(`/maps?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="max-w-[1536px] mx-auto px-3 sm:px-4 xl:px-6 2xl:px-8 w-full">
-        <div className="header-inner flex items-center justify-between gap-2 sm:gap-3 w-full min-h-[4rem] flex-nowrap min-w-0">
-          {/* Section 1 (far left): Logo ("LandGov"), non-shrinking */}
-          <Link href="/" passHref legacyBehavior>
-            <motion.a
-              whileHover={prefersReduced ? undefined : { scale: 1.02 }}
-              whileTap={prefersReduced ? undefined : { scale: 0.98 }}
-              transition={{ duration: 0.15 }}
-              className="brand flex items-center gap-2 text-emerald-800 font-bold text-base sm:text-xl tracking-tight shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
-              aria-label="Land Governance Platform Home"
-            >
-              <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shadow-sm shrink-0">
-                <Landmark className="w-5 h-5" aria-hidden="true" />
+    <header className="sticky top-0 z-40 w-full shadow-sm bg-white">
+      {/* 1. GIGW Top Accessibility & Language Bar */}
+      <GovTopBar />
+
+      {/* 2. Main Government Brand & Search Header */}
+      <div className="border-b border-slate-200 bg-white">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-4 flex-wrap lg:flex-nowrap">
+          {/* Brand Logo & National Emblem */}
+          <Link href="/" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-lg shrink-0">
+            <div className="text-amber-800 group-hover:text-amber-900 transition-colors shrink-0">
+              <AshokaEmblem className="w-10 h-12 sm:w-12 sm:h-14" />
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl font-black tracking-tight text-[#1a3c6e] font-heading">
+                  भू-मित्र <span className="text-[#ff9933]">BHOOMITRA</span>
+                </span>
               </div>
-              <span className="font-extrabold text-slate-900">
-                Land<span className="text-emerald-700">Gov</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-700 leading-tight">
+                राष्ट्रीय भूमि शासन एवं भू-स्थानिक प्रशासन पोर्टल
               </span>
-            </motion.a>
+              <span className="text-[10px] text-slate-500 leading-tight hidden sm:block">
+                Ministry of Rural Development &amp; Land Resources, Govt. of India
+              </span>
+            </div>
           </Link>
 
-          {/* Section 2 (left-center, next to logo): Primary navigation links */}
-          <nav
-            aria-label="Primary Navigation"
-            className="main-navigation hidden min-[1150px]:flex items-center flex-1 justify-start gap-0.5 min-[1350px]:gap-1 2xl:gap-2 ml-1 min-[1250px]:ml-2 min-[1400px]:ml-3 min-w-0"
+          {/* Central Omnibar Search (MyGov Style) */}
+          <form
+            onSubmit={handleSearch}
+            className="flex-1 max-w-xl w-full mx-auto order-3 lg:order-2 flex items-center shadow-inner rounded-xl border border-slate-300 bg-slate-50/70 focus-within:bg-white focus-within:border-[#1a3c6e] focus-within:ring-2 focus-within:ring-[#1a3c6e]/20 transition-all overflow-hidden"
           >
-            {primaryNavLinks.map((link) => (
-              <Link key={link.href} href={link.href} passHref legacyBehavior>
-                <motion.a
-                  whileHover={prefersReduced ? undefined : { scale: 1.04, y: -1 }}
-                  whileTap={prefersReduced ? undefined : { scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  className="px-1.5 min-[1220px]:px-2 2xl:px-2.5 py-1.5 rounded-lg text-xs 2xl:text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                >
-                  {link.label}
-                </motion.a>
-              </Link>
-            ))}
-
-            {/* Desktop "More" Dropdown for Innovation, Provenance, APIs, Assistant, About */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                onBlur={() => setTimeout(() => setMoreMenuOpen(false), 200)}
-                className="flex items-center gap-1 px-1.5 min-[1220px]:px-2 2xl:px-2.5 py-1.5 rounded-lg text-xs 2xl:text-sm font-medium text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/70 transition-colors shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
-                aria-expanded={moreMenuOpen}
-                aria-haspopup="true"
-              >
-                <span>More</span>
-                <ChevronDown className={cn("w-3 h-3 text-slate-400 transition-transform", moreMenuOpen && "rotate-180")} />
-              </button>
-
-              {moreMenuOpen && (
-                <div className="absolute left-0 mt-1.5 w-64 rounded-xl bg-white border border-slate-200 shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-1">
-                  {moreNavLinks.map((link) => {
-                    const Icon = link.icon;
-                    return (
-                      <Link key={link.href} href={link.href} passHref legacyBehavior>
-                        <a
-                          onClick={() => setMoreMenuOpen(false)}
-                          className="flex items-start gap-2.5 px-3 py-2 text-left hover:bg-emerald-50 transition-colors group"
-                        >
-                          <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-600 group-hover:bg-emerald-100 group-hover:text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                            <Icon className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-slate-900 group-hover:text-emerald-800">
-                              {link.label}
-                            </div>
-                            <div className="text-[11px] text-slate-500 leading-tight">
-                              {link.desc}
-                            </div>
-                          </div>
-                        </a>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Responsive Hamburger Menu Trigger (< 1150px): Positioned cleanly between Section 1 and Section 3 */}
-          <div className="mobile-menu-trigger flex min-[1150px]:hidden items-center shrink-0">
-            <motion.button
-              type="button"
-              whileTap={prefersReduced ? undefined : { scale: 0.92 }}
-              transition={{ duration: 0.1 }}
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="min-w-[44px] min-h-[44px] w-11 h-11 p-2.5 flex items-center justify-center text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-              aria-label={mobileMenuOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
-              aria-expanded={mobileMenuOpen}
+            <select
+              value={searchCategory}
+              onChange={(e) => setSearchCategory(e.target.value)}
+              className="bg-transparent border-r border-slate-300 px-2.5 sm:px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer shrink-0 hidden sm:block"
             >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6 shrink-0" aria-hidden="true" />
-              ) : (
-                <Menu className="w-6 h-6 shrink-0" aria-hidden="true" />
-              )}
-            </motion.button>
-          </div>
+              <option value="all">All Categories</option>
+              <option value="maps">Cadastral Maps</option>
+              <option value="policies">Policies / Acts</option>
+              <option value="research">Research Papers</option>
+              <option value="datasets">GIS Datasets</option>
+            </select>
+            <div className="flex-1 flex items-center px-3 min-w-0">
+              <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search parcels, RoR, states, surveys, policy..."
+                className="w-full bg-transparent text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-[#1a3c6e] hover:bg-[#0f2649] text-white px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-bold transition-colors flex items-center gap-1.5 shrink-0"
+              aria-label="Search Bhoomitra"
+            >
+              <span>Search</span>
+            </button>
+          </form>
 
-          {/* Section 3 (far right): Authentication actions */}
-          <div className="flex items-center gap-1 min-[1220px]:gap-1.5 sm:gap-2 shrink-0">
+          {/* Right Header: 2FA Protected Badge & Authentication Controls */}
+          <div className="flex items-center gap-2 order-2 lg:order-3 ml-auto lg:ml-0 shrink-0">
+            {/* 2FA Active Security Tag */}
+            <div className="hidden xl:flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>2FA Secured</span>
+            </div>
+
             {isAuthenticated && user ? (
-              <>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#1a3c6e] bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  <BarChart3 className="w-4 h-4 text-[#1a3c6e]" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Link>
                 {Boolean(user.is_superuser || user.role?.toLowerCase() === 'admin') && (
-                  <Link href="/admin" passHref legacyBehavior>
-                    <motion.a
-                      whileHover={prefersReduced ? undefined : { scale: 1.03 }}
-                      whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-                      transition={{ duration: 0.15 }}
-                      title="Cadastral Administration Portal"
-                      className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 whitespace-nowrap shrink-0"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5 text-purple-600 shrink-0" aria-hidden="true" />
-                      <span>Admin Portal</span>
-                    </motion.a>
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-purple-700" />
+                    <span className="hidden md:inline">Admin</span>
                   </Link>
                 )}
-                <Link href="/dashboard" passHref legacyBehavior>
-                  <motion.a
-                    whileHover={prefersReduced ? undefined : { scale: 1.03 }}
-                    whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    title="Governance Dashboard"
-                    className="flex items-center gap-1.5 px-1.5 min-[1220px]:px-2 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                    <span className="hidden sm:inline">Dashboard</span>
-                  </motion.a>
-                </Link>
-                <Link href="/dashboard?tab=contribute" passHref legacyBehavior>
-                  <motion.a
-                    whileHover={prefersReduced ? undefined : { scale: 1.03 }}
-                    whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    title="Contribute Land Records"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs 2xl:text-sm font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
-                  >
-                    <UploadCloud className="w-3.5 h-3.5 text-emerald-700 shrink-0" aria-hidden="true" />
-                    <span>Contribute</span>
-                  </motion.a>
-                </Link>
-                <div className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
-                  <User className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
-                  <span className="max-w-[120px] truncate">{user.full_name || user.email}</span>
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200">
+                  <User className="w-3.5 h-3.5 text-slate-600" />
+                  <span className="max-w-[100px] truncate">{user.full_name || user.email}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => logout()}
-                  className="flex items-center gap-1 px-2 py-1.5 text-xs 2xl:text-sm font-medium text-rose-700 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 whitespace-nowrap cursor-pointer shrink-0"
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
                   title="Sign Out"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-rose-600" aria-hidden="true" />
+                  <LogOut className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Sign Out</span>
                 </button>
-              </>
+              </div>
             ) : (
-              <>
-                <Link href="/dashboard" passHref legacyBehavior>
-                  <motion.a
-                    whileHover={prefersReduced ? undefined : { scale: 1.03 }}
-                    whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    title="Dashboard"
-                    className="flex items-center gap-1.5 px-1.5 min-[1220px]:px-2 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-medium text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/60 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                    <span className="hidden sm:inline">Dashboard</span>
-                  </motion.a>
-                </Link>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Category Sign In Dropdown */}
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setPortalMenuOpen(!portalMenuOpen)}
                     onBlur={() => setTimeout(() => setPortalMenuOpen(false), 200)}
-                    className="flex items-center gap-1 px-1.5 min-[1220px]:px-2 2xl:px-3 py-1.5 text-xs 2xl:text-sm font-semibold text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0 cursor-pointer"
-                    aria-expanded={portalMenuOpen}
-                    aria-haspopup="true"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-[#1a3c6e] hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
                   >
-                    <LogIn className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 shrink-0 text-slate-500" aria-hidden="true" />
+                    <LogIn className="w-3.5 h-3.5 text-[#1a3c6e]" />
                     <span>Sign In</span>
-                    <ChevronDown className={cn("w-3 h-3 text-slate-400 transition-transform", portalMenuOpen && "rotate-180")} />
+                    <ChevronDown className={cn("w-3 h-3 transition-transform", portalMenuOpen && "rotate-180")} />
                   </button>
 
                   {portalMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 space-y-1">
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-slate-200 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 space-y-1">
                       <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        Category Portals
+                        Official Portals (2FA)
                       </div>
                       <Link
                         href="/login"
-                        className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-900 hover:bg-slate-100 transition-colors"
+                        className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-900 hover:bg-slate-100"
                       >
-                        <LogIn className="w-4 h-4 text-emerald-700" />
-                        <span>Universal Sign In Hub</span>
-                      </Link>
-                      <Link
-                        href="/login/researcher"
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors"
-                      >
-                        <GraduationCap className="w-4 h-4 text-emerald-600" />
-                        <span>Researcher / Academic</span>
-                      </Link>
-                      <Link
-                        href="/login/policymaker"
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-900 transition-colors"
-                      >
-                        <Scale className="w-4 h-4 text-blue-600" />
-                        <span>Policy Maker &amp; Analyst</span>
+                        <LogIn className="w-4 h-4 text-[#1a3c6e]" />
+                        <span>Universal Citizen Sign In</span>
                       </Link>
                       <Link
                         href="/login/government"
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-amber-50 hover:text-amber-900 transition-colors"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-900 hover:bg-amber-50"
                       >
-                        <Landmark className="w-4 h-4 text-amber-600" />
+                        <Building2 className="w-4 h-4 text-amber-600" />
                         <span>Government Agency</span>
                       </Link>
                       <Link
+                        href="/login/researcher"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-emerald-900 hover:bg-emerald-50"
+                      >
+                        <GraduationCap className="w-4 h-4 text-emerald-600" />
+                        <span>Researcher GIS Lab</span>
+                      </Link>
+                      <Link
+                        href="/login/policymaker"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-blue-900 hover:bg-blue-50"
+                      >
+                        <Scale className="w-4 h-4 text-blue-600" />
+                        <span>Policy Directorate</span>
+                      </Link>
+                      <Link
                         href="/login/civil-society"
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-teal-900 hover:bg-teal-50"
                       >
                         <Users className="w-4 h-4 text-teal-600" />
-                        <span>Civil Society &amp; Advocate</span>
+                        <span>Civil Society Desk</span>
                       </Link>
-                      <div className="border-t border-slate-100 pt-1 mt-1">
+                      <div className="border-t border-slate-100 pt-1">
                         <Link
                           href="/login/admin"
-                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-800 hover:bg-purple-50"
                         >
                           <ShieldAlert className="w-4 h-4 text-purple-600" />
                           <span>Platform Administrator</span>
@@ -305,178 +250,323 @@ export function Header() {
                     </div>
                   )}
                 </div>
-                <Link href="/register" passHref legacyBehavior>
-                  <motion.a
-                    whileHover={prefersReduced ? undefined : { scale: 1.03, boxShadow: '0 4px 12px rgba(4, 120, 87, 0.25)' }}
-                    whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
-                    className="flex items-center gap-1 px-2 min-[1220px]:px-2.5 2xl:px-3.5 py-1.5 text-xs 2xl:text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap shrink-0"
-                  >
-                    <span>Register</span>
-                  </motion.a>
+
+                <Link
+                  href="/register"
+                  className="px-3 sm:px-4 py-1.5 text-xs font-bold text-white bg-[#ff9933] hover:bg-[#d97706] rounded-lg shadow-sm transition-colors"
+                >
+                  Register
                 </Link>
-              </>
+              </div>
             )}
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 text-slate-700 hover:bg-slate-100 rounded-lg"
+              aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile/Tablet Slide-down Menu Drawer (< 1150px) */}
-      {mobileMenuOpen && (
-        <div
-          className="min-[1150px]:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2 shadow-lg"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Mobile Navigation"
-        >
-          <nav className="grid gap-1">
-            {allNavLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link key={link.href} href={link.href} passHref legacyBehavior>
-                  <motion.a
-                    whileTap={prefersReduced ? undefined : { scale: 0.98 }}
-                    transition={{ duration: 0.1 }}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                  >
-                    <Icon className="w-5 h-5 text-slate-400 shrink-0" aria-hidden="true" />
-                    <span>{link.label}</span>
-                  </motion.a>
-                </Link>
-              );
-            })}
-          </nav>
+      {/* 3. Primary Navigation Ribbon (Deep Navy Blue #1a3c6e with Saffron Underline) */}
+      <nav className="bg-[#1a3c6e] text-white border-b-2 border-[#ff9933] hidden lg:block">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between text-xs font-bold uppercase tracking-wider">
+          <div className="flex items-center">
+            {/* Home */}
+            <Link
+              href="/"
+              className="px-3.5 py-3 hover:bg-[#0f2649] transition-colors border-r border-slate-700/50 flex items-center gap-1.5"
+            >
+              <span>Home</span>
+            </Link>
 
-          {/* Mobile Category Portals Section */}
-          <div className="pt-3 border-t border-slate-100 space-y-2">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Category Portals
-              </span>
-              <Link
-                href="/workspace"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[11px] font-bold text-emerald-700 hover:underline"
+            {/* Cadastral Maps & GIS */}
+            <Link
+              href="/maps"
+              className="px-3.5 py-3 hover:bg-[#0f2649] transition-colors border-r border-slate-700/50 flex items-center gap-1.5 text-amber-300"
+            >
+              <MapPin className="w-3.5 h-3.5 text-[#ff9933]" />
+              <span>Cadastral GIS &amp; Maps</span>
+            </Link>
+
+            {/* Get Involved Dropdown (MyGov Signature) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setInvolvedMenuOpen(!involvedMenuOpen)}
+                onBlur={() => setTimeout(() => setInvolvedMenuOpen(false), 200)}
+                className="px-3.5 py-3 hover:bg-[#0f2649] transition-colors border-r border-slate-700/50 flex items-center gap-1 cursor-pointer"
               >
-                All Workspaces &rarr;
-              </Link>
+                <span>Get Involved</span>
+                <ChevronDown className={cn("w-3 h-3 text-amber-300 transition-transform", involvedMenuOpen && "rotate-180")} />
+              </button>
+
+              {involvedMenuOpen && (
+                <div className="absolute left-0 top-full w-72 bg-white text-slate-800 rounded-b-xl border border-slate-200 shadow-2xl p-2 z-50 normal-case space-y-1">
+                  <Link
+                    href="/contribute"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Do / Tasks</div>
+                      <div className="text-[11px] text-slate-500 font-normal">Verify boundaries &amp; geo-tag parcels</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/policies"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4 text-blue-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Discuss &amp; Consult</div>
+                      <div className="text-[11px] text-slate-500 font-normal">Public consultation on land laws</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <Vote className="w-4 h-4 text-amber-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Poll / Survey</div>
+                      <div className="text-[11px] text-slate-500 font-normal">Citizen satisfaction on digital RoR</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/research"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4 text-purple-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Blogs &amp; Perspectives</div>
+                      <div className="text-[11px] text-slate-500 font-normal">Articles by researchers and officers</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/innovation"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4 text-[#ff9933] mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Hackathons &amp; Grants</div>
+                      <div className="text-[11px] text-slate-500 font-normal">Innovations in spatial mapping</div>
+                    </div>
+                  </Link>
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <Link
-                href="/login/researcher"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 text-emerald-800 font-medium"
+
+            {/* National Schemes Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSchemesMenuOpen(!schemesMenuOpen)}
+                onBlur={() => setTimeout(() => setSchemesMenuOpen(false), 200)}
+                className="px-3.5 py-3 hover:bg-[#0f2649] transition-colors border-r border-slate-700/50 flex items-center gap-1 cursor-pointer"
               >
-                <GraduationCap className="w-4 h-4 text-emerald-700" />
-                <span>Researcher</span>
-              </Link>
-              <Link
-                href="/login/policymaker"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 text-blue-800 font-medium"
-              >
-                <Scale className="w-4 h-4 text-blue-700" />
-                <span>Policy Maker</span>
-              </Link>
-              <Link
-                href="/login/government"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 text-amber-800 font-medium"
-              >
-                <Landmark className="w-4 h-4 text-amber-700" />
-                <span>Government</span>
-              </Link>
-              <Link
-                href="/login/civil-society"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2 rounded-lg bg-teal-50 text-teal-800 font-medium"
-              >
-                <Users className="w-4 h-4 text-teal-700" />
-                <span>Civil Society</span>
-              </Link>
+                <span>Schemes &amp; Initiatives</span>
+                <ChevronDown className={cn("w-3 h-3 text-amber-300 transition-transform", schemesMenuOpen && "rotate-180")} />
+              </button>
+
+              {schemesMenuOpen && (
+                <div className="absolute left-0 top-full w-80 bg-white text-slate-800 rounded-b-xl border border-slate-200 shadow-2xl p-2 z-50 normal-case space-y-1">
+                  <Link
+                    href="/maps?filter=svamitva"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-amber-50 transition-colors"
+                  >
+                    <Building2 className="w-4 h-4 text-amber-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">SVAMITVA Scheme</div>
+                      <div className="text-[11px] text-slate-500 font-normal">Drone survey &amp; property cards for abadi land</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/digitization"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-emerald-50 transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Bhu-Aadhaar (ULPIN) &amp; OCR</div>
+                      <div className="text-[11px] text-slate-500 font-normal">14-Digit unique land parcel identifier</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/watershed"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-teal-50 transition-colors"
+                  >
+                    <MapPin className="w-4 h-4 text-teal-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Watershed SRISHTI-DRISHTI</div>
+                      <div className="text-[11px] text-slate-500 font-normal">Satellite GIS drainage &amp; ridge planning</div>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/acquisition"
+                    className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                  >
+                    <Scale className="w-4 h-4 text-blue-600 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Land Acquisition (LAMS)</div>
+                      <div className="text-[11px] text-slate-500 font-normal">RFCTLARR Act 2013 delay analytics</div>
+                    </div>
+                  </Link>
+                </div>
+              )}
             </div>
+
+            {/* Research & Gazette Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setResearchMenuOpen(!researchMenuOpen)}
+                onBlur={() => setTimeout(() => setResearchMenuOpen(false), 200)}
+                className="px-3.5 py-3 hover:bg-[#0f2649] transition-colors border-r border-slate-700/50 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Research &amp; Gazette</span>
+                <ChevronDown className={cn("w-3 h-3 text-amber-300 transition-transform", researchMenuOpen && "rotate-180")} />
+              </button>
+
+              {researchMenuOpen && (
+                <div className="absolute left-0 top-full w-64 bg-white text-slate-800 rounded-b-xl border border-slate-200 shadow-2xl p-2 z-50 normal-case space-y-1">
+                  <Link href="/research" className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-xs font-semibold">
+                    <BookOpen className="w-4 h-4 text-[#1a3c6e]" />
+                    <span>Peer-Reviewed Papers</span>
+                  </Link>
+                  <Link href="/policies" className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-xs font-semibold">
+                    <FileText className="w-4 h-4 text-amber-600" />
+                    <span>Acts &amp; Gazette Registry</span>
+                  </Link>
+                  <Link href="/datasets" className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-xs font-semibold">
+                    <Database className="w-4 h-4 text-emerald-600" />
+                    <span>Open GIS Datasets</span>
+                  </Link>
+                  <Link href="/evidence" className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-xs font-semibold">
+                    <ShieldCheck className="w-4 h-4 text-teal-600" />
+                    <span>W3C PROV-O Audit Trails</span>
+                  </Link>
+                  <Link href="/developers" className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-xs font-semibold">
+                    <Code2 className="w-4 h-4 text-blue-600" />
+                    <span>OGC &amp; REST APIs</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* MyGov States Dropdown (36 States & UTs) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setStatesMenuOpen(!statesMenuOpen)}
+                onBlur={() => setTimeout(() => setStatesMenuOpen(false), 250)}
+                className="px-3.5 py-3 hover:bg-[#0f2649] transition-colors border-r border-slate-700/50 flex items-center gap-1 cursor-pointer text-amber-200"
+              >
+                <span>MyGov States</span>
+                <ChevronDown className={cn("w-3 h-3 transition-transform", statesMenuOpen && "rotate-180")} />
+              </button>
+
+              {statesMenuOpen && (
+                <div className="absolute left-0 top-full w-[540px] bg-white text-slate-800 rounded-b-xl border border-slate-200 shadow-2xl p-4 z-50 normal-case">
+                  <div className="font-bold text-xs text-[#1a3c6e] mb-2 uppercase tracking-wide border-b pb-1">
+                    Select State / Union Territory Cadastre
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 max-h-72 overflow-y-auto pr-1 text-[11px]">
+                    {INDIAN_STATES.map((st) => (
+                      <Link
+                        key={st}
+                        href={`/maps?q=${encodeURIComponent(st)}`}
+                        className="p-1.5 rounded hover:bg-slate-100 hover:text-[#1a3c6e] font-medium transition-colors truncate"
+                      >
+                        {st}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Workspaces */}
+            <Link
+              href="/workspace"
+              className="px-3.5 py-3 hover:bg-[#0f2649] transition-colors border-r border-slate-700/50 flex items-center gap-1.5"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Workspaces</span>
+            </Link>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 grid gap-2">
-            <Link href="/dashboard" passHref legacyBehavior>
-              <motion.a
-                whileTap={prefersReduced ? undefined : { scale: 0.98 }}
-                transition={{ duration: 0.1 }}
-                onClick={() => setMobileMenuOpen(false)}
-                className="min-h-[44px] flex items-center justify-center gap-2 w-full py-2.5 text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                Governance Dashboard
-              </motion.a>
+          {/* AI Cadastral Assistant Highlight */}
+          <Link
+            href="/assistant"
+            className="px-4 py-3 bg-[#ff9933] hover:bg-[#e68a00] text-slate-950 font-extrabold flex items-center gap-1.5 transition-colors"
+          >
+            <Bot className="w-4 h-4" />
+            <span>AI Assistant</span>
+          </Link>
+        </div>
+      </nav>
+
+      {/* 4. Mobile Drawer Menu (< 1024px) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-b border-slate-200 bg-white px-4 pt-3 pb-6 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
+          <div className="grid gap-1 text-sm font-semibold text-slate-800">
+            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Home
             </Link>
-            {isAuthenticated && user ? (
-              <div className="grid grid-cols-1 gap-2">
-                <Link href="/dashboard?tab=contribute" passHref legacyBehavior>
-                  <motion.a
-                    whileTap={prefersReduced ? undefined : { scale: 0.98 }}
-                    transition={{ duration: 0.1 }}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
-                  >
-                    <UploadCloud className="w-4 h-4 text-emerald-700 shrink-0" aria-hidden="true" />
-                    Contribute Records (Dashboard)
-                  </motion.a>
-                </Link>
-                {Boolean(user.is_superuser || user.role?.toLowerCase() === 'admin') && (
-                  <Link href="/admin" passHref legacyBehavior>
-                    <motion.a
-                      whileTap={prefersReduced ? undefined : { scale: 0.98 }}
-                      transition={{ duration: 0.1 }}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="min-h-[44px] flex items-center justify-center gap-2 w-full py-2.5 text-sm font-semibold text-purple-800 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
-                    >
-                      <ShieldAlert className="w-4 h-4 text-purple-600 shrink-0" aria-hidden="true" />
-                      Cadastral Admin Portal
-                    </motion.a>
-                  </Link>
-                )}
-                <div className="flex items-center justify-center gap-2 py-2 px-3 bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-lg border border-emerald-200">
-                  <User className="w-4 h-4 text-emerald-600" />
-                  <span>Signed in as: {user.full_name || user.email}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    logout();
-                  }}
-                  className="min-h-[44px] flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4 text-rose-600" />
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <Link href="/login" passHref legacyBehavior>
-                  <motion.a
-                    whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-                    transition={{ duration: 0.1 }}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                  >
-                    <LogIn className="w-4 h-4 shrink-0" aria-hidden="true" />
-                    Sign In
-                  </motion.a>
-                </Link>
-                <Link href="/register" passHref legacyBehavior>
-                  <motion.a
-                    whileTap={prefersReduced ? undefined : { scale: 0.97 }}
-                    transition={{ duration: 0.1 }}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center justify-center py-2.5 text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition-colors"
-                  >
-                    Register
-                  </motion.a>
-                </Link>
-              </div>
-            )}
+            <Link href="/maps" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100 text-[#1a3c6e] flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[#ff9933]" />
+              <span>Cadastral GIS &amp; Maps</span>
+            </Link>
+            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Governance Dashboard
+            </Link>
+            <Link href="/digitization" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Bhu-Aadhaar &amp; Dual-Pane OCR
+            </Link>
+            <Link href="/watershed" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Watershed SRISHTI-DRISHTI
+            </Link>
+            <Link href="/acquisition" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Land Acquisition (LAMS)
+            </Link>
+            <Link href="/policies" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Policies &amp; Acts
+            </Link>
+            <Link href="/research" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Research Papers
+            </Link>
+            <Link href="/datasets" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Open GIS Datasets
+            </Link>
+            <Link href="/workspace" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
+              Official Workspaces
+            </Link>
+            <Link href="/assistant" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-lg bg-amber-50 text-amber-900 font-bold flex items-center gap-2">
+              <Bot className="w-4 h-4 text-amber-600" />
+              <span>AI Cadastral Assistant</span>
+            </Link>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200">
+            <div className="text-[11px] font-bold text-slate-400 uppercase mb-2">Category Portals</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <Link href="/login/government" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-lg bg-amber-50 text-amber-900 font-medium">
+                Government
+              </Link>
+              <Link href="/login/researcher" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-lg bg-emerald-50 text-emerald-900 font-medium">
+                Researcher
+              </Link>
+              <Link href="/login/policymaker" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-lg bg-blue-50 text-blue-900 font-medium">
+                Policy Maker
+              </Link>
+              <Link href="/login/civil-society" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-lg bg-teal-50 text-teal-900 font-medium">
+                Civil Society
+              </Link>
+            </div>
           </div>
         </div>
       )}

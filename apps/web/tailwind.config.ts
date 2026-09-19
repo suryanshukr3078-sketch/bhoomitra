@@ -33,6 +33,28 @@ const config: Config = {
           subtle: "rgb(var(--surface-subtle) / <alpha-value>)",
           muted: "rgb(var(--surface-muted) / <alpha-value>)",
         },
+        gov: {
+          navy: {
+            DEFAULT: "#1a3c6e",
+            dark: "#0f2649",
+            light: "#255294",
+            deep: "#0a1931",
+          },
+          saffron: {
+            DEFAULT: "#ff9933",
+            dark: "#d97706",
+            light: "#ffb366",
+            accent: "#f37021",
+          },
+          green: {
+            DEFAULT: "#138808",
+            dark: "#0b5e05",
+            light: "#1db90c",
+          },
+          blue: "#0066b2",
+          ashoka: "#000080",
+          cream: "#fbfbfd",
+        },
       },
       boxShadow: {
         card: "var(--shadow-card)",

@@ -44,6 +44,32 @@ body {
   width: 100%;
 }
 
+html[data-font-size="small"] {
+  font-size: 88%;
+}
+
+html[data-font-size="normal"] {
+  font-size: 100%;
+}
+
+html[data-font-size="large"] {
+  font-size: 112%;
+}
+
+html[data-contrast="high"] {
+  filter: contrast(125%);
+}
+
+html[data-contrast="dark"] {
+  background-color: #0b1120 !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-contrast="dark"] body {
+  background-color: #0b1120 !important;
+  color: #f1f5f9 !important;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
