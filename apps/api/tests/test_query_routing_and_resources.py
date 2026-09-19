@@ -42,8 +42,20 @@ def mock_target_resource() -> Resource:
     return res
 
 
+from app.api.dependencies.auth import get_current_user
+from app.models.identity import User
+
+
 @pytest.fixture
 def test_client_with_resource(mock_target_resource: Resource) -> TestClient:
+    mock_user = User(
+        id=UUID("11111111-1111-1111-1111-111111111111"),
+        email="researcher@codenova.org",
+        full_name="Researcher Test",
+        is_superuser=False,
+        profile={"roles": ["researcher"]},
+    )
+
     async def override_get_db():
         mock_session = AsyncMock()
         mock_result = MagicMock()
@@ -54,6 +66,7 @@ def test_client_with_resource(mock_target_resource: Resource) -> TestClient:
         yield mock_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = lambda: mock_user
     client = TestClient(app, base_url="http://localhost")
     yield client
     app.dependency_overrides.clear()

@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime
 from typing import Any
@@ -13,6 +13,7 @@ from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models.enums import MembershipStatus, OrganizationType, UserStatus
 from app.models.identity import Organization, OrganizationMembership, User
+from app.services.otp import get_otp_for_debugging
 
 
 @pytest.fixture(autouse=True)
@@ -272,7 +273,17 @@ def test_admin_full_approval_cycle(admin_test_env: dict[str, Any]) -> None:
         json={"email": pending_user.email, "password": "OfficerPass123!"},
     )
     assert login_success.status_code == 200
-    assert "access_token" in login_success.cookies or login_success.json().get("token") is not None
+    if login_success.json().get("status") == "otp_required":
+        otp = get_otp_for_debugging(pending_user.email)
+        assert otp is not None
+        verify_resp = client.post(
+            "/api/v1/auth/verify-otp",
+            json={"email": pending_user.email, "otp": otp, "action": "login"},
+        )
+        assert verify_resp.status_code == 200
+        assert verify_resp.json().get("token") is not None
+    else:
+        assert "access_token" in login_success.cookies or login_success.json().get("token") is not None
 
 
 def test_admin_full_rejection_cycle(admin_test_env: dict[str, Any]) -> None:

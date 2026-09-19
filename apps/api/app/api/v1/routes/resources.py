@@ -95,13 +95,13 @@ async def create_resource(
             )
             mem = mem_res.scalar_one_or_none()
             if mem:
-                org_id = mem.organization_id
+                org_id = getattr(mem, "organization_id", getattr(mem, "owner_organization_id", None))
 
         if not org_id:
             org_res = await db.execute(select(Organization).limit(1))
             existing_org = org_res.scalars().first()
             if existing_org:
-                org_id = existing_org.id
+                org_id = getattr(existing_org, "id", None)
             else:
                 new_org = Organization(
                     name="National Land Governance Observatory",

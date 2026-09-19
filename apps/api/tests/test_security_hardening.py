@@ -4,10 +4,13 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+from uuid import UUID
+from app.api.dependencies.auth import get_current_user
 from app.core.config import Settings
 from app.core.logging import redact_sensitive_fields
 from app.core.storage import sanitize_filename, verify_magic_bytes
 from app.main import app
+from app.models.identity import User
 
 
 def test_sensitive_data_logging_redaction() -> None:
@@ -90,32 +93,65 @@ def test_production_error_handler_masks_details(client: TestClient) -> None:
 
 
 def test_file_upload_rejected_on_invalid_extension(client: TestClient) -> None:
-    file_content = b"malicious executable script"
-    files = {"file": ("malicious.exe", io.BytesIO(file_content), "application/octet-stream")}
-    response = client.post("/api/v1/uploads", files=files)
-    assert response.status_code == 415
-    assert "Unsupported file extension" in response.json()["detail"]
+    mock_user = User(
+        id=UUID("12345678-1234-5678-1234-567812345678"),
+        email="security_test@codenova.org",
+        full_name="Security Tester",
+        is_superuser=False,
+        profile={"roles": ["researcher"]},
+    )
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    try:
+        file_content = b"malicious executable script"
+        files = {"file": ("malicious.exe", io.BytesIO(file_content), "application/octet-stream")}
+        response = client.post("/api/v1/uploads", files=files)
+        assert response.status_code == 415
+        assert "Unsupported file extension" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_file_upload_rejected_on_spoofed_magic_bytes(client: TestClient) -> None:
-    # File has .pdf extension but plain text body
-    fake_pdf = b"This is not a real PDF file."
-    files = {"file": ("fake.pdf", io.BytesIO(fake_pdf), "application/pdf")}
-    response = client.post("/api/v1/uploads", files=files)
-    assert response.status_code == 422
-    assert "does not match expected format" in response.json()["detail"]
+    mock_user = User(
+        id=UUID("12345678-1234-5678-1234-567812345678"),
+        email="security_test@codenova.org",
+        full_name="Security Tester",
+        is_superuser=False,
+        profile={"roles": ["researcher"]},
+    )
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    try:
+        # File has .pdf extension but plain text body
+        fake_pdf = b"This is not a real PDF file."
+        files = {"file": ("fake.pdf", io.BytesIO(fake_pdf), "application/pdf")}
+        response = client.post("/api/v1/uploads", files=files)
+        assert response.status_code == 422
+        assert "does not match expected format" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_file_upload_valid_pdf(client: TestClient) -> None:
-    valid_pdf = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
-    files = {"file": ("report.pdf", io.BytesIO(valid_pdf), "application/pdf")}
-    response = client.post("/api/v1/uploads", files=files)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["original_filename"] == "report.pdf"
-    assert data["mime_type"] == "application/pdf"
-    assert "checksum_sha256" in data
-    assert "storage_uri" in data
+    mock_user = User(
+        id=UUID("12345678-1234-5678-1234-567812345678"),
+        email="security_test@codenova.org",
+        full_name="Security Tester",
+        is_superuser=False,
+        profile={"roles": ["researcher"]},
+    )
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    try:
+        valid_pdf = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
+        files = {"file": ("report.pdf", io.BytesIO(valid_pdf), "application/pdf")}
+        response = client.post("/api/v1/uploads", files=files)
+        assert response.status_code == 201
+        data = response.json()
+        assert data["original_filename"] == "report.pdf"
+        assert data["mime_type"] == "application/pdf"
+        assert "checksum_sha256" in data
+        assert "storage_uri" in data
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_rate_limiting_auth_routes(client: TestClient) -> None:

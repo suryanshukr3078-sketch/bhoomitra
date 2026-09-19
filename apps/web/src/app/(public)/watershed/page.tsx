@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   Layers,
@@ -435,9 +436,12 @@ export default function WatershedPage() {
                         : 'border-slate-200 hover:border-emerald-300 bg-white'
                     }`}
                   >
-                    <img
+                    <Image
                       src={photo.photo_url}
                       alt={photo.title}
+                      width={80}
+                      height={80}
+                      unoptimized
                       className="w-20 h-20 object-cover rounded-lg shrink-0 border border-slate-200"
                     />
                     <div className="space-y-1 min-w-0 flex-1">
@@ -483,9 +487,12 @@ export default function WatershedPage() {
 
                 {/* Large Photo Preview with Azimuth Overlay */}
                 <div className="relative rounded-xl overflow-hidden border border-slate-200 group">
-                  <img
+                  <Image
                     src={activePhoto.photo_url}
                     alt={activePhoto.title}
+                    width={600}
+                    height={300}
+                    unoptimized
                     className="w-full h-52 object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-3">

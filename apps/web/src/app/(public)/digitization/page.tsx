@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   FileSpreadsheet,
@@ -278,9 +279,12 @@ export default function DigitizationPage() {
                     style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
                     className="relative transition-transform duration-150 shadow-2xl border border-slate-700 rounded-lg overflow-hidden bg-white max-w-[500px]"
                   >
-                    <img
+                    <Image
                       src={activeRecord.scan_url}
                       alt={activeRecord.title}
+                      width={500}
+                      height={700}
+                      unoptimized
                       className="w-full h-auto block select-none"
                     />
 
