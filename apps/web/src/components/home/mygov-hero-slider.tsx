@@ -4,83 +4,68 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MapPin,
-  FileCheck2,
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  ShieldCheck,
-  Building2,
-  ArrowRight,
-  Layers,
-  Award,
+  MapPin,
+  Star,
+  Calendar,
+  CheckSquare,
+  HelpCircle,
 } from 'lucide-react';
+import { AshokaEmblem } from '@/components/layout/gov-emblem';
 
 interface Slide {
   id: string;
-  tagEn: string;
-  tagHi: string;
-  titleEn: string;
-  titleHi: string;
-  description: string;
-  stat: { value: string; label: string };
-  primaryCta: { label: string; href: string };
-  secondaryCta: { label: string; href: string };
+  badge: string;
+  goldenTitle: string;
+  subtitle: string;
+  tagline: string;
+  ctaText: string;
+  ctaHref: string;
   bgGradient: string;
 }
 
 const SLIDES: Slide[] = [
   {
     id: 'svamitva',
-    tagEn: 'FLAGSHIP NATIONAL INITIATIVE',
-    tagHi: 'स्वामित्व योजना',
-    titleEn: 'SVAMITVA: Digital Property Cards for Rural India',
-    titleHi: 'ग्रामीण आबादी क्षेत्रों का ड्रोन आधारित डिजिटल सीमांकन',
-    description:
-      'Survey of Villages and Mapping with Improvised Technology in Village Areas using high-resolution survey drones and PostGIS cadastral boundary validation.',
-    stat: { value: '6.4+ Lakh', label: 'Villages Covered' },
-    primaryCta: { label: 'Explore Village Cadastres', href: '/maps?filter=svamitva' },
-    secondaryCta: { label: 'Scheme Details', href: '/policies' },
-    bgGradient: 'from-[#0b1c36] via-[#142d54] to-[#1a3c6e]',
+    badge: 'FLAGSHIP NATIONAL INITIATIVE',
+    goldenTitle: 'SVAMITVA@2026',
+    subtitle: 'Meri Sampatti, Mera Haq',
+    tagline: 'Empowering 6.4+ Lakh Rural Villages with Drone-Mapped Digital Property Cards',
+    ctaText: 'Explore Cadastral GIS',
+    ctaHref: '/maps?filter=svamitva',
+    bgGradient: 'radial-gradient(ellipse at 70% 50%, #1e3a8a 0%, #0c1c38 55%, #050b17 100%)',
   },
   {
     id: 'bhu-aadhaar',
-    tagEn: 'ONE NATION, ONE CADASTRE',
-    tagHi: 'भू-आधार (ULPIN)',
-    titleEn: 'Bhu-Aadhaar: 14-Digit Unique Land Parcel Identifier',
-    titleHi: 'प्रत्येक भूमि भूखंड की अद्वितीय डिजिटल पहचान',
-    description:
-      'Standardized geospatial coordinate geo-coding assigning every land parcel in India a verifiable cryptographic and spatial identity, preventing overlapping title claims.',
-    stat: { value: '1.8+ Crore', label: 'ULPINs Generated' },
-    primaryCta: { label: 'Verify Parcel Coordinates', href: '/maps' },
-    secondaryCta: { label: 'Digitization Studio', href: '/digitization' },
-    bgGradient: 'from-[#06261c] via-[#0b3d2e] to-[#142d54]',
+    goldenTitle: 'Bhu-Aadhaar@14',
+    badge: 'ONE NATION, ONE CADASTRE',
+    subtitle: '14-Digit Unique Parcel ID (ULPIN)',
+    tagline: 'Standardized Geospatial Coordinates for Transparent & Dispute-Free Land Ownership',
+    ctaText: 'Verify Land Parcel',
+    ctaHref: '/maps',
+    bgGradient: 'radial-gradient(ellipse at 70% 50%, #064e3b 0%, #062b22 55%, #02120e 100%)',
   },
   {
     id: 'participatory-gis',
-    tagEn: 'CITIZEN COLLABORATION',
-    tagHi: 'सहभागी सीमा सत्यापन',
-    titleEn: 'Citizen Boundary Review & Participatory Mapping',
-    titleHi: 'नागरिक एवं ग्राम पंचायत द्वारा भू-अभिलेख सत्यापन',
-    description:
-      'Empowering landowners and gram panchayats to inspect high-resolution cadastral vector boundaries, raise spatial objections, and verify land ownership online.',
-    stat: { value: '99.4%', label: 'Dispute Redressal' },
-    primaryCta: { label: 'Participate in Survey', href: '/contribute' },
-    secondaryCta: { label: 'Citizen Discussions', href: '/policies' },
-    bgGradient: 'from-[#2b1807] via-[#4a280c] to-[#142d54]',
+    badge: 'CITIZEN ENGAGEMENT',
+    goldenTitle: 'Boundary Review',
+    subtitle: 'Participatory Cadastral Survey',
+    tagline: 'Review Village Drone Boundaries Online & Submit Spatial Feedback with Gram Panchayats',
+    ctaText: 'Join Survey Consultation',
+    ctaHref: '/contribute',
+    bgGradient: 'radial-gradient(ellipse at 70% 50%, #78350f 0%, #3d1a04 55%, #180a02 100%)',
   },
   {
     id: 'srishti-watershed',
-    tagEn: 'SPACE TECHNOLOGY & GIS',
-    tagHi: 'सृष्टि-दृष्टि वाटरशेड',
-    titleEn: 'SRISHTI-DRISHTI: Satellite Watershed Administration',
-    titleHi: 'उपग्रह आधारित जलसंभर एवं प्राकृतिक संसाधन प्रबंधन',
-    description:
-      '30-meter multispectral satellite monitoring and automated DEM drainage flow vectors for ridge-to-valley rural watershed interventions under WDC-PMKSY 2.0.',
-    stat: { value: '52,000+', label: 'Water Structures' },
-    primaryCta: { label: 'View Watershed GIS', href: '/watershed' },
-    secondaryCta: { label: 'Open GIS Datasets', href: '/datasets' },
-    bgGradient: 'from-[#0c2438] via-[#10344f] to-[#1a3c6e]',
+    badge: 'SPACE REMOTE SENSING',
+    goldenTitle: 'SRISHTI-DRISHTI',
+    subtitle: 'Satellite Watershed Administration',
+    tagline: '30-Meter Satellite Remote Sensing & Drainage GIS Interventions under WDC-PMKSY',
+    ctaText: 'View Watershed GIS',
+    ctaHref: '/watershed',
+    bgGradient: 'radial-gradient(ellipse at 70% 50%, #0e7490 0%, #083344 55%, #021217 100%)',
   },
 ];
 
@@ -90,7 +75,7 @@ export function MyGovHeroSlider() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % SLIDES.length);
-    }, 8000);
+    }, 7000);
     return () => clearInterval(timer);
   }, []);
 
@@ -100,123 +85,137 @@ export function MyGovHeroSlider() {
   const slide = SLIDES[current];
 
   return (
-    <div className="relative w-full overflow-hidden text-white bg-slate-950">
-      {/* Tricolor Ribbon Top Accent */}
-      <div className="h-1.5 w-full flex">
-        <div className="h-full flex-1 bg-[#ff9933]" />
-        <div className="h-full flex-1 bg-white" />
-        <div className="h-full flex-1 bg-[#138808]" />
-      </div>
+    <div className="relative w-full overflow-hidden text-white min-h-[380px] sm:min-h-[440px] lg:min-h-[480px] select-none">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={slide.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="absolute inset-0 flex items-center"
+          style={{ background: slide.bgGradient }}
+        >
+          {/* Subtle starry / sparkle effect like MyGov banner */}
+          <div className="absolute inset-0 opacity-25 bg-[radial-gradient(#ffffff_1.5px,transparent_1.5px)] [background-size:32px_32px] pointer-events-none" />
 
-      <div className="relative min-h-[380px] sm:min-h-[440px] lg:min-h-[480px] flex items-center">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={slide.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.4 }}
-            className={`absolute inset-0 bg-gradient-to-r ${slide.bgGradient} flex items-center`}
-          >
-            {/* Subtle Map / Grid Background Pattern */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px]" />
-
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full relative z-10">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                {/* Text Content */}
-                <div className="lg:col-span-8 space-y-4 text-left">
-                  {/* Badge */}
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-amber-300">
-                    <Sparkles className="w-3.5 h-3.5 text-[#ff9933]" />
-                    <span>{slide.tagEn}</span>
-                    <span className="opacity-40">|</span>
-                    <span className="font-normal text-slate-200">{slide.tagHi}</span>
-                  </div>
-
-                  {/* Main Title */}
-                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight font-heading">
-                    {slide.titleEn}
-                  </h1>
-
-                  <p className="text-amber-200/90 text-sm sm:text-base font-medium">
-                    {slide.titleHi}
-                  </p>
-
-                  <p className="text-slate-200 text-xs sm:text-sm lg:text-base max-w-2xl leading-relaxed">
-                    {slide.description}
-                  </p>
-
-                  {/* Call to Actions */}
-                  <div className="pt-2 flex flex-wrap items-center gap-3">
-                    <Link
-                      href={slide.primaryCta.href}
-                      className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg bg-[#ff9933] hover:bg-[#e68a00] text-slate-950 font-extrabold text-xs sm:text-sm transition-all shadow-lg hover:shadow-amber-500/20"
-                    >
-                      <MapPin className="w-4 h-4 text-slate-950" />
-                      <span>{slide.primaryCta.label}</span>
-                      <ArrowRight className="w-4 h-4 text-slate-950 ml-1" />
-                    </Link>
-
-                    <Link
-                      href={slide.secondaryCta.href}
-                      className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/25 transition-all backdrop-blur-sm"
-                    >
-                      <span>{slide.secondaryCta.label}</span>
-                    </Link>
-                  </div>
+          <div className="max-w-[1400px] mx-auto px-6 sm:px-12 lg:px-16 py-10 w-full relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              {/* Left Content Area */}
+              <div className="lg:col-span-8 space-y-4">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-bold text-amber-300">
+                  <Sparkles className="w-3.5 h-3.5 text-[#ff9933]" />
+                  <span>{slide.badge}</span>
                 </div>
 
-                {/* Stat Highlight Card */}
-                <div className="lg:col-span-4 flex justify-start lg:justify-end">
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 sm:p-8 w-full max-w-xs shadow-2xl text-center">
-                    <div className="w-12 h-12 rounded-xl bg-[#ff9933]/20 border border-[#ff9933]/40 flex items-center justify-center mx-auto mb-3 text-[#ff9933]">
-                      <Award className="w-6 h-6" />
-                    </div>
-                    <div className="text-3xl sm:text-4xl font-black text-white font-heading tracking-tight">
-                      {slide.stat.value}
-                    </div>
-                    <div className="text-xs sm:text-sm font-semibold text-slate-300 mt-1">
-                      {slide.stat.label}
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-white/15 text-[11px] text-amber-200">
-                      National Cadastral Registry Live Data
-                    </div>
+                {/* Golden Display Title (Like MyGov's stylized text) */}
+                <div className="space-y-1">
+                  <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight font-heading drop-shadow-md bg-gradient-to-r from-[#ffe082] via-[#ffb300] to-[#ff8f00] bg-clip-text text-transparent">
+                    {slide.goldenTitle}
+                  </h1>
+                  <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white font-serif italic drop-shadow">
+                    {slide.subtitle}
+                  </h2>
+                </div>
+
+                {/* Tagline */}
+                <p className="text-slate-200 text-sm sm:text-base max-w-2xl leading-relaxed pt-1">
+                  {slide.tagline}
+                </p>
+
+                {/* Direct CTA */}
+                <div className="pt-3">
+                  <Link
+                    href={slide.ctaHref}
+                    className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-[#f37021] hover:bg-[#e05e10] text-white font-extrabold text-sm sm:text-base shadow-xl transition-all active:scale-95"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    <span>{slide.ctaText}</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Right Partner / Ministry Badge (Exactly like MyGov top-right badge in Screenshot 1) */}
+              <div className="lg:col-span-4 hidden lg:flex justify-end">
+                <div className="bg-white/95 rounded-xl shadow-2xl p-4 flex items-center gap-3 border border-white max-w-sm text-slate-800">
+                  <AshokaEmblem className="w-9 h-11 text-slate-700 shrink-0" />
+                  <div className="text-[11px] leading-tight border-r border-slate-200 pr-3">
+                    <div className="font-bold text-slate-900">ग्रामीण विकास मंत्रालय</div>
+                    <div className="text-[9px] text-slate-600 uppercase font-semibold">MINISTRY OF RURAL DEVELOPMENT</div>
+                    <div className="text-[9px] text-slate-500 font-medium">Govt. of India</div>
+                  </div>
+                  <div className="flex flex-col text-left pl-1">
+                    <span className="text-[#00838f] text-base font-extrabold lowercase">bhoo<span className="text-[#f37021] font-black uppercase">MITRA</span></span>
+                    <span className="text-[9px] text-[#00838f] font-bold">मेरी सरकार</span>
                   </div>
                 </div>
               </div>
             </div>
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        </motion.div>
+      </AnimatePresence>
 
-        {/* Carousel Prev/Next Buttons */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center transition-colors"
-          aria-label="Previous Slide"
-        >
-          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
-        <button
-          onClick={nextSlide}
-          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/70 text-white border border-white/20 flex items-center justify-center transition-colors"
-          aria-label="Next Slide"
-        >
-          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
+      {/* Prev / Next Circular Translucent Buttons (Matching Screenshot 1) */}
+      <button
+        onClick={prevSlide}
+        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/35 hover:bg-black/60 text-white flex items-center justify-center transition-colors border border-white/20 cursor-pointer"
+        aria-label="Previous Slide"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <button
+        onClick={nextSlide}
+        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/35 hover:bg-black/60 text-white flex items-center justify-center transition-colors border border-white/20 cursor-pointer"
+        aria-label="Next Slide"
+      >
+        <ChevronRight className="w-6 h-6" />
+      </button>
 
-        {/* Navigation Indicator Dots */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-          {SLIDES.map((s, idx) => (
-            <button
-              key={s.id}
-              onClick={() => setCurrent(idx)}
-              className={`h-2 transition-all rounded-full ${
-                current === idx ? 'w-8 bg-[#ff9933]' : 'w-2 bg-white/40 hover:bg-white/70'
-              }`}
-              aria-label={`Go to slide ${idx + 1}`}
-            />
-          ))}
-        </div>
+      {/* Floating Right Side Quick-Action Widgets (Matching Screenshot 1) */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 hidden xl:flex flex-col gap-2.5">
+        <Link
+          href="/maps"
+          title="Cadastral Maps"
+          className="w-9 h-9 rounded-full bg-white hover:bg-amber-50 text-[#f37021] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+        >
+          <Star className="w-4 h-4 fill-current" />
+        </Link>
+        <Link
+          href="/policies"
+          title="Schemes & Calendar"
+          className="w-9 h-9 rounded-full bg-white hover:bg-amber-50 text-[#f37021] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+        >
+          <Calendar className="w-4 h-4" />
+        </Link>
+        <Link
+          href="/contribute"
+          title="Participate in Survey"
+          className="w-9 h-9 rounded-full bg-white hover:bg-amber-50 text-[#f37021] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+        >
+          <CheckSquare className="w-4 h-4" />
+        </Link>
+        <Link
+          href="/contact"
+          title="Citizen Helpdesk"
+          className="w-9 h-9 rounded-full bg-white hover:bg-amber-50 text-[#f37021] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* Slide Indicator Dots */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+        {SLIDES.map((s, idx) => (
+          <button
+            key={s.id}
+            onClick={() => setCurrent(idx)}
+            className={`h-2 transition-all rounded-full ${
+              current === idx ? 'w-6 bg-[#ff9933]' : 'w-2 bg-white/40 hover:bg-white/70'
+            }`}
+            aria-label={`Slide ${idx + 1}`}
+          />
+        ))}
       </div>
     </div>
   );
