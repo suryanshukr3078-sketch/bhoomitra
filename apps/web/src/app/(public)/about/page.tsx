@@ -12,9 +12,22 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 export const metadata = {
-  title: 'About Us | Land Governance & Cadastral Administration',
+  title: 'About Bhoomitra | National Land Governance Platform',
   description:
     'Overview of the Land Governance Platform, architecture, open standards, and non-official data disclaimer.',
+  openGraph: {
+    title: 'About Bhoomitra | National Land Governance Platform',
+    description:
+      'Overview of the Land Governance Platform, architecture, open standards, and non-official data disclaimer.',
+    url: 'https://web-rho-gules-89.vercel.app/about',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About Bhoomitra | National Land Governance Platform',
+    description:
+      'Overview of the Land Governance Platform, architecture, open standards, and non-official data disclaimer.',
+  },
 };
 
 export default function AboutPage() {

@@ -15,8 +15,19 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'Sitemap | Bhoomitra Land Governance Platform',
+  title: 'Platform Sitemap & Citizen Directory | Bhoomitra',
   description: 'Complete directory of all pages, schemes, cadastral maps, and research portals on Bhoomitra.',
+  openGraph: {
+    title: 'Platform Sitemap & Citizen Directory | Bhoomitra',
+    description: 'Complete directory of all pages, schemes, cadastral maps, and research portals on Bhoomitra.',
+    url: 'https://web-rho-gules-89.vercel.app/sitemap',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Platform Sitemap & Citizen Directory | Bhoomitra',
+    description: 'Complete directory of all pages, schemes, cadastral maps, and research portals on Bhoomitra.',
+  },
 };
 
 export default function SitemapPage() {

@@ -33,6 +33,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://web-rho-gules-89.vercel.app'),
   title: {
     default: 'भू-मित्र BHOOMITRA | National Land Governance & Cadastral Platform | Government of India',
     template: '%s | BHOOMITRA - Government of India',
@@ -65,6 +66,23 @@ export const metadata: Metadata = {
     description:
       'Citizen engagement and spatial cadastral governance portal under Department of Land Resources, Ministry of Rural Development.',
     siteName: 'Bhoomitra - Government of India',
+    images: [
+      {
+        url: '/icon.svg',
+        width: 1200,
+        height: 630,
+        alt: 'Bhoomitra National Land Governance Platform',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'भू-मित्र BHOOMITRA | National Land Governance Platform',
+    description:
+      'Official citizen engagement & cadastral governance platform by Ministry of Rural Development, Government of India.',
+    site: '@bhoomitra_in',
+    creator: '@bhoomitra_in',
+    images: ['/icon.svg'],
   },
 };
 

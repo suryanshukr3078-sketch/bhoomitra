@@ -8,9 +8,34 @@ import { MyGovNoticeBoard } from '@/components/home/mygov-notice-board';
 import { MyGovAppConnect } from '@/components/home/mygov-app-connect';
 
 export const metadata = {
-  title: 'Home | Bhoomitra - National Land Governance & Cadastral Platform | Government of India',
+  title: 'भू-मित्र BHOOMITRA | National Land Governance & Cadastral Platform | Government of India',
   description:
     'Citizen engagement platform for transparent cadastral governance, Bhu-Aadhaar (ULPIN), SVAMITVA rural land property cards, and participatory spatial boundary administration.',
+  openGraph: {
+    title: 'भू-मित्र BHOOMITRA | National Land Governance & Cadastral Platform | Government of India',
+    description:
+      'Citizen engagement platform for transparent cadastral governance, Bhu-Aadhaar (ULPIN), SVAMITVA rural land property cards, and participatory spatial boundary administration.',
+    url: 'https://web-rho-gules-89.vercel.app',
+    siteName: 'Bhoomitra - Government of India',
+    images: [
+      {
+        url: '/icon.svg',
+        width: 1200,
+        height: 630,
+        alt: 'Bhoomitra National Land Governance Platform',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'भू-मित्र BHOOMITRA | National Land Governance Platform',
+    description:
+      'Citizen engagement platform for transparent cadastral governance, Bhu-Aadhaar (ULPIN), and SVAMITVA property cards.',
+    images: ['/icon.svg'],
+    site: '@bhoomitra_in',
+    creator: '@bhoomitra_in',
+  },
 };
 
 export default function HomePage() {
