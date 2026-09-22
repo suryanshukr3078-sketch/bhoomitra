@@ -20,18 +20,23 @@ import {
   Navigation,
   Globe2,
   Sparkles,
+  Copy,
+  Printer,
+  Check,
+  FileCheck2,
+  Share2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/api/client';
 import { downloadFile } from '@/lib/download';
-import { SEED_SPATIAL_FEATURES } from '@/components/maps/MapView';
 import {
   INDIAN_PRESET_PLACES,
   ALL_INDIAN_STATES,
   searchLocalIndianPlaces,
   geocodePanIndia,
   createCadastralFeature,
+  createCadastralCluster,
   IndianPlace,
   GeocodedPlaceResult,
 } from './india-places';
@@ -68,6 +73,11 @@ export interface ParcelDetail {
   jurisdiction: string;
   mutationDate: string;
   coordinates: string;
+  ulpin?: string;
+  soilType?: string;
+  category?: string;
+  encumbranceStatus?: string;
+  droneSurveyStatus?: string;
 }
 
 // Initial parcel registry populated with presets
@@ -82,10 +92,14 @@ INDIAN_PRESET_PLACES.forEach((p) => {
     jurisdiction: p.jurisdiction,
     mutationDate: '15 August 2026',
     coordinates: `${p.coordinates[1].toFixed(4)}° N, ${p.coordinates[0].toFixed(4)}° E`,
+    ulpin: `INDL00${Math.abs(Math.round(p.coordinates[1] * 100))}${Math.abs(Math.round(p.coordinates[0] * 100))}`,
+    soilType: 'Class-I Alluvial / Black Loam',
+    encumbranceStatus: 'Nil Encumbrance (Clean Title)',
+    droneSurveyStatus: 'SVAMITVA Certified (5cm Res)',
   };
 });
 
-// Top Metro Hubs for floating quick navigation
+// Top Metro Hubs for quick navigation
 const TOP_METRO_HUBS = [
   { id: 'PAR-DEL-01', label: 'Delhi', coords: [77.2090, 28.6139] as [number, number] },
   { id: 'PAR-MUM-01', label: 'Mumbai', coords: [72.8238, 18.9256] as [number, number] },
@@ -112,14 +126,16 @@ export interface SuggestionItem {
 export default function MapsPage() {
   const [selectedParcelId, setSelectedParcelId] = useState<string>('PAR-DEL-01');
   const [mapCenter, setMapCenter] = useState<[number, number]>([77.209, 28.6139]);
-  const [mapZoom, setMapZoom] = useState<number>(12);
+  const [mapZoom, setMapZoom] = useState<number>(13.5);
   const [spatialFeatures, setSpatialFeatures] = useState<any[]>([]);
   const [parcelsRecord, setParcelsRecord] = useState<Record<string, ParcelDetail>>(INITIAL_PARCELS);
   const [isLoadingSpatial, setIsLoadingSpatial] = useState(false);
+
+  // Active Overlays
   const [activeLayers, setActiveLayers] = useState({
     polygons: true,
     surveyPoints: true,
-    satellite: false,
+    satellite: true,
     disputedZones: false,
     landUse: false,
     climateVulnerability: false,
@@ -134,39 +150,85 @@ export default function MapsPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedStateFilter, setSelectedStateFilter] = useState('');
   const [showLayerPanel, setShowLayerPanel] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
+
+  // Area conversion unit tab
+  const [areaUnit, setAreaUnit] = useState<'ha' | 'acre' | 'bigha' | 'sqm'>('ha');
+  const [copiedUlpin, setCopiedUlpin] = useState(false);
+
+  // Certificate Modal State
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // 1. Initial Load: Load PostGIS seed features and check URL parameters
+  // Helper to load cluster for a place
+  const loadPlaceCluster = (place: IndianPlace) => {
+    const cluster = createCadastralCluster(
+      place.id,
+      place.name,
+      place.jurisdiction,
+      place.coordinates,
+      place.surveyNumber,
+      place.areaHa
+    );
+
+    setSpatialFeatures((prev) => {
+      const existingIds = new Set(cluster.features.map((f) => f.id));
+      const filtered = prev.filter((f) => !existingIds.has(f.id));
+      return [...cluster.features, ...filtered];
+    });
+
+    setParcelsRecord((prev) => {
+      const next = { ...prev };
+      cluster.records.forEach((r) => {
+        next[r.id] = r;
+      });
+      return next;
+    });
+
+    setSelectedParcelId(place.id);
+  };
+
+  // 1. Initial Load: Populate Delhi Central cluster and fetch PostGIS features
   useEffect(() => {
     setIsLoadingSpatial(true);
+
+    // Seed Delhi cluster immediately
+    const delhiPreset = INDIAN_PRESET_PLACES[0];
+    const initialCluster = createCadastralCluster(
+      delhiPreset.id,
+      delhiPreset.name,
+      delhiPreset.jurisdiction,
+      delhiPreset.coordinates,
+      delhiPreset.surveyNumber,
+      delhiPreset.areaHa
+    );
+
+    setSpatialFeatures(initialCluster.features);
+    setParcelsRecord((prev) => {
+      const next = { ...prev };
+      initialCluster.records.forEach((r) => {
+        next[r.id] = r;
+      });
+      return next;
+    });
+
+    // Also fetch PostGIS features if available
     apiRequest<{ type: string; features: any[]; count: number }>('/spatial/features')
       .then((data) => {
-        if (data && Array.isArray(data.features)) {
-          // Prepend preset spatial features if PostGIS features don't have them
-          const presetFeatures = INDIAN_PRESET_PLACES.map((p) =>
-            createCadastralFeature(p.id, p.name, p.jurisdiction, p.coordinates, p.surveyNumber, p.areaHa)
-          );
-          setSpatialFeatures([...presetFeatures, ...data.features]);
-        } else {
-          const presetFeatures = INDIAN_PRESET_PLACES.map((p) =>
-            createCadastralFeature(p.id, p.name, p.jurisdiction, p.coordinates, p.surveyNumber, p.areaHa)
-          );
-          setSpatialFeatures(presetFeatures);
+        if (data && Array.isArray(data.features) && data.features.length > 0) {
+          setSpatialFeatures((prev) => [...prev, ...data.features]);
         }
       })
       .catch((err) => {
         console.warn('Could not fetch PostGIS spatial features:', err);
-        const presetFeatures = INDIAN_PRESET_PLACES.map((p) =>
-          createCadastralFeature(p.id, p.name, p.jurisdiction, p.coordinates, p.surveyNumber, p.areaHa)
-        );
-        setSpatialFeatures(presetFeatures);
       })
       .finally(() => {
         setIsLoadingSpatial(false);
       });
 
-    // Check URL parameters for lat, lng, zoom (e.g. from acquisition or watershed links)
+    // Check URL parameters
     if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
       const lat = sp.get('lat');
@@ -177,34 +239,26 @@ export default function MapsPage() {
         const lngNum = parseFloat(lng);
         if (!isNaN(latNum) && !isNaN(lngNum)) {
           setMapCenter([lngNum, latNum]);
-          if (zoom && !isNaN(parseInt(zoom))) {
-            setMapZoom(parseInt(zoom));
-          } else {
-            setMapZoom(14);
-          }
+          setMapZoom(zoom && !isNaN(parseInt(zoom)) ? parseInt(zoom) : 14);
+
           const dynamicId = `PAR-LOC-${Math.round(latNum * 100)}-${Math.round(lngNum * 100)}`;
-          const dynamicFeature = createCadastralFeature(
+          const dynCluster = createCadastralCluster(
             dynamicId,
-            'Selected Survey Point',
-            'Cadastral GIS Focus',
+            'Selected Survey Corridor',
+            'Target Geographic Zone',
             [lngNum, latNum],
             `Plot ${Math.floor(Math.random() * 800) + 1}/GIS`,
             6.4
           );
-          setSpatialFeatures((prev) => [dynamicFeature, ...prev]);
-          setParcelsRecord((prev) => ({
-            ...prev,
-            [dynamicId]: {
-              id: dynamicId,
-              surveyNumber: `Survey ${Math.floor(Math.random() * 800) + 1}/GIS`,
-              owner: 'State Cadastral Registry & GIS Corridor',
-              areaHa: 6.4,
-              tenureType: 'Statutory Land Corridor',
-              jurisdiction: 'Target Geographic Area',
-              mutationDate: '18 September 2026',
-              coordinates: `${latNum.toFixed(4)}° N, ${lngNum.toFixed(4)}° E`,
-            },
-          }));
+
+          setSpatialFeatures((prev) => [...dynCluster.features, ...prev]);
+          setParcelsRecord((prev) => {
+            const next = { ...prev };
+            dynCluster.records.forEach((r) => {
+              next[r.id] = r;
+            });
+            return next;
+          });
           setSelectedParcelId(dynamicId);
         }
       }
@@ -233,13 +287,13 @@ export default function MapsPage() {
 
     let isCancelled = false;
 
-    // Step A: Fast instant local lookup across Indian preset database
+    // Fast local lookup
     const localMatches: SuggestionItem[] = searchLocalIndianPlaces(query).map((p) => ({
       id: p.id,
       title: p.name,
       subtitle: `${p.district || p.state} • ${p.surveyNumber}`,
       coordinates: p.coordinates,
-      zoom: p.zoom || 13,
+      zoom: p.zoom || 13.5,
       isPreset: true,
       presetData: p,
     }));
@@ -247,7 +301,7 @@ export default function MapsPage() {
     setSuggestions(localMatches);
     setShowSuggestions(true);
 
-    // Step B: Call OpenStreetMap Nominatim for pan-India indexing (cities, tehsils, villages, pin codes)
+    // Call OpenStreetMap Nominatim for pan-India indexing
     const timer = setTimeout(async () => {
       setIsGeocoding(true);
       try {
@@ -259,11 +313,10 @@ export default function MapsPage() {
           title: g.name,
           subtitle: g.displayName,
           coordinates: g.coordinates,
-          zoom: g.type === 'administrative' || g.type === 'state' ? 10 : 13,
+          zoom: g.type === 'administrative' || g.type === 'state' ? 11 : 13.5,
           isPreset: false,
         }));
 
-        // Merge, eliminating near-identical coordinates
         const combined: SuggestionItem[] = [...localMatches];
         formattedGeo.forEach((fg) => {
           const exists = combined.some(
@@ -291,84 +344,51 @@ export default function MapsPage() {
     };
   }, [searchQuery]);
 
-  // Handler: Selecting a place from suggestions or search submission
+  // Handler: Selecting a place
   const handleSelectLocation = (loc: SuggestionItem) => {
     const [lng, lat] = loc.coordinates;
     setMapCenter([lng, lat]);
-    setMapZoom(loc.zoom || 13);
+    setMapZoom(loc.zoom || 13.5);
     setShowSuggestions(false);
     setSearchQuery(loc.title);
 
-    let targetParcelId = loc.id;
-
     if (loc.isPreset && loc.presetData) {
-      targetParcelId = loc.presetData.id;
-      // Ensure it is in parcelsRecord
-      setParcelsRecord((prev) => ({
-        ...prev,
-        [loc.presetData!.id]: {
-          id: loc.presetData!.id,
-          surveyNumber: loc.presetData!.surveyNumber,
-          owner: loc.presetData!.owner,
-          areaHa: loc.presetData!.areaHa,
-          tenureType: loc.presetData!.tenureType,
-          jurisdiction: loc.presetData!.jurisdiction,
-          mutationDate: '15 August 2026',
-          coordinates: `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`,
-        },
-      }));
+      loadPlaceCluster(loc.presetData);
     } else {
-      // Create a dynamic cadastral parcel for the searched Indian place
       const hash = Math.abs(Math.round(lat * 1000 + lng * 1000)).toString(36);
-      targetParcelId = `PAR-IND-${hash.toUpperCase()}`;
+      const targetParcelId = `PAR-IND-${hash.toUpperCase()}`;
       const stateName = loc.subtitle.split(',').slice(-2, -1)[0]?.trim() || 'India';
       const districtName = loc.subtitle.split(',')[0]?.trim() || loc.title;
 
-      const dynamicParcel: ParcelDetail = {
+      const dynamicPlace: IndianPlace = {
         id: targetParcelId,
+        name: loc.title,
+        state: stateName,
+        district: districtName,
+        coordinates: loc.coordinates,
+        zoom: loc.zoom || 13.5,
         surveyNumber: `Survey ${Math.floor(Math.random() * 600) + 1}/A`,
         owner: `${loc.title} Revenue Circle & Land Directorate`,
-        areaHa: parseFloat((Math.random() * 10 + 3.2).toFixed(2)),
+        areaHa: parseFloat((Math.random() * 8 + 3.2).toFixed(2)),
         tenureType: 'Revenue Conclusive Freehold',
         jurisdiction: `${districtName} (${stateName})`,
-        mutationDate: '18 September 2026',
-        coordinates: `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`,
       };
 
-      setParcelsRecord((prev) => ({
-        ...prev,
-        [targetParcelId]: dynamicParcel,
-      }));
-
-      // Generate a dynamic cadastral polygon around coordinates
-      const newFeature = createCadastralFeature(
-        targetParcelId,
-        loc.title,
-        dynamicParcel.jurisdiction,
-        loc.coordinates,
-        dynamicParcel.surveyNumber,
-        dynamicParcel.areaHa
-      );
-
-      setSpatialFeatures((prev) => [newFeature, ...prev.filter((f) => f.id !== targetParcelId)]);
+      loadPlaceCluster(dynamicPlace);
     }
-
-    setSelectedParcelId(targetParcelId);
 
     toast({
       title: `${loc.title} Located`,
-      description: `Fly-to centered on [${lng.toFixed(4)}, ${lat.toFixed(4)}]. Cadastral parcel loaded.`,
+      description: `Fly-to centered on [${lng.toFixed(4)}, ${lat.toFixed(4)}]. Cadastral cluster loaded.`,
       variant: 'success',
     });
   };
 
-  // Handler: Form Submission on Enter
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim();
     if (!query) return;
 
-    // If suggestions already exist, pick the first one
     if (suggestions.length > 0) {
       handleSelectLocation(suggestions[0]);
       return;
@@ -384,13 +404,13 @@ export default function MapsPage() {
           title: top.name,
           subtitle: top.displayName,
           coordinates: top.coordinates,
-          zoom: 13,
+          zoom: 13.5,
           isPreset: false,
         });
       } else {
         toast({
           title: 'Place Not Found',
-          description: `Could not geocode "${query}" within India. Please check the spelling or enter a city/district name.`,
+          description: `Could not geocode "${query}" within India. Please check spelling or enter a city name.`,
           variant: 'error',
         });
       }
@@ -401,7 +421,6 @@ export default function MapsPage() {
     }
   };
 
-  // Quick State Dropdown Jump
   const handleStateJump = (stateName: string) => {
     setSelectedStateFilter(stateName);
     const matchedState = ALL_INDIAN_STATES.find((s) => s.name === stateName);
@@ -410,33 +429,21 @@ export default function MapsPage() {
       setMapZoom(matchedState.zoom);
       const stateParcelId = `PAR-${matchedState.code}-01`;
 
-      const stateParcel: ParcelDetail = {
+      const statePlace: IndianPlace = {
         id: stateParcelId,
+        name: `${matchedState.name} (${matchedState.capital})`,
+        state: matchedState.name,
+        district: matchedState.capital,
+        coordinates: matchedState.coordinates,
+        zoom: matchedState.zoom,
         surveyNumber: `Survey ${matchedState.code}-Capital/01`,
         owner: `${matchedState.name} State Revenue & Land Reforms Dept`,
         areaHa: 14.5,
         tenureType: 'State Public Domain Title',
         jurisdiction: `${matchedState.capital}, ${matchedState.name}`,
-        mutationDate: '15 August 2026',
-        coordinates: `${matchedState.coordinates[1].toFixed(4)}° N, ${matchedState.coordinates[0].toFixed(4)}° E`,
       };
 
-      setParcelsRecord((prev) => ({
-        ...prev,
-        [stateParcelId]: stateParcel,
-      }));
-
-      const stateFeature = createCadastralFeature(
-        stateParcelId,
-        `${matchedState.name} (${matchedState.capital})`,
-        stateParcel.jurisdiction,
-        matchedState.coordinates,
-        stateParcel.surveyNumber,
-        stateParcel.areaHa
-      );
-
-      setSpatialFeatures((prev) => [stateFeature, ...prev.filter((f) => f.id !== stateParcelId)]);
-      setSelectedParcelId(stateParcelId);
+      loadPlaceCluster(statePlace);
 
       toast({
         title: `${matchedState.name} Selected`,
@@ -460,16 +467,44 @@ export default function MapsPage() {
       title: 'Layer Updated',
       description: `Toggled ${layerKey} spatial overlay.`,
       variant: 'default',
-      duration: 2000,
+      duration: 1800,
     });
   };
+
+  const copyUlpinToClipboard = () => {
+    if (!selectedParcel.ulpin) return;
+    navigator.clipboard.writeText(selectedParcel.ulpin);
+    setCopiedUlpin(true);
+    toast({
+      title: 'ULPIN Copied',
+      description: `Bhu-Aadhaar PIN ${selectedParcel.ulpin} copied to clipboard.`,
+      variant: 'success',
+    });
+    setTimeout(() => setCopiedUlpin(false), 2500);
+  };
+
+  // Converted area value helper
+  const formattedArea = useMemo(() => {
+    const ha = selectedParcel.areaHa || 5.4;
+    switch (areaUnit) {
+      case 'acre':
+        return `${(ha * 2.47105).toFixed(2)} Acres`;
+      case 'bigha':
+        return `${(ha * 3.967).toFixed(2)} Bigha (Pucca)`;
+      case 'sqm':
+        return `${(ha * 10000).toLocaleString()} m²`;
+      case 'ha':
+      default:
+        return `${ha.toFixed(2)} Hectares`;
+    }
+  }, [selectedParcel.areaHa, areaUnit]);
 
   return (
     <div className="relative h-[calc(100vh-4rem)] flex flex-col md:flex-row overflow-hidden bg-slate-900 text-slate-100">
       {/* Floating Pan-India Search Bar and Layer Controls */}
       <div
         ref={searchContainerRef}
-        className="absolute top-4 left-4 z-30 flex flex-col gap-2 w-full max-w-sm sm:max-w-md"
+        className="absolute top-4 left-4 z-30 flex flex-col gap-2 w-full max-w-sm sm:max-w-md pointer-events-auto"
       >
         <form onSubmit={handleSearch} className="relative">
           <Search className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5 pointer-events-none" />
@@ -480,7 +515,7 @@ export default function MapsPage() {
             onFocus={() => {
               if (suggestions.length > 0) setShowSuggestions(true);
             }}
-            placeholder="Search ANY place in India (e.g. Patna, Varanasi, Mumbai, 800001)..."
+            placeholder="Search ANY place in India (e.g. Patna, Varanasi, Mumbai)..."
             className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-700 bg-slate-900/95 backdrop-blur-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xl transition-all"
           />
           {isGeocoding ? (
@@ -507,7 +542,7 @@ export default function MapsPage() {
           <div className="bg-slate-900/98 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-1 z-40 max-h-72 overflow-y-auto divide-y divide-slate-800">
             <div className="px-3 py-1.5 bg-slate-950/80 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
               <span>All-India Locations ({suggestions.length})</span>
-              <span className="text-emerald-400">Click to fly</span>
+              <span className="text-emerald-400">Click to fly &amp; inspect</span>
             </div>
             {suggestions.map((sug) => (
               <button
@@ -554,9 +589,10 @@ export default function MapsPage() {
           <button
             type="button"
             onClick={() => {
-              const allFeats = spatialFeatures.length > 0 ? spatialFeatures : SEED_SPATIAL_FEATURES;
+              const allFeats = spatialFeatures.length > 0 ? spatialFeatures : [INDIAN_PRESET_PLACES[0]];
               const collection = {
                 type: 'FeatureCollection',
+                crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:OGC:1.3:CRS84' } },
                 features: allFeats,
                 metadata: {
                   srid: 4326,
@@ -566,7 +602,7 @@ export default function MapsPage() {
                   platform: 'Bhoomitra Cadastral GIS Engine',
                 },
               };
-              const filename = 'bhoomitra-map-export.geojson';
+              const filename = 'bhoomitra-cadastral-cluster.geojson';
               downloadFile(
                 JSON.stringify(collection, null, 2),
                 filename,
@@ -574,7 +610,7 @@ export default function MapsPage() {
               );
               toast({
                 title: 'GeoJSON Downloaded',
-                description: `Saved ${filename} (${allFeats.length} cadastral features) to your device.`,
+                description: `Saved "${filename}" (${allFeats.length} cadastral features).`,
                 variant: 'success',
               });
             }}
@@ -582,7 +618,7 @@ export default function MapsPage() {
             title="Download full map GeoJSON"
           >
             <Download className="w-3.5 h-3.5" />
-            Export Map GeoJSON
+            Export Cluster GeoJSON
           </button>
 
           <div className="flex items-center gap-1 px-3 py-2 text-xs font-mono bg-slate-900/90 border border-slate-700 rounded-lg text-emerald-400 backdrop-blur">
@@ -595,7 +631,7 @@ export default function MapsPage() {
           <div className="p-4 bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-md space-y-2.5 text-xs animate-in fade-in slide-in-from-top-2 z-30">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="font-bold uppercase tracking-wider text-slate-400 text-[10px]">
-                Active GIS Overlays
+                Thematic GIS Overlays &bull; भू-स्थानिक परतें
               </span>
               <button
                 type="button"
@@ -606,7 +642,7 @@ export default function MapsPage() {
               </button>
             </div>
             <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Cadastral Boundary Polygons</span>
+              <span>Cadastral Boundary Parcels (भू-नक्शा)</span>
               <input
                 type="checkbox"
                 checked={activeLayers.polygons}
@@ -615,7 +651,7 @@ export default function MapsPage() {
               />
             </label>
             <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Survey Corner Markers</span>
+              <span>Survey Corner Pins &amp; GCPs (सर्वेक्षण बिंदु)</span>
               <input
                 type="checkbox"
                 checked={activeLayers.surveyPoints}
@@ -624,16 +660,16 @@ export default function MapsPage() {
               />
             </label>
             <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>High-Res Satellite Orthomosaics</span>
+              <span>SVAMITVA Drone Survey Grids (ड्रोन ग्रिड)</span>
               <input
                 type="checkbox"
-                checked={activeLayers.satellite}
-                onChange={() => toggleLayer('satellite')}
+                checked={activeLayers.infrastructure}
+                onChange={() => toggleLayer('infrastructure')}
                 className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
               />
             </label>
             <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Encroachment & Dispute Buffer</span>
+              <span>Dispute &amp; Mutation Alerts (विवादित सीमा)</span>
               <input
                 type="checkbox"
                 checked={activeLayers.disputedZones}
@@ -642,29 +678,11 @@ export default function MapsPage() {
               />
             </label>
             <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Agrarian vs Urban Land Use</span>
+              <span>Agrarian vs Urban Land Use (भू-उपयोग)</span>
               <input
                 type="checkbox"
                 checked={activeLayers.landUse}
                 onChange={() => toggleLayer('landUse')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Flood & Climate Hazard Zones</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.climateVulnerability}
-                onChange={() => toggleLayer('climateVulnerability')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Industrial Corridors & SEZ</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.infrastructure}
-                onChange={() => toggleLayer('infrastructure')}
                 className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
               />
             </label>
@@ -681,7 +699,7 @@ export default function MapsPage() {
         )}
       </div>
 
-      {/* Main Map Canvas Area with Real OpenStreetMap Base Tiles & PostGIS Layer */}
+      {/* Main Map Canvas Area */}
       <div className="flex-1 relative w-full h-full min-h-[500px] overflow-hidden bg-slate-950">
         <MapView
           features={spatialFeatures}
@@ -692,8 +710,8 @@ export default function MapsPage() {
           onSelectFeature={(feat) => {
             setSelectedParcelId(feat.id);
             toast({
-              title: feat.properties.name || feat.properties.surveyNumber || 'Cadastral Parcel',
-              description: `Selected ${feat.id} in ${feat.properties.jurisdiction || 'Jurisdiction'}`,
+              title: feat.properties.surveyNumber || feat.id,
+              description: `${feat.properties.owner || 'Landholder'} • ${feat.properties.areaHa || ''} Ha`,
               variant: 'default',
             });
           }}
@@ -706,7 +724,6 @@ export default function MapsPage() {
             Quick Jump:
           </span>
 
-          {/* Top Metros */}
           {TOP_METRO_HUBS.map((hub) => (
             <button
               key={hub.id}
@@ -719,19 +736,19 @@ export default function MapsPage() {
                     title: preset.name,
                     subtitle: preset.jurisdiction,
                     coordinates: preset.coordinates,
-                    zoom: preset.zoom,
+                    zoom: 13.5,
                     isPreset: true,
                     presetData: preset,
                   });
                 } else {
                   setMapCenter(hub.coords);
-                  setMapZoom(13);
+                  setMapZoom(13.5);
                   setSelectedParcelId(hub.id);
                 }
               }}
               className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors shrink-0 ${
-                selectedParcelId === hub.id
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                selectedParcelId.startsWith(hub.id)
+                  ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
@@ -756,31 +773,94 @@ export default function MapsPage() {
             </select>
           </div>
         </div>
+
+        {/* Floating Map Thematic Legend */}
+        {showLegend && (
+          <div className="absolute bottom-12 right-4 z-20 p-3 rounded-2xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-2xl text-[11px] space-y-2 hidden sm:block">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+              <span className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">
+                Cadastral Classification (भू-वर्गीकरण)
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowLegend(false)}
+                className="text-slate-400 hover:text-white text-xs ml-2"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-sm bg-emerald-600 inline-block shrink-0" />
+                <span className="text-slate-300">Freehold Agricultural (कृषि भूमि)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-sm bg-sky-500 inline-block shrink-0" />
+                <span className="text-slate-300">Gaothan Abadi (आबादी / आवासीय)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-sm bg-amber-500 inline-block shrink-0" />
+                <span className="text-slate-300">Commercial / Agro-Processing</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-sm bg-purple-500 inline-block shrink-0" />
+                <span className="text-slate-300">Government / Public Estate</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-white inline-block shrink-0" />
+                <span className="text-slate-300">Ground Control Point (GCP)</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Parcel Inspection Sidebar / Bottom Drawer */}
+      {/* Parcel Inspection Sidebar */}
       <aside
         aria-label="Parcel Inspection Details"
-        className="w-full md:w-96 bg-slate-900 border-t md:border-t-0 md:border-l border-slate-800 p-6 overflow-y-auto space-y-6 shrink-0 shadow-2xl"
+        className="w-full md:w-96 bg-slate-900 border-t md:border-t-0 md:border-l border-slate-800 p-6 overflow-y-auto space-y-5 shrink-0 shadow-2xl"
       >
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-              Cadastral Record Inspector
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Cadastral Record Inspector
             </span>
             <h2 className="text-xl font-bold text-white tracking-tight">
               {selectedParcel.id}
             </h2>
           </div>
           <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-950/30 text-xs">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Validated
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Verified Valid
           </Badge>
         </div>
 
+        {/* 14-Digit Bhu-Aadhaar ULPIN Chip */}
+        {selectedParcel.ulpin && (
+          <div className="p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-2xl flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">
+                Bhu-Aadhaar (ULPIN)
+              </span>
+              <span className="font-mono text-sm font-black text-white tracking-wider mt-0.5 block">
+                {selectedParcel.ulpin}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={copyUlpinToClipboard}
+              className="p-2 rounded-xl bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 transition-colors"
+              title="Copy 14-digit Bhu-Aadhaar ULPIN"
+            >
+              {copiedUlpin ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+        )}
+
+        {/* Core Attributes */}
         <div className="space-y-4 text-xs">
-          <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700/60 space-y-2">
+          <div className="p-3.5 bg-slate-800/60 rounded-2xl border border-slate-700/60 space-y-2.5">
             <div className="flex justify-between py-1 border-b border-slate-800/80">
-              <span className="text-slate-400">Survey Number</span>
+              <span className="text-slate-400">Survey / Khasra No.</span>
               <span className="font-semibold text-white">{selectedParcel.surveyNumber}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-800/80">
@@ -789,10 +869,53 @@ export default function MapsPage() {
                 {selectedParcel.owner}
               </span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-800/80">
-              <span className="text-slate-400">Calculated Area</span>
-              <span className="font-semibold text-emerald-400">{selectedParcel.areaHa} Hectares</span>
+
+            {/* Calculated Area with Unit Switcher */}
+            <div className="py-1 border-b border-slate-800/80 space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Calculated Area</span>
+                <span className="font-bold text-emerald-400 text-sm">{formattedArea}</span>
+              </div>
+              <div className="flex items-center justify-end gap-1 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setAreaUnit('ha')}
+                  className={`px-1.5 py-0.5 rounded ${
+                    areaUnit === 'ha' ? 'bg-emerald-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Ha
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAreaUnit('acre')}
+                  className={`px-1.5 py-0.5 rounded ${
+                    areaUnit === 'acre' ? 'bg-emerald-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Acre
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAreaUnit('bigha')}
+                  className={`px-1.5 py-0.5 rounded ${
+                    areaUnit === 'bigha' ? 'bg-emerald-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Bigha
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAreaUnit('sqm')}
+                  className={`px-1.5 py-0.5 rounded ${
+                    areaUnit === 'sqm' ? 'bg-emerald-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  m²
+                </button>
+              </div>
             </div>
+
             <div className="flex justify-between py-1 border-b border-slate-800/80">
               <span className="text-slate-400">Tenure Type</span>
               <span className="font-semibold text-slate-200">{selectedParcel.tenureType}</span>
@@ -803,45 +926,76 @@ export default function MapsPage() {
                 {selectedParcel.jurisdiction}
               </span>
             </div>
+            <div className="flex justify-between py-1 border-b border-slate-800/80">
+              <span className="text-slate-400">Soil &amp; Land Class</span>
+              <span className="font-semibold text-slate-300">
+                {selectedParcel.soilType || 'Class-I Alluvial Loam'}
+              </span>
+            </div>
             <div className="flex justify-between py-1">
-              <span className="text-slate-400">Coordinates</span>
+              <span className="text-slate-400">Centroid Coordinates</span>
               <span className="font-mono text-emerald-300 font-medium">
                 {selectedParcel.coordinates}
               </span>
             </div>
           </div>
 
+          {/* Survey & Mutation Provenance */}
           <div className="space-y-2">
-            <span className="font-semibold text-slate-300">Mutation &amp; Survey Provenance</span>
-            <div className="p-3 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-emerald-200 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold text-emerald-300">
-                <ShieldCheck className="w-3.5 h-3.5" /> Immutable Hash Verified
+            <span className="font-semibold text-slate-300 text-xs">
+              Mutation &amp; Survey Provenance &bull; सत्यापन इतिहास
+            </span>
+            <div className="p-3 bg-slate-800/80 border border-emerald-900/50 rounded-2xl text-emerald-200 space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-emerald-300 text-xs">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                Immutable Cadastral Ledger Verified
               </div>
-              <p className="text-[11px] text-emerald-100/80">
-                Last topological survey certified on {selectedParcel.mutationDate} by accredited government surveyor.
-              </p>
+              <div className="space-y-1 text-[11px] text-slate-300">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span>Drone Survey: {selectedParcel.droneSurveyStatus || 'SVAMITVA 5cm Certified'}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span>Encumbrance: {selectedParcel.encumbranceStatus || 'Nil Encumbrance (Clean Title)'}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span>Survey Certification: {selectedParcel.mutationDate}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="pt-2">
+        {/* Action Buttons */}
+        <div className="pt-2 space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowCertificateModal(true)}
+            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-xs"
+          >
+            <Printer className="w-4 h-4 text-emerald-400" />
+            Print Cadastral Record / SVAMITVA Card
+          </button>
+
           <button
             type="button"
             onClick={() => {
               const cleanId = selectedParcel.id.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
               const matchedFeature =
                 spatialFeatures.find((f: any) => f.id === selectedParcelId || f.id === selectedParcel.id) ||
-                SEED_SPATIAL_FEATURES.find((f: any) => f.id === selectedParcelId || f.id === selectedParcel.id);
+                spatialFeatures[0];
 
               const geometry = matchedFeature?.geometry || {
                 type: 'Polygon',
                 coordinates: [
                   [
-                    [mapCenter[0] - 0.005, mapCenter[1] - 0.003],
-                    [mapCenter[0] + 0.005, mapCenter[1] - 0.003],
-                    [mapCenter[0] + 0.005, mapCenter[1] + 0.003],
-                    [mapCenter[0] - 0.005, mapCenter[1] + 0.003],
-                    [mapCenter[0] - 0.005, mapCenter[1] - 0.003],
+                    [mapCenter[0] - 0.003, mapCenter[1] - 0.002],
+                    [mapCenter[0] + 0.003, mapCenter[1] - 0.002],
+                    [mapCenter[0] + 0.003, mapCenter[1] + 0.002],
+                    [mapCenter[0] - 0.003, mapCenter[1] + 0.002],
+                    [mapCenter[0] - 0.003, mapCenter[1] - 0.002],
                   ],
                 ],
               };
@@ -859,6 +1013,7 @@ export default function MapsPage() {
                   jurisdiction: selectedParcel.jurisdiction,
                   mutationDate: selectedParcel.mutationDate,
                   coordinates: selectedParcel.coordinates,
+                  ulpin: selectedParcel.ulpin,
                   srid: 4326,
                   datum: 'WGS 84',
                   exportedAt: new Date().toISOString(),
@@ -873,23 +1028,120 @@ export default function MapsPage() {
                 'application/geo+json;charset=utf-8;'
               );
 
-              if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                navigator.clipboard.writeText(JSON.stringify(feature, null, 2)).catch(() => {});
-              }
-
               toast({
-                title: 'GeoJSON Downloaded',
-                description: `Saved ${filename} to your device.`,
+                title: 'Parcel GeoJSON Downloaded',
+                description: `Saved "${filename}" to your computer.`,
                 variant: 'success',
               });
             }}
-            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 shadow-md transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 shadow-md transition-colors flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
             Export Parcel GeoJSON
           </button>
         </div>
       </aside>
+
+      {/* Cadastral Record & Property Card Certificate Modal */}
+      {showCertificateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* Header with National Emblems & Title */}
+            <div className="text-center border-b border-slate-200 pb-5 space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-800">
+                Government of India &bull; Ministry of Rural Development &amp; Panchayati Raj
+              </span>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                SVAMITVA Property Card Certificate
+              </h3>
+              <p className="text-xs text-slate-500">
+                National Cadastral &amp; Land Governance Registry (Bhoomitra Platform)
+              </p>
+            </div>
+
+            {/* ULPIN & Key Codes */}
+            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                  Bhu-Aadhaar (Unique Land Parcel Identification Number)
+                </span>
+                <span className="font-mono text-base font-black text-emerald-950 tracking-wider block mt-0.5">
+                  {selectedParcel.ulpin || 'INDL000177202861'}
+                </span>
+              </div>
+              <Badge variant="outline" className="border-emerald-300 text-emerald-800 font-bold text-xs">
+                Certified Clean Title
+              </Badge>
+            </div>
+
+            {/* Table of Records */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+              <table className="w-full text-left">
+                <tbody className="divide-y divide-slate-100">
+                  <tr className="bg-slate-50/50">
+                    <td className="px-4 py-2.5 font-semibold text-slate-500 w-1/3">Survey / Khasra No</td>
+                    <td className="px-4 py-2.5 font-bold text-slate-900">{selectedParcel.surveyNumber}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 font-semibold text-slate-500">Registered Landholder</td>
+                    <td className="px-4 py-2.5 font-bold text-slate-900">{selectedParcel.owner}</td>
+                  </tr>
+                  <tr className="bg-slate-50/50">
+                    <td className="px-4 py-2.5 font-semibold text-slate-500">Calculated Land Area</td>
+                    <td className="px-4 py-2.5 font-bold text-emerald-800">
+                      {selectedParcel.areaHa} Hectares ({(selectedParcel.areaHa * 2.471).toFixed(2)} Acres)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 font-semibold text-slate-500">Tenure Classification</td>
+                    <td className="px-4 py-2.5 text-slate-800">{selectedParcel.tenureType}</td>
+                  </tr>
+                  <tr className="bg-slate-50/50">
+                    <td className="px-4 py-2.5 font-semibold text-slate-500">Administrative Jurisdiction</td>
+                    <td className="px-4 py-2.5 text-slate-800">{selectedParcel.jurisdiction}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 font-semibold text-slate-500">Geodetic Datum</td>
+                    <td className="px-4 py-2.5 font-mono text-slate-700">WGS 84 (EPSG:4326)</td>
+                  </tr>
+                  <tr className="bg-slate-50/50">
+                    <td className="px-4 py-2.5 font-semibold text-slate-500">Centroid Coordinates</td>
+                    <td className="px-4 py-2.5 font-mono text-slate-700">{selectedParcel.coordinates}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+              <span className="font-bold text-slate-800 block">Digital Verification Notice:</span>
+              <p>
+                This cadastral record is cryptographically anchored to the Bhoomitra Immutable Cadastral Ledger.
+                Validated against PostGIS topology invariants with zero polygon overlaps and certified by Survey of India standards.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCertificateModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.print();
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition-colors"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print Certificate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

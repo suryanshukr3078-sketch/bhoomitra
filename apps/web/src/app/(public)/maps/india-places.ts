@@ -780,7 +780,8 @@ export function createCadastralFeature(
   jurisdiction: string,
   coordinates: [number, number],
   surveyNumber?: string,
-  areaHa: number = 5.4
+  areaHa: number = 5.4,
+  tenureType: string = 'Revenue Cadastral Title'
 ) {
   const [lng, lat] = coordinates;
   const dLng = 0.004;
@@ -790,7 +791,7 @@ export function createCadastralFeature(
     id: parcelId,
     type: 'Feature' as const,
     geometry: {
-      type: 'Polygon',
+      type: 'Polygon' as const,
       coordinates: [
         [
           [lng - dLng, lat - dLat],
@@ -807,8 +808,191 @@ export function createCadastralFeature(
       jurisdiction,
       surveyNumber: surveyNumber || `Survey Plot ${Math.floor(Math.random() * 800) + 1}/A`,
       areaHa,
-      tenureType: 'Revenue Cadastral Title',
+      tenureType,
       mutationDate: '18 September 2026',
+      ulpin: `IN${Math.abs(Math.round(lat * 10000)).toString().slice(0, 6)}${Math.abs(Math.round(lng * 10000)).toString().slice(0, 6)}`,
     },
   };
 }
+
+/**
+ * Generates an informative cluster of contiguous cadastral parcels around a target location.
+ * Provides a realistic revenue village cadastre view with diverse tenures, Bhu-Aadhaar ULPINs, and corner GCP markers.
+ */
+export function createCadastralCluster(
+  parcelId: string,
+  name: string,
+  jurisdiction: string,
+  coordinates: [number, number],
+  baseSurveyNumber?: string,
+  baseAreaHa: number = 5.4
+) {
+  const [lng, lat] = coordinates;
+  const dw = 0.0035;
+  const dh = 0.0026;
+  const baseNum = parseInt((baseSurveyNumber || '104').replace(/\D/g, '') || '104', 10);
+
+  const clusterConfigs = [
+    {
+      idSuffix: '',
+      nameSuffix: ' (Primary Parcel)',
+      survey: baseSurveyNumber || `Survey ${baseNum}/1`,
+      owner: 'Registered Landholder & Family Co-tenants',
+      tenure: 'Freehold Agricultural',
+      category: 'agricultural',
+      area: baseAreaHa,
+      color: '#059669', // Emerald
+      box: [lng - dw, lat - dh, lng + dw, lat + dh],
+      ulpinSuffix: '01',
+    },
+    {
+      idSuffix: '-N',
+      nameSuffix: ' (North Gaothan Abadi)',
+      survey: `Survey ${baseNum}/2`,
+      owner: 'Gram Panchayat Abadi Trust & Villagers',
+      tenure: 'Gaothan Residential (Abadi)',
+      category: 'gaothan',
+      area: parseFloat((baseAreaHa * 0.72).toFixed(2)),
+      color: '#0284c7', // Sky blue
+      box: [lng - dw, lat + dh, lng + dw, lat + dh * 2.8],
+      ulpinSuffix: '02',
+    },
+    {
+      idSuffix: '-E',
+      nameSuffix: ' (East Irrigated Crop Plot)',
+      survey: `Survey ${baseNum + 1}/A`,
+      owner: 'Kisan Samridhi Sahakari Sanstha',
+      tenure: 'Freehold Agricultural',
+      category: 'agricultural',
+      area: parseFloat((baseAreaHa * 1.15).toFixed(2)),
+      color: '#059669', // Emerald
+      box: [lng + dw, lat - dh, lng + dw * 2.8, lat + dh],
+      ulpinSuffix: '03',
+    },
+    {
+      idSuffix: '-S',
+      nameSuffix: ' (South Public Canal & Utility)',
+      survey: `Survey ${baseNum + 2}/Govt`,
+      owner: 'State Irrigation & Public Works Department',
+      tenure: 'Government Public Utility',
+      category: 'government',
+      area: parseFloat((baseAreaHa * 0.6).toFixed(2)),
+      color: '#7c3aed', // Purple
+      box: [lng - dw, lat - dh * 2.8, lng + dw, lat - dh],
+      ulpinSuffix: '04',
+    },
+    {
+      idSuffix: '-W',
+      nameSuffix: ' (West Agroforestry & CFR Buffer)',
+      survey: `Survey ${baseNum + 3}/CFR`,
+      owner: 'Gram Sabha Communal Forest Council',
+      tenure: 'Communal Forest Buffer (FRA 2006)',
+      category: 'forest',
+      area: parseFloat((baseAreaHa * 1.4).toFixed(2)),
+      color: '#0d9488', // Teal
+      box: [lng - dw * 2.8, lat - dh, lng - dw, lat + dh],
+      ulpinSuffix: '05',
+    },
+    {
+      idSuffix: '-NE',
+      nameSuffix: ' (Commercial Agro-Processing Hub)',
+      survey: `Survey ${baseNum + 4}/Com`,
+      owner: 'District Agro Logistics Enterprise',
+      tenure: 'Commercial & Mixed Industrial',
+      category: 'commercial',
+      area: parseFloat((baseAreaHa * 0.85).toFixed(2)),
+      color: '#d97706', // Amber
+      box: [lng + dw, lat + dh, lng + dw * 2.8, lat + dh * 2.8],
+      ulpinSuffix: '06',
+    },
+  ];
+
+  const features = clusterConfigs.map((cfg) => {
+    const [minX, minY, maxX, maxY] = cfg.box;
+    const pid = `${parcelId}${cfg.idSuffix}`;
+    const latInt = Math.abs(Math.round(lat * 1000)).toString();
+    const lngInt = Math.abs(Math.round(lng * 1000)).toString();
+    const ulpin = `IN${latInt.slice(0, 4)}${lngInt.slice(0, 4)}${baseNum}${cfg.ulpinSuffix}`;
+
+    return {
+      id: pid,
+      type: 'Feature' as const,
+      geometry: {
+        type: 'Polygon' as const,
+        coordinates: [
+          [
+            [minX, minY],
+            [maxX, minY],
+            [maxX, maxY],
+            [minX, maxY],
+            [minX, minY],
+          ],
+        ],
+      },
+      properties: {
+        id: pid,
+        name: `${name}${cfg.nameSuffix}`,
+        jurisdiction,
+        surveyNumber: cfg.survey,
+        owner: cfg.owner,
+        areaHa: cfg.area,
+        tenureType: cfg.tenure,
+        category: cfg.category,
+        fillColor: cfg.color,
+        ulpin,
+        mutationDate: '15 August 2026',
+        soilType: 'Class-I Alluvial / Black Loam',
+        encumbranceStatus: 'Nil Encumbrance (Clean Title)',
+        droneSurveyStatus: 'SVAMITVA Certified (5cm Res)',
+      },
+    };
+  });
+
+  // Add survey corner marker points (Ground Control Points)
+  const gcpPoints = [
+    { id: `${parcelId}-GCP-01`, coords: [lng - dw, lat - dh], label: 'GCP-01 (SW Corner)' },
+    { id: `${parcelId}-GCP-02`, coords: [lng + dw, lat - dh], label: 'GCP-02 (SE Corner)' },
+    { id: `${parcelId}-GCP-03`, coords: [lng + dw, lat + dh], label: 'GCP-03 (NE Corner)' },
+    { id: `${parcelId}-GCP-04`, coords: [lng - dw, lat + dh], label: 'GCP-04 (NW Corner)' },
+  ].map((gcp) => ({
+    id: gcp.id,
+    type: 'Feature' as const,
+    geometry: {
+      type: 'Point' as const,
+      coordinates: gcp.coords,
+    },
+    properties: {
+      id: gcp.id,
+      name: gcp.label,
+      pointType: 'GCP_MARKER',
+      surveyor: 'Survey of India / Certified Agency',
+    },
+  }));
+
+  return {
+    features: [...features, ...gcpPoints],
+    records: clusterConfigs.map((cfg) => {
+      const pid = `${parcelId}${cfg.idSuffix}`;
+      const latInt = Math.abs(Math.round(lat * 1000)).toString();
+      const lngInt = Math.abs(Math.round(lng * 1000)).toString();
+      const ulpin = `IN${latInt.slice(0, 4)}${lngInt.slice(0, 4)}${baseNum}${cfg.ulpinSuffix}`;
+
+      return {
+        id: pid,
+        surveyNumber: cfg.survey,
+        owner: cfg.owner,
+        areaHa: cfg.area,
+        tenureType: cfg.tenure,
+        jurisdiction,
+        mutationDate: '15 August 2026',
+        coordinates: `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`,
+        ulpin,
+        category: cfg.category,
+        soilType: 'Class-I Alluvial / Black Loam',
+        encumbranceStatus: 'Nil Encumbrance (Clean Title)',
+        droneSurveyStatus: 'SVAMITVA Certified (5cm Res)',
+      };
+    }),
+  };
+}
+
