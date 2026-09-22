@@ -25,11 +25,14 @@ import {
   Check,
   FileCheck2,
   Share2,
+  Satellite,
+  Map as MapIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/api/client';
 import { downloadFile } from '@/lib/download';
+import type { BasemapStyleKey } from '@/components/maps/MapView';
 import {
   INDIAN_PRESET_PLACES,
   ALL_INDIAN_STATES,
@@ -130,6 +133,9 @@ export default function MapsPage() {
   const [spatialFeatures, setSpatialFeatures] = useState<any[]>([]);
   const [parcelsRecord, setParcelsRecord] = useState<Record<string, ParcelDetail>>(INITIAL_PARCELS);
   const [isLoadingSpatial, setIsLoadingSpatial] = useState(false);
+
+  // Basemap Style (default: previous standard street map 'streets', switchable to 'hybrid' satellite)
+  const [currentBasemap, setCurrentBasemap] = useState<BasemapStyleKey>('streets');
 
   // Active Overlays
   const [activeLayers, setActiveLayers] = useState({
@@ -577,6 +583,36 @@ export default function MapsPage() {
         )}
 
         <div className="flex flex-wrap gap-2">
+          {/* Quick 1-Click Toggle: Default Standard Map <-> High-Res Satellite */}
+          <button
+            type="button"
+            onClick={() =>
+              setCurrentBasemap((prev) => (prev === 'streets' ? 'hybrid' : 'streets'))
+            }
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border backdrop-blur shadow-md transition-all ${
+              currentBasemap === 'streets'
+                ? 'bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-200'
+                : 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/70 text-emerald-200'
+            }`}
+            title={
+              currentBasemap === 'streets'
+                ? 'Current: Default Map (OSM). Click to switch to High-Res Satellite'
+                : 'Current: Satellite View. Click to switch to Default Map (OSM)'
+            }
+          >
+            {currentBasemap === 'streets' ? (
+              <>
+                <Satellite className="w-3.5 h-3.5 text-emerald-400" />
+                <span>🛰️ Switch to Satellite</span>
+              </>
+            ) : (
+              <>
+                <MapIcon className="w-3.5 h-3.5 text-amber-400" />
+                <span>🗺️ Switch to Default Map</span>
+              </>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={() => setShowLayerPanel(!showLayerPanel)}
@@ -626,12 +662,12 @@ export default function MapsPage() {
           </div>
         </div>
 
-        {/* Layer Toggle Panel */}
+        {/* Layer & Basemap Toggle Panel */}
         {showLayerPanel && (
-          <div className="p-4 bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-md space-y-2.5 text-xs animate-in fade-in slide-in-from-top-2 z-30">
+          <div className="p-4 bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-md space-y-3 text-xs animate-in fade-in slide-in-from-top-2 z-30">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="font-bold uppercase tracking-wider text-slate-400 text-[10px]">
-                Thematic GIS Overlays &bull; भू-स्थानिक परतें
+                Base Map &amp; Layers &bull; आधार मानचित्र एवं परतें
               </span>
               <button
                 type="button"
@@ -641,60 +677,124 @@ export default function MapsPage() {
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Cadastral Boundary Parcels (भू-नक्शा)</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.polygons}
-                onChange={() => toggleLayer('polygons')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Survey Corner Pins &amp; GCPs (सर्वेक्षण बिंदु)</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.surveyPoints}
-                onChange={() => toggleLayer('surveyPoints')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>SVAMITVA Drone Survey Grids (ड्रोन ग्रिड)</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.infrastructure}
-                onChange={() => toggleLayer('infrastructure')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Dispute &amp; Mutation Alerts (विवादित सीमा)</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.disputedZones}
-                onChange={() => toggleLayer('disputedZones')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Agrarian vs Urban Land Use (भू-उपयोग)</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.landUse}
-                onChange={() => toggleLayer('landUse')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
-            <label className="flex items-center justify-between cursor-pointer py-1">
-              <span>Forest Rights Act (FRA) Tenures</span>
-              <input
-                type="checkbox"
-                checked={activeLayers.fraTenure}
-                onChange={() => toggleLayer('fraTenure')}
-                className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
-              />
-            </label>
+
+            {/* Basemap Selection */}
+            <div className="space-y-1.5 pb-2.5 border-b border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-300 block">
+                Base Map Style (मानचित्र शैली):
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentBasemap('streets')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-left transition-colors border ${
+                    currentBasemap === 'streets'
+                      ? 'bg-emerald-900/80 border-emerald-500 text-white font-bold'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <MapIcon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">Default (OSM)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentBasemap('hybrid')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-left transition-colors border ${
+                    currentBasemap === 'hybrid'
+                      ? 'bg-emerald-900/80 border-emerald-500 text-white font-bold'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <Satellite className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">Hybrid Satellite</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentBasemap('satellite')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-left transition-colors border ${
+                    currentBasemap === 'satellite'
+                      ? 'bg-emerald-900/80 border-emerald-500 text-white font-bold'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <Satellite className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="truncate">Pure Satellite</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentBasemap('topo')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-left transition-colors border ${
+                    currentBasemap === 'topo'
+                      ? 'bg-emerald-900/80 border-emerald-500 text-white font-bold'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <Globe2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span className="truncate">Topo / Terrain</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Thematic Overlays */}
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-300 block mb-1">
+                Thematic GIS Overlays:
+              </span>
+              <label className="flex items-center justify-between cursor-pointer py-1">
+                <span>Cadastral Boundary Parcels (भू-नक्शा)</span>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.polygons}
+                  onChange={() => toggleLayer('polygons')}
+                  className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+              <label className="flex items-center justify-between cursor-pointer py-1">
+                <span>Survey Corner Pins &amp; GCPs (सर्वेक्षण बिंदु)</span>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.surveyPoints}
+                  onChange={() => toggleLayer('surveyPoints')}
+                  className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+              <label className="flex items-center justify-between cursor-pointer py-1">
+                <span>SVAMITVA Drone Survey Grids (ड्रोन ग्रिड)</span>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.infrastructure}
+                  onChange={() => toggleLayer('infrastructure')}
+                  className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+              <label className="flex items-center justify-between cursor-pointer py-1">
+                <span>Dispute &amp; Mutation Alerts (विवादित सीमा)</span>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.disputedZones}
+                  onChange={() => toggleLayer('disputedZones')}
+                  className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+              <label className="flex items-center justify-between cursor-pointer py-1">
+                <span>Agrarian vs Urban Land Use (भू-उपयोग)</span>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.landUse}
+                  onChange={() => toggleLayer('landUse')}
+                  className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+              <label className="flex items-center justify-between cursor-pointer py-1">
+                <span>Forest Rights Act (FRA) Tenures</span>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.fraTenure}
+                  onChange={() => toggleLayer('fraTenure')}
+                  className="rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+            </div>
           </div>
         )}
       </div>
@@ -706,6 +806,8 @@ export default function MapsPage() {
           selectedFeatureId={selectedParcelId}
           center={mapCenter}
           zoom={mapZoom}
+          basemap={currentBasemap}
+          onBasemapChange={setCurrentBasemap}
           activeLayers={activeLayers}
           onSelectFeature={(feat) => {
             setSelectedParcelId(feat.id);

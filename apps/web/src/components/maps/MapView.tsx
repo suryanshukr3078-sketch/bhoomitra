@@ -16,6 +16,7 @@ import {
   Crosshair,
   Maximize2,
   CheckCircle2,
+  Check,
 } from 'lucide-react';
 
 export interface SpatialFeatureItem {
@@ -42,7 +43,7 @@ export interface SpatialFeatureItem {
   };
 }
 
-export type BasemapStyleKey = 'hybrid' | 'satellite' | 'topo' | 'streets' | 'carto_light' | 'dark';
+export type BasemapStyleKey = 'streets' | 'hybrid' | 'satellite' | 'topo' | 'carto_light' | 'dark';
 
 export interface MapViewProps {
   features?: SpatialFeatureItem[];
@@ -50,6 +51,8 @@ export interface MapViewProps {
   onSelectFeature?: (feature: SpatialFeatureItem) => void;
   center?: [number, number]; // [lng, lat]
   zoom?: number;
+  basemap?: BasemapStyleKey;
+  onBasemapChange?: (basemap: BasemapStyleKey) => void;
   activeLayers?: {
     polygons?: boolean;
     surveyPoints?: boolean;
@@ -156,10 +159,18 @@ export const COMPOSITE_ADVANCED_MAP_STYLE: maplibregl.StyleSpecification = {
   },
   layers: [
     {
+      id: 'base-osm',
+      type: 'raster',
+      source: 'osm-tiles',
+      layout: { visibility: 'visible' },
+      minzoom: 0,
+      maxzoom: 19,
+    },
+    {
       id: 'base-satellite',
       type: 'raster',
       source: 'satellite-tiles',
-      layout: { visibility: 'visible' },
+      layout: { visibility: 'none' },
       minzoom: 0,
       maxzoom: 19,
     },
@@ -188,25 +199,16 @@ export const COMPOSITE_ADVANCED_MAP_STYLE: maplibregl.StyleSpecification = {
       maxzoom: 19,
     },
     {
-      id: 'base-osm',
-      type: 'raster',
-      source: 'osm-tiles',
-      layout: { visibility: 'none' },
-      minzoom: 0,
-      maxzoom: 19,
-    },
-    {
       id: 'base-hybrid-labels',
       type: 'raster',
       source: 'hybrid-labels-tiles',
-      layout: { visibility: 'visible' },
+      layout: { visibility: 'none' },
       minzoom: 0,
       maxzoom: 19,
     },
   ],
 };
 
-// Geodesic calculation helpers
 function calculateDistanceMeters(coord1: [number, number], coord2: [number, number]): number {
   const R = 6371000;
   const [lon1, lat1] = coord1;
@@ -245,10 +247,12 @@ export function MapView({
   onSelectFeature,
   center = [77.209, 28.6139],
   zoom = 13.5,
+  basemap,
+  onBasemapChange,
   activeLayers = {
     polygons: true,
     surveyPoints: true,
-    satellite: true,
+    satellite: false,
     disputedZones: false,
     landUse: false,
     climateVulnerability: false,
@@ -256,15 +260,17 @@ export function MapView({
     fraTenure: false,
   },
   className = 'w-full h-full min-h-[400px]',
-  initialBasemap = 'hybrid',
+  initialBasemap = 'streets',
 }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const popupRef = useRef<maplibregl.Popup | null>(null);
 
-  // Basemap Switcher State
-  const [currentBasemap, setCurrentBasemap] = useState<BasemapStyleKey>(initialBasemap);
+  // Basemap State (defaulting to streets or hybrid)
+  const [currentBasemap, setCurrentBasemap] = useState<BasemapStyleKey>(basemap || initialBasemap);
+  const [showMapFlyout, setShowMapFlyout] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
 
   // Live HUD Coordinates
   const [cursorCoords, setCursorCoords] = useState<[number, number]>(center);
@@ -276,7 +282,6 @@ export function MapView({
   const [measuredDistance, setMeasuredDistance] = useState<number>(0);
   const [measuredArea, setMeasuredArea] = useState<number>(0);
 
-  // Combine provided features with seed features
   const allFeatures = features.length > 0 ? features : SEED_SPATIAL_FEATURES;
 
   const featureCollection = React.useMemo<GeoJSON.FeatureCollection>(
@@ -287,27 +292,24 @@ export function MapView({
     [allFeatures]
   );
 
-  // Measurement GeoJSON source data
   const measurementGeoJSON = React.useMemo<GeoJSON.FeatureCollection>(() => {
     if (measurePoints.length === 0) {
       return { type: 'FeatureCollection', features: [] };
     }
 
     const feats: any[] = [];
-
-    // Points
     measurePoints.forEach((pt, idx) => {
       feats.push({
         type: 'Feature',
+        properties: {},
         geometry: { type: 'Point', coordinates: pt },
-        properties: { index: idx + 1 },
       });
     });
 
-    // Line
     if (measurePoints.length >= 2) {
       feats.push({
         type: 'Feature',
+        properties: {},
         geometry: {
           type: measureMode === 'area' && measurePoints.length >= 3 ? 'Polygon' : 'LineString',
           coordinates:
@@ -315,7 +317,6 @@ export function MapView({
               ? [[...measurePoints, measurePoints[0]]]
               : measurePoints,
         },
-        properties: {},
       });
     }
 
@@ -323,27 +324,40 @@ export function MapView({
   }, [measurePoints, measureMode]);
 
   // Apply basemap visibility to MapLibre layers
-  const applyBasemap = useCallback((basemap: BasemapStyleKey) => {
-    if (!mapRef.current) return;
-    const map = mapRef.current;
+  const applyBasemap = useCallback(
+    (b: BasemapStyleKey, labels: boolean = showLabels) => {
+      if (!mapRef.current) return;
+      const map = mapRef.current;
 
-    const layersConfig: Record<string, boolean> = {
-      'base-satellite': basemap === 'satellite' || basemap === 'hybrid',
-      'base-hybrid-labels': basemap === 'hybrid',
-      'base-topo': basemap === 'topo',
-      'base-carto-light': basemap === 'carto_light',
-      'base-dark': basemap === 'dark',
-      'base-osm': basemap === 'streets',
-    };
+      const layersConfig: Record<string, boolean> = {
+        'base-osm': b === 'streets',
+        'base-satellite': b === 'satellite' || b === 'hybrid',
+        'base-hybrid-labels': b === 'hybrid' || (b === 'satellite' && labels),
+        'base-topo': b === 'topo',
+        'base-carto-light': b === 'carto_light',
+        'base-dark': b === 'dark',
+      };
 
-    Object.entries(layersConfig).forEach(([layerId, visible]) => {
-      if (map.getLayer(layerId)) {
-        map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+      Object.entries(layersConfig).forEach(([layerId, visible]) => {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+        }
+      });
+
+      setCurrentBasemap(b);
+      if (onBasemapChange) {
+        onBasemapChange(b);
       }
-    });
+    },
+    [onBasemapChange, showLabels]
+  );
 
-    setCurrentBasemap(basemap);
-  }, []);
+  // Sync with external basemap prop if provided
+  useEffect(() => {
+    if (basemap && basemap !== currentBasemap) {
+      applyBasemap(basemap);
+    }
+  }, [basemap, currentBasemap, applyBasemap]);
 
   // Initialize MapLibre GL Map
   useEffect(() => {
@@ -360,22 +374,25 @@ export function MapView({
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
-        customAttribution: '© Esri Satellite | OpenStreetMap | Survey of India | Bhoomitra Cadastre',
+        customAttribution: '© OpenStreetMap | Esri Satellite | Survey of India | Bhoomitra',
       }),
       'bottom-right'
     );
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
-    map.addControl(new maplibregl.ScaleControl({ maxWidth: 140, unit: 'metric' }), 'bottom-left');
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
     map.on('load', () => {
-      // 1. Cadastral Features Source
+      // Set initial layer visibility based on currentBasemap
+      const initialB = basemap || initialBasemap;
+      applyBasemap(initialB);
+
+      // Sources
       map.addSource('cadastral-features', {
         type: 'geojson',
         data: featureCollection,
       });
 
-      // 2. Drone Flight Corridor Grid Source (simulated survey lines)
       map.addSource('drone-survey-grid', {
         type: 'geojson',
         data: {
@@ -407,27 +424,26 @@ export function MapView({
         },
       });
 
-      // 3. Measurement Source
       map.addSource('measurement-source', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       });
 
-      // Layer: Drone Survey Flight Path (Dashed lines)
+      // Drone flight corridor
       map.addLayer({
         id: 'drone-survey-lines',
         type: 'line',
         source: 'drone-survey-grid',
         layout: { visibility: 'visible', 'line-join': 'round', 'line-cap': 'round' },
         paint: {
-          'line-color': '#38bdf8', // Sky blue
+          'line-color': '#0284c7',
           'line-width': 1.5,
           'line-dasharray': [3, 2],
           'line-opacity': 0.7,
         },
       });
 
-      // Layer: Cadastral Polygons Fill
+      // Cadastral Polygons Fill
       map.addLayer({
         id: 'cadastral-polygons-fill',
         type: 'fill',
@@ -437,21 +453,21 @@ export function MapView({
           'fill-color': [
             'case',
             ['==', ['get', 'id'], selectedFeatureId || ''],
-            '#10b981', // Highlight emerald-500
+            '#10b981',
             ['has', 'fillColor'],
             ['get', 'fillColor'],
-            '#059669', // Default emerald-600
+            '#059669',
           ],
           'fill-opacity': [
             'case',
             ['==', ['get', 'id'], selectedFeatureId || ''],
-            0.65,
-            0.4,
+            0.6,
+            0.35,
           ],
         },
       });
 
-      // Layer: Cadastral Polygons Outer Boundary Line
+      // Cadastral Polygons Boundary Line
       map.addLayer({
         id: 'cadastral-polygons-line',
         type: 'line',
@@ -461,8 +477,8 @@ export function MapView({
           'line-color': [
             'case',
             ['==', ['get', 'id'], selectedFeatureId || ''],
-            '#ffffff', // White glow when selected
-            '#34d399', // Bright emerald outline
+            '#ffffff',
+            '#047857',
           ],
           'line-width': [
             'case',
@@ -473,21 +489,21 @@ export function MapView({
         },
       });
 
-      // Layer: Survey GCP Points & Corner Pins
+      // Survey Corner Points / GCP Pins
       map.addLayer({
         id: 'cadastral-survey-points',
         type: 'circle',
         source: 'cadastral-features',
         filter: ['==', '$type', 'Point'],
         paint: {
-          'circle-radius': 6.5,
-          'circle-color': '#f59e0b', // Amber GCP marker
-          'circle-stroke-width': 2.5,
+          'circle-radius': 6,
+          'circle-color': '#f59e0b',
+          'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
         },
       });
 
-      // Layer: Measurement Fill & Line
+      // Measurement Layers
       map.addLayer({
         id: 'measurement-area-fill',
         type: 'fill',
@@ -524,7 +540,7 @@ export function MapView({
         },
       });
 
-      // Mouse Move: Track cursor coordinates for Live HUD
+      // Mouse Move: Track cursor coords
       map.on('mousemove', (e) => {
         setCursorCoords([e.lngLat.lng, e.lngLat.lat]);
       });
@@ -573,7 +589,6 @@ export function MapView({
           .addTo(map);
       });
 
-      // Hover cursor changes
       map.on('mouseenter', 'cadastral-polygons-fill', () => {
         map.getCanvas().style.cursor = 'pointer';
       });
@@ -603,7 +618,6 @@ export function MapView({
       const newPt: [number, number] = [e.lngLat.lng, e.lngLat.lat];
       setMeasurePoints((prev) => {
         const updated = [...prev, newPt];
-
         if (measureMode === 'distance' && updated.length >= 2) {
           let dist = 0;
           for (let i = 0; i < updated.length - 1; i++) {
@@ -614,7 +628,6 @@ export function MapView({
           const area = calculatePolygonAreaSqMeters(updated);
           setMeasuredArea(area);
         }
-
         return updated;
       });
     };
@@ -625,7 +638,6 @@ export function MapView({
     };
   }, [mapLoaded, measureMode]);
 
-  // Update measurement source
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
     const src = mapRef.current.getSource('measurement-source') as GeoJSONSource;
@@ -634,7 +646,6 @@ export function MapView({
     }
   }, [measurementGeoJSON, mapLoaded]);
 
-  // Update GeoJSON features when prop changes
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
     const source = mapRef.current.getSource('cadastral-features') as GeoJSONSource;
@@ -643,7 +654,6 @@ export function MapView({
     }
   }, [featureCollection, mapLoaded]);
 
-  // Update layer visibility when activeLayers prop changes
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
     const map = mapRef.current;
@@ -678,7 +688,6 @@ export function MapView({
     }
   }, [activeLayers, mapLoaded]);
 
-  // Center / flyTo updates
   const centerLng = center?.[0];
   const centerLat = center?.[1];
   useEffect(() => {
@@ -691,7 +700,6 @@ export function MapView({
     });
   }, [centerLng, centerLat, zoom, mapLoaded]);
 
-  // Highlight selected feature
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
     const map = mapRef.current;
@@ -707,8 +715,8 @@ export function MapView({
       map.setPaintProperty('cadastral-polygons-fill', 'fill-opacity', [
         'case',
         ['==', ['get', 'id'], selectedFeatureId || ''],
-        0.65,
-        0.4,
+        0.6,
+        0.35,
       ]);
     }
     if (map.getLayer('cadastral-polygons-line')) {
@@ -716,7 +724,7 @@ export function MapView({
         'case',
         ['==', ['get', 'id'], selectedFeatureId || ''],
         '#ffffff',
-        '#34d399',
+        '#047857',
       ]);
       map.setPaintProperty('cadastral-polygons-line', 'line-width', [
         'case',
@@ -727,6 +735,8 @@ export function MapView({
     }
   }, [selectedFeatureId, mapLoaded]);
 
+  const isSatelliteActive = currentBasemap === 'satellite' || currentBasemap === 'hybrid';
+
   return (
     <div className={`relative ${className}`}>
       <div ref={mapContainerRef} className="w-full h-full rounded-2xl overflow-hidden shadow-inner" />
@@ -736,165 +746,264 @@ export function MapView({
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm text-emerald-400 z-20">
           <Loader2 className="w-8 h-8 animate-spin" />
           <span className="ml-3 text-xs font-semibold text-slate-200">
-            Initializing High-Resolution Spatial Imagery &amp; Cadastral Layers...
+            Initializing Spatial Layers &amp; Basemaps...
           </span>
         </div>
       )}
 
-      {/* Floating Basemap Selector Toolbar (High-Res Satellite, Hybrid, Topo, Streets, Dark) */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-1 p-1 bg-slate-900/90 hover:bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl backdrop-blur-md transition-all">
-        <button
-          type="button"
-          onClick={() => applyBasemap('hybrid')}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            currentBasemap === 'hybrid'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-          title="Satellite Imagery with Road & Place Labels"
+      {/* GOOGLE MAPS STYLE BOTTOM-LEFT MAP TYPE SWITCHER */}
+      <div className="absolute bottom-6 left-6 z-30 flex items-end gap-3 pointer-events-auto">
+        <div
+          className="relative"
+          onMouseEnter={() => setShowMapFlyout(true)}
+          onMouseLeave={() => setShowMapFlyout(false)}
         >
-          <Satellite className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Hybrid Satellite</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyBasemap('satellite')}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            currentBasemap === 'satellite'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-          title="Pure High-Resolution Aerial & Satellite"
-        >
-          <Satellite className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Satellite</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyBasemap('topo')}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            currentBasemap === 'topo'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-          title="Topographic Elevation & Contour Map"
-        >
-          <Mountain className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Topo / Terrain</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyBasemap('carto_light')}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            currentBasemap === 'carto_light'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-          title="Clean Government Cadastral Light"
-        >
-          <MapIcon className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Cadastral Light</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyBasemap('dark')}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            currentBasemap === 'dark'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-          title="High-Contrast Night GIS Mode"
-        >
-          <Moon className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Dark GIS</span>
-        </button>
-      </div>
-
-      {/* Floating Measurement & Inspection Tool */}
-      <div className="absolute top-16 left-4 z-20 flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md text-xs">
-        <button
-          type="button"
-          onClick={() => {
-            if (measureMode === 'distance') {
-              setMeasureMode('none');
-              setMeasurePoints([]);
-              setMeasuredDistance(0);
-            } else {
-              setMeasureMode('distance');
-              setMeasurePoints([]);
-              setMeasuredDistance(0);
-            }
-          }}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-            measureMode === 'distance'
-              ? 'bg-blue-600 text-white'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-          title="Click points on map to measure linear boundary distance"
-        >
-          <Ruler className="w-3.5 h-3.5" />
-          <span>Measure Line</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (measureMode === 'area') {
-              setMeasureMode('none');
-              setMeasurePoints([]);
-              setMeasuredArea(0);
-            } else {
-              setMeasureMode('area');
-              setMeasurePoints([]);
-              setMeasuredArea(0);
-            }
-          }}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-            measureMode === 'area'
-              ? 'bg-blue-600 text-white'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'
-          }`}
-          title="Click polygon vertices to measure land plot area"
-        >
-          <Crosshair className="w-3.5 h-3.5" />
-          <span>Measure Area</span>
-        </button>
-
-        {measureMode !== 'none' && (
+          {/* Main 1-Click Toggle Square Button (Like Google Maps) */}
           <button
             type="button"
             onClick={() => {
-              setMeasureMode('none');
-              setMeasurePoints([]);
-              setMeasuredDistance(0);
-              setMeasuredArea(0);
+              // Toggle between the previous standard street map and the new high-res satellite map!
+              if (isSatelliteActive) {
+                applyBasemap('streets');
+              } else {
+                applyBasemap('hybrid');
+              }
             }}
-            className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
-            title="Clear measurement"
+            className="group relative flex flex-col items-center justify-end w-18 h-18 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-white shadow-2xl transition-all transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            title={
+              isSatelliteActive
+                ? 'Switch to Default Map (Previous OpenStreetMap view)'
+                : 'Switch to High-Res Satellite View'
+            }
           >
-            <X className="w-3.5 h-3.5" />
+            {/* Visual Thumbnail: Displays a preview of the OTHER map style */}
+            {isSatelliteActive ? (
+              // On satellite: show mini street map thumbnail
+              <div className="absolute inset-0 bg-[#e5e3df] flex items-center justify-center overflow-hidden">
+                <div className="absolute inset-0 opacity-80 bg-[linear-gradient(45deg,#f8f4f0_25%,transparent_25%),linear-gradient(-45deg,#f8f4f0_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f8f4f0_75%),linear-gradient(-45deg,transparent_75%,#f8f4f0_75%)] [background-size:16px_16px]" />
+                <div className="absolute h-2 w-full bg-[#fbd480] top-4 -rotate-12" />
+                <div className="absolute h-1.5 w-full bg-white top-8 rotate-6" />
+                <div className="absolute w-4 h-4 rounded-full bg-emerald-500/50 right-2 top-2" />
+                <MapIcon className="w-5 h-5 text-slate-700 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
+              </div>
+            ) : (
+              // On street map: show mini satellite thumbnail
+              <div className="absolute inset-0 bg-[#1e293b] flex items-center justify-center overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-slate-900 to-amber-950 opacity-90" />
+                <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:8px_8px]" />
+                <Satellite className="w-5 h-5 text-emerald-300 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
+              </div>
+            )}
+
+            {/* Label Badge */}
+            <div className="relative z-10 w-full bg-slate-950/85 backdrop-blur-xs py-1 text-center border-t border-white/20">
+              <span className="text-[10px] sm:text-[11px] font-bold text-white tracking-wide block leading-tight">
+                {isSatelliteActive ? 'Default Map' : 'Satellite'}
+              </span>
+            </div>
           </button>
-        )}
+
+          {/* Expanded Map Types Menu on Hover/Click */}
+          {showMapFlyout && (
+            <div className="absolute bottom-22 left-0 p-3 bg-slate-900/98 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 z-40 w-64 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Select Base Map Style &bull; मानचित्र प्रकार
+                </span>
+                <span className="text-[10px] font-bold text-emerald-400">Google Style</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {/* 1. Standard Street Map (Previous OpenStreetMap) */}
+                <button
+                  type="button"
+                  onClick={() => applyBasemap('streets')}
+                  className={`p-2 rounded-xl text-left border transition-all ${
+                    currentBasemap === 'streets'
+                      ? 'bg-emerald-950/80 border-emerald-500 text-white shadow-xs'
+                      : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                    <MapIcon className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Default Map</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Previous standard street view (OSM)
+                  </span>
+                </button>
+
+                {/* 2. Hybrid Satellite */}
+                <button
+                  type="button"
+                  onClick={() => applyBasemap('hybrid')}
+                  className={`p-2 rounded-xl text-left border transition-all ${
+                    currentBasemap === 'hybrid'
+                      ? 'bg-emerald-950/80 border-emerald-500 text-white shadow-xs'
+                      : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                    <Satellite className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Hybrid Satellite</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    High-Res imagery with place labels
+                  </span>
+                </button>
+
+                {/* 3. Pure Satellite */}
+                <button
+                  type="button"
+                  onClick={() => applyBasemap('satellite')}
+                  className={`p-2 rounded-xl text-left border transition-all ${
+                    currentBasemap === 'satellite'
+                      ? 'bg-emerald-950/80 border-emerald-500 text-white shadow-xs'
+                      : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                    <Satellite className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Pure Satellite</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Raw aerial imagery only
+                  </span>
+                </button>
+
+                {/* 4. Topo / Terrain */}
+                <button
+                  type="button"
+                  onClick={() => applyBasemap('topo')}
+                  className={`p-2 rounded-xl text-left border transition-all ${
+                    currentBasemap === 'topo'
+                      ? 'bg-emerald-950/80 border-emerald-500 text-white shadow-xs'
+                      : 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-[11px]">
+                    <Mountain className="w-3.5 h-3.5 text-teal-400" />
+                    <span>Topo / Terrain</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Elevation contours &amp; hills
+                  </span>
+                </button>
+              </div>
+
+              {/* Toggle: Show labels on satellite */}
+              {isSatelliteActive && (
+                <label className="flex items-center justify-between text-[11px] text-slate-300 pt-1.5 border-t border-slate-800 cursor-pointer">
+                  <span>Show Road &amp; Village Labels</span>
+                  <input
+                    type="checkbox"
+                    checked={currentBasemap === 'hybrid'}
+                    onChange={(e) => {
+                      const newB = e.target.checked ? 'hybrid' : 'satellite';
+                      applyBasemap(newB);
+                    }}
+                    className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-400"
+                  />
+                </label>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Measurement Button next to Map Switcher */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              if (measureMode === 'distance') {
+                setMeasureMode('none');
+                setMeasurePoints([]);
+                setMeasuredDistance(0);
+              } else {
+                setMeasureMode('distance');
+                setMeasurePoints([]);
+                setMeasuredDistance(0);
+              }
+            }}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
+              measureMode === 'distance'
+                ? 'bg-blue-600 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+            title="Click points to measure distance (दूरी मापें)"
+          >
+            <Ruler className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Measure</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (measureMode === 'area') {
+                setMeasureMode('none');
+                setMeasurePoints([]);
+                setMeasuredArea(0);
+              } else {
+                setMeasureMode('area');
+                setMeasurePoints([]);
+                setMeasuredArea(0);
+              }
+            }}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
+              measureMode === 'area'
+                ? 'bg-blue-600 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+            title="Click polygon vertices to measure land area (क्षेत्रफल मापें)"
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Area</span>
+          </button>
+
+          {measureMode !== 'none' && (
+            <button
+              type="button"
+              onClick={() => {
+                setMeasureMode('none');
+                setMeasurePoints([]);
+                setMeasuredDistance(0);
+                setMeasuredArea(0);
+              }}
+              className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+              title="Clear measurement"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Measurement Readout Toast / Badge */}
       {measureMode !== 'none' && measurePoints.length > 0 && (
-        <div className="absolute top-28 left-4 z-20 p-2.5 bg-slate-900/95 border border-blue-500/50 rounded-xl shadow-2xl backdrop-blur-md text-xs text-white space-y-1">
-          <div className="font-bold text-blue-400 flex items-center gap-1">
-            <Ruler className="w-3 h-3" />
-            {measureMode === 'distance' ? 'Linear Distance:' : 'Polygon Area:'}
+        <div className="absolute top-24 left-4 z-20 p-3 bg-slate-900/98 border border-blue-500/60 rounded-2xl shadow-2xl backdrop-blur-md text-xs text-white space-y-1 animate-in fade-in">
+          <div className="font-bold text-blue-400 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1">
+              <Ruler className="w-3.5 h-3.5" />
+              {measureMode === 'distance' ? 'Linear Perimeter:' : 'Enclosed Area:'}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setMeasureMode('none');
+                setMeasurePoints([]);
+              }}
+              className="text-slate-400 hover:text-white"
+            >
+              <X className="w-3 h-3" />
+            </button>
           </div>
           {measureMode === 'distance' ? (
-            <div className="font-mono text-sm font-extrabold">
+            <div className="font-mono text-sm font-extrabold text-blue-300">
               {measuredDistance > 1000
                 ? `${(measuredDistance / 1000).toFixed(2)} km`
                 : `${measuredDistance.toFixed(1)} meters`}
               <span className="text-[10px] text-slate-400 font-normal ml-1">
-                ({measurePoints.length} points)
+                ({measurePoints.length} vertices)
               </span>
             </div>
           ) : (
@@ -907,12 +1016,12 @@ export function MapView({
               </div>
             </div>
           )}
-          <p className="text-[10px] text-slate-400">Click on map to add vertex</p>
+          <p className="text-[10px] text-slate-400">Click on map to add vertex point</p>
         </div>
       )}
 
       {/* Live Map Heads-Up Display (HUD) */}
-      <div className="absolute bottom-3 left-32 z-10 hidden sm:flex items-center gap-3 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl backdrop-blur-md text-[11px] text-slate-300 font-mono shadow-md pointer-events-none">
+      <div className="absolute bottom-2 left-64 z-10 hidden sm:flex items-center gap-3 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl backdrop-blur-md text-[11px] text-slate-300 font-mono shadow-md pointer-events-none">
         <span className="flex items-center gap-1 text-emerald-400 font-bold">
           <Compass className="w-3.5 h-3.5" />
           {cursorCoords[1].toFixed(4)}° N, {cursorCoords[0].toFixed(4)}° E
@@ -922,7 +1031,9 @@ export function MapView({
         <span className="text-slate-600">|</span>
         <span>Datum: WGS 84 (EPSG:4326)</span>
         <span className="text-slate-600">|</span>
-        <span className="text-slate-400 capitalize">{currentBasemap} Layer</span>
+        <span className="text-slate-400 capitalize">
+          {currentBasemap === 'streets' ? 'Standard Map (OSM)' : `${currentBasemap} Satellite`}
+        </span>
       </div>
     </div>
   );
