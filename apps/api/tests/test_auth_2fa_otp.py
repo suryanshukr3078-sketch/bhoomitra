@@ -1,4 +1,4 @@
-﻿import time
+import time
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -186,9 +186,20 @@ def test_2fa_login_flow(auth_client: TestClient) -> None:
         # Login Step 2: Retrieve login OTP and verify
         login_otp = get_otp_for_debugging(email)
         assert login_otp is not None
+
+        # Test invalid OTP is rejected
+        bad_verify = auth_client.post(
+            "/api/v1/auth/verify-otp",
+            json={"email": email, "otp": "000000", "action": "login"},
+        )
+        assert bad_verify.status_code == 400
+        assert "Incorrect" in bad_verify.json()["detail"]
+
+        # Test valid OTP succeeds
         verify_login = auth_client.post(
             "/api/v1/auth/verify-otp",
             json={"email": email, "otp": login_otp, "action": "login"},
         )
         assert verify_login.status_code == 200
         assert verify_login.json()["token"] is not None
+        assert verify_login.json()["user"]["email"] == email
