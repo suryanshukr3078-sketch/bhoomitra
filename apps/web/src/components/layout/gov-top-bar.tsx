@@ -13,22 +13,13 @@ import {
   Contrast,
 } from 'lucide-react';
 
+import { useAccessibility } from '@/providers/accessibility-context';
+
 export function GovTopBar() {
-  const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large'>('normal');
-  const [contrast, setContrast] = useState<'normal' | 'high' | 'dark'>('normal');
+  const { fontSize, setFontSize, contrast, setContrast } = useAccessibility();
   const [lang, setLang] = useState<'en' | 'hi'>('en');
   const [accessMenuOpen, setAccessMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-font-size', fontSize);
-  }, [fontSize]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-contrast', contrast);
-  }, [contrast]);
 
   return (
     <div

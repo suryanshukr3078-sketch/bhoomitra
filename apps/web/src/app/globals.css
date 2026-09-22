@@ -53,21 +53,71 @@ html[data-font-size="normal"] {
 }
 
 html[data-font-size="large"] {
-  font-size: 112%;
+  font-size: 112.5%;
+}
+
+html[data-font-size="xlarge"] {
+  font-size: 125%;
+}
+
+html[data-line-spacing="normal"] {
+  line-height: 1.5;
+}
+
+html[data-line-spacing="relaxed"] {
+  line-height: 1.8;
+  letter-spacing: 0.025em;
+}
+
+html[data-line-spacing="loose"] {
+  line-height: 2.1;
+  letter-spacing: 0.05em;
+}
+
+html[data-line-spacing="relaxed"] p,
+html[data-line-spacing="relaxed"] span,
+html[data-line-spacing="relaxed"] li,
+html[data-line-spacing="relaxed"] a {
+  line-height: 1.8;
+  letter-spacing: 0.025em;
+}
+
+html[data-line-spacing="loose"] p,
+html[data-line-spacing="loose"] span,
+html[data-line-spacing="loose"] li,
+html[data-line-spacing="loose"] a {
+  line-height: 2.1;
+  letter-spacing: 0.05em;
 }
 
 html[data-contrast="high"] {
-  filter: contrast(125%);
+  filter: contrast(135%);
+}
+
+html[data-contrast="high"] a,
+html[data-contrast="high"] button {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+html[data-contrast="high"] .card-elevated {
+  border: 2px solid #000000 !important;
 }
 
 html[data-contrast="dark"] {
   background-color: #0b1120 !important;
-  color: #f1f5f9 !important;
+  color: #f8fafc !important;
 }
 
 html[data-contrast="dark"] body {
   background-color: #0b1120 !important;
-  color: #f1f5f9 !important;
+  color: #f8fafc !important;
+}
+
+html[data-contrast="dark"] .card-elevated {
+  background-color: #131b2e !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
 }
 
 body {

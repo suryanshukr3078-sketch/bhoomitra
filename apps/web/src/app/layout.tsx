@@ -7,6 +7,8 @@ import { Toaster } from '@/components/ui/toast';
 import { AuthProvider } from '@/lib/auth-context';
 
 import { GovFooter } from '@/components/layout/gov-footer';
+import { AccessibilityProvider } from '@/providers/accessibility-context';
+import { AccessibilityToolbar } from '@/components/layout/accessibility-toolbar';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -73,14 +75,25 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakartaSans.variable} ${inter.variable} h-full scroll-smooth overflow-x-hidden`}>
       <body className="min-h-full flex flex-col bg-slate-50/50 text-slate-900 font-sans antialiased overflow-x-hidden w-full max-w-full">
-        <AuthProvider>
-          <Header />
-          <main id="main-content" className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col focus:outline-none" tabIndex={-1}>
-            <PageTransition>{children}</PageTransition>
-          </main>
-          <GovFooter />
-          <Toaster />
-        </AuthProvider>
+        {/* Skip to Main Content Link (WCAG 2.1 AA keyboard / screen-reader accessibility) */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[99999] focus:px-4 focus:py-2.5 focus:bg-emerald-800 focus:text-white focus:rounded-lg focus:shadow-2xl focus:ring-4 focus:ring-amber-400 focus:outline-none font-bold text-xs tracking-wide uppercase transition-all"
+        >
+          Skip to main content / मुख्य सामग्री पर जाएं
+        </a>
+
+        <AccessibilityProvider>
+          <AuthProvider>
+            <Header />
+            <main id="main-content" className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col focus:outline-none" tabIndex={-1}>
+              <PageTransition>{children}</PageTransition>
+            </main>
+            <GovFooter />
+            <AccessibilityToolbar />
+            <Toaster />
+          </AuthProvider>
+        </AccessibilityProvider>
       </body>
     </html>
   );
