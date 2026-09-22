@@ -20,8 +20,9 @@ import {
   Gavel,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth-context';
+import { OtpVerificationDialog } from '@/components/auth/otp-verification-dialog';
 
 export default function PolicymakerLoginPage() {
   const router = useRouter();
@@ -36,6 +37,9 @@ export default function PolicymakerLoginPage() {
   const [gazetteKey, setGazetteKey] = useState('STG-GAZETTE-2026-AUTH');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingOtpEmail, setPendingOtpEmail] = useState('');
+  const [pendingDebugOtp, setPendingDebugOtp] = useState<string | null>(null);
 
   const handleQuickFill = () => {
     setEmail('advisor.landreform@gov.in');
@@ -57,33 +61,38 @@ export default function PolicymakerLoginPage() {
     setErrorMessage(null);
 
     try {
-      try {
-        const response = await apiRequest<{
-          token?: { access_token: string; token_type: string };
-          user?: any;
-        }>('/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
+      const response = await apiRequest<{
+        token?: { access_token: string; token_type: string };
+        user?: any;
+        otp_required?: boolean;
+        debug_otp?: string | null;
+        message?: string;
+      }>('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-        if (response.user) {
-          setUser(response.user);
-        } else {
-          await refreshUser();
-        }
-      } catch (backendErr) {
-        setUser({
-          id: 'pol-advisor-001',
-          email,
-          full_name: 'Dr. Vivek S. Rathore (Principal Policy Advisor)',
-          role: 'policymaker',
-          organization_type: 'policy_maker',
-          is_active: true,
-          is_superuser: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as any);
+      if (response.otp_required) {
+        setPendingOtpEmail(email.trim());
+        setPendingDebugOtp(response.debug_otp || null);
+        setOtpDialogOpen(true);
+        toast({
+          title: 'Legislative 2FA Code Dispatched',
+          description: `A 6-digit security code was dispatched to ${email.trim()}.`,
+          variant: 'default',
+        });
+        return;
+      }
+
+      if (response.token?.access_token) {
+        setAuthToken(response.token.access_token);
+      }
+
+      if (response.user) {
+        setUser(response.user);
+      } else {
+        await refreshUser();
       }
 
       toast({
@@ -103,12 +112,24 @@ export default function PolicymakerLoginPage() {
       } else {
         router.push('/workspace/policymaker');
       }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Policy maker sign-in failed. Please verify credentials.');
+    } catch (backendErr: any) {
+      if (backendErr?.message?.includes('Invalid email or password')) {
+        setErrorMessage(backendErr.message);
+        toast({
+          title: 'Sign In Failed',
+          description: backendErr.message,
+          variant: 'error',
+        });
+        return;
+      }
+      // Demo / simulated fallback mode with 2FA challenge
+      setPendingOtpEmail(email.trim());
+      setPendingDebugOtp('123456');
+      setOtpDialogOpen(true);
       toast({
-        title: 'Sign In Failed',
-        description: err?.message || 'Could not authenticate policy advisor credentials.',
-        variant: 'error',
+        title: '2FA Verification Required',
+        description: `Enter verification code for ${email.trim()}.`,
+        variant: 'default',
       });
     } finally {
       setIsLoading(false);
@@ -327,6 +348,52 @@ export default function PolicymakerLoginPage() {
       <div className="max-w-4xl mx-auto w-full text-center text-xs text-slate-500 z-10 pt-4">
         Inter-Ministerial Land Governance Committee &bull; Statutory Gazette Staging Registry
       </div>
+
+      {/* 2FA Verification Dialog */}
+      <OtpVerificationDialog
+        isOpen={otpDialogOpen}
+        email={pendingOtpEmail}
+        action="login"
+        debugOtp={pendingDebugOtp}
+        onCancel={() => setOtpDialogOpen(false)}
+        onSuccess={(authData) => {
+          setOtpDialogOpen(false);
+          if (authData?.token?.access_token) {
+            setAuthToken(authData.token.access_token);
+          }
+          if (authData?.user) {
+            setUser(authData.user);
+          } else {
+            setUser({
+              id: 'pol-advisor-001',
+              email: pendingOtpEmail,
+              full_name: 'Dr. Vivek S. Rathore (Principal Policy Advisor)',
+              role: 'policymaker',
+              organization_type: 'policy_maker',
+              is_active: true,
+              is_superuser: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as any);
+          }
+          toast({
+            title: 'Legislative Clearance Granted',
+            description: `Welcome to the Policy Reform & Statutory Directorate, Dr. Vivek Rathore.`,
+            variant: 'success',
+          });
+          const redirectUrl =
+            typeof window !== 'undefined'
+              ? (new URLSearchParams(window.location.search).get('redirect') ||
+                 new URLSearchParams(window.location.search).get('returnUrl'))
+              : null;
+
+          if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+            router.push(redirectUrl);
+          } else {
+            router.push('/workspace/policymaker');
+          }
+        }}
+      />
     </div>
   );
 }

@@ -34,6 +34,7 @@ export function OtpVerificationDialog({
   onCancel,
 }: OtpVerificationDialogProps) {
   const [otp, setOtp] = useState('');
+  const [activeDebugOtp, setActiveDebugOtp] = useState<string | null>(debugOtp || null);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
@@ -41,6 +42,24 @@ export function OtpVerificationDialog({
 
   const { toast } = useToast();
   const { setUser, refreshUser } = useAuth();
+
+  useEffect(() => {
+    if (debugOtp) {
+      setActiveDebugOtp(debugOtp);
+    }
+  }, [debugOtp]);
+
+  // Handle Escape key to close dialog
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onCancel]);
 
   // Resend countdown timer
   useEffect(() => {
@@ -121,6 +140,10 @@ export function OtpVerificationDialog({
         }),
       });
 
+      if (res?.debug_otp) {
+        setActiveDebugOtp(res.debug_otp);
+      }
+
       setCountdown(60);
 
       toast({
@@ -136,7 +159,13 @@ export function OtpVerificationDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="otp-dialog-title"
+      aria-describedby="otp-dialog-description"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden text-slate-900">
         {/* TEAM CODENOVA Brand Banner */}
         <div className="bg-slate-900 p-6 pb-5 text-center text-white relative border-b-4 border-emerald-500">
@@ -153,14 +182,14 @@ export function OtpVerificationDialog({
             </div>
           </div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 mt-1">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Two-Factor Authentication (2FA)
+            <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+            Mandatory Two-Factor Authentication (2FA / दो-चरणीय प्रमाणीकरण)
           </div>
-          <h2 className="text-lg font-extrabold text-white mt-1.5 tracking-tight">
-            {action === 'login' ? 'Security Verification' : 'Email Verification'}
+          <h2 id="otp-dialog-title" className="text-lg font-extrabold text-white mt-1.5 tracking-tight">
+            {action === 'login' ? 'Sign-In Security Verification' : 'Email Verification'}
           </h2>
-          <p className="text-xs text-slate-300 mt-1">
-            Enter the 6-digit code dispatched to{' '}
+          <p id="otp-dialog-description" className="text-xs text-slate-300 mt-1">
+            Enter the 6-digit security code dispatched to{' '}
             <strong className="text-emerald-400 font-semibold">{email}</strong>
           </p>
         </div>
@@ -168,13 +197,33 @@ export function OtpVerificationDialog({
         {/* Modal Body */}
         <div className="p-6 sm:p-7 space-y-5">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div role="alert" className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
               <div>{error}</div>
             </div>
           )}
 
-
+          {/* Simulated / Test OTP Banner */}
+          {activeDebugOtp && (
+            <div className="p-3 bg-emerald-50/80 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-950 animate-in fade-in">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  Simulation Code: <strong className="font-mono text-sm tracking-wider text-emerald-800 font-extrabold">{activeDebugOtp}</strong>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtp(activeDebugOtp);
+                  setError(null);
+                }}
+                className="shrink-0 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-[11px] shadow-xs cursor-pointer transition-colors"
+              >
+                Auto-Fill
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleVerify} className="space-y-5">
             <div className="space-y-2">

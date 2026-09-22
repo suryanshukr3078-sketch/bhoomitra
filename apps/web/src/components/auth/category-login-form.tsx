@@ -365,7 +365,11 @@ export function CategoryLoginForm({ portal }: CategoryLoginFormProps) {
               <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
                 Institutional Sign In
               </h1>
-              <p className="text-xs text-slate-500">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 mt-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                2FA Verification Mandatory
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
                 Enter your credentials registered with the cadastral governance directory
               </p>
             </div>

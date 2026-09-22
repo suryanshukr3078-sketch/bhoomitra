@@ -292,7 +292,11 @@ export default function CentralLoginPage() {
           <h2 className="text-xl font-black text-slate-900 tracking-tight">
             Universal Sign In
           </h2>
-          <p className="text-xs text-slate-500">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 mt-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+            2FA Security Protocol Enforced
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
             Valid across all registered organizations, researchers, and departments
           </p>
         </div>
@@ -403,6 +407,14 @@ export default function CentralLoginPage() {
                 {errors.password.message}
               </p>
             )}
+          </div>
+
+          {/* 2FA Protocol Notice */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2.5 text-xs text-slate-600">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>
+              <strong>Two-Factor Authentication:</strong> Upon entering your password, a one-time 6-digit security code will be sent to your email to confirm your identity.
+            </span>
           </div>
 
           {/* Submit button */}

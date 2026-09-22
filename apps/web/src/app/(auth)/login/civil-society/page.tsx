@@ -20,8 +20,9 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, setAuthToken } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth-context';
+import { OtpVerificationDialog } from '@/components/auth/otp-verification-dialog';
 
 export default function CivilSocietyLoginPage() {
   const router = useRouter();
@@ -36,6 +37,9 @@ export default function CivilSocietyLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [pendingOtpEmail, setPendingOtpEmail] = useState('');
+  const [pendingDebugOtp, setPendingDebugOtp] = useState<string | null>(null);
 
   const handleQuickFill = () => {
     setEmail('advocate@landaction.org');
@@ -57,33 +61,38 @@ export default function CivilSocietyLoginPage() {
     setErrorMessage(null);
 
     try {
-      try {
-        const response = await apiRequest<{
-          token?: { access_token: string; token_type: string };
-          user?: any;
-        }>('/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
+      const response = await apiRequest<{
+        token?: { access_token: string; token_type: string };
+        user?: any;
+        otp_required?: boolean;
+        debug_otp?: string | null;
+        message?: string;
+      }>('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-        if (response.user) {
-          setUser(response.user);
-        } else {
-          await refreshUser();
-        }
-      } catch (backendErr) {
-        setUser({
-          id: 'cso-advocate-001',
-          email,
-          full_name: 'Sunita M. Maravi (Grassroots Community Coordinator)',
-          role: 'civil_society',
-          organization_type: 'civil_society',
-          is_active: true,
-          is_superuser: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as any);
+      if (response.otp_required) {
+        setPendingOtpEmail(email.trim());
+        setPendingDebugOtp(response.debug_otp || null);
+        setOtpDialogOpen(true);
+        toast({
+          title: 'Advocacy 2FA Code Dispatched',
+          description: `A 6-digit security code was dispatched to ${email.trim()}.`,
+          variant: 'default',
+        });
+        return;
+      }
+
+      if (response.token?.access_token) {
+        setAuthToken(response.token.access_token);
+      }
+
+      if (response.user) {
+        setUser(response.user);
+      } else {
+        await refreshUser();
       }
 
       toast({
@@ -103,12 +112,24 @@ export default function CivilSocietyLoginPage() {
       } else {
         router.push('/workspace/civil-society');
       }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Civil society sign-in failed. Please verify credentials.');
+    } catch (backendErr: any) {
+      if (backendErr?.message?.includes('Invalid email or password')) {
+        setErrorMessage(backendErr.message);
+        toast({
+          title: 'Sign In Failed',
+          description: backendErr.message,
+          variant: 'error',
+        });
+        return;
+      }
+      // Demo / simulated fallback mode with 2FA challenge
+      setPendingOtpEmail(email.trim());
+      setPendingDebugOtp('123456');
+      setOtpDialogOpen(true);
       toast({
-        title: 'Sign In Failed',
-        description: err?.message || 'Could not authenticate advocate credentials.',
-        variant: 'error',
+        title: '2FA Verification Required',
+        description: `Enter verification code for ${email.trim()}.`,
+        variant: 'default',
       });
     } finally {
       setIsLoading(false);
@@ -322,6 +343,52 @@ export default function CivilSocietyLoginPage() {
       <div className="max-w-4xl mx-auto w-full text-center text-xs text-slate-500 z-10 pt-4">
         Forest Rights Act 2006 (FRA) Support &bull; Citizen Land Grievance Redressal Mechanism
       </div>
+
+      {/* 2FA Verification Dialog */}
+      <OtpVerificationDialog
+        isOpen={otpDialogOpen}
+        email={pendingOtpEmail}
+        action="login"
+        debugOtp={pendingDebugOtp}
+        onCancel={() => setOtpDialogOpen(false)}
+        onSuccess={(authData) => {
+          setOtpDialogOpen(false);
+          if (authData?.token?.access_token) {
+            setAuthToken(authData.token.access_token);
+          }
+          if (authData?.user) {
+            setUser(authData.user);
+          } else {
+            setUser({
+              id: 'cso-advocate-001',
+              email: pendingOtpEmail,
+              full_name: 'Sunita M. Maravi (Grassroots Community Coordinator)',
+              role: 'civil_society',
+              organization_type: 'civil_society',
+              is_active: true,
+              is_superuser: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as any);
+          }
+          toast({
+            title: 'Advocacy Clearance Verified',
+            description: `Welcome to the Civil Society & Citizen Rights Desk, Sunita Maravi.`,
+            variant: 'success',
+          });
+          const redirectUrl =
+            typeof window !== 'undefined'
+              ? (new URLSearchParams(window.location.search).get('redirect') ||
+                 new URLSearchParams(window.location.search).get('returnUrl'))
+              : null;
+
+          if (redirectUrl && redirectUrl.startsWith('/') && !redirectUrl.startsWith('//')) {
+            router.push(redirectUrl);
+          } else {
+            router.push('/workspace/civil-society');
+          }
+        }}
+      />
     </div>
   );
 }
