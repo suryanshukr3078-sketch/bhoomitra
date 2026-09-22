@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Mail,
 } from 'lucide-react';
+import { AdminAnalyticsWidget } from '@/components/admin/analytics-widget';
 
 interface AdminUser {
   id: string;
@@ -170,6 +171,9 @@ export default function AdminDashboardPage() {
           </button>
         </div>
       )}
+
+      {/* Database-Backed Analytics Dashboard Widget */}
+      <AdminAnalyticsWidget />
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

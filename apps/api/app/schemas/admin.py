@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -43,3 +43,34 @@ class MembershipActionResponse(BaseModel):
     user_id: UUID
     membership_status: str
     user_status: str
+
+
+class UserCategoryCount(BaseModel):
+    category: str
+    label: str
+    count: int
+    percentage: float
+
+
+class MonthlySubmissionCount(BaseModel):
+    month: str
+    label: str
+    count: int
+
+
+class MostViewedPaperItem(BaseModel):
+    id: UUID
+    title: str
+    slug: str
+    journal: str | None = None
+    views: int
+    citations: int
+
+
+class AdminAnalyticsResponse(BaseModel):
+    total_page_views: int
+    total_users: int
+    total_resources: int
+    users_by_category: list[UserCategoryCount]
+    resources_per_month: list[MonthlySubmissionCount]
+    most_viewed_papers: list[MostViewedPaperItem]
