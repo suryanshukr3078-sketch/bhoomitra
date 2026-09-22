@@ -267,19 +267,23 @@ export default function ContributePage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
           {/* Document Title */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Document / Dataset Title <span className="text-rose-500">*</span>
+            <label htmlFor="contribute-title" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Document / Dataset Title <span className="text-rose-500" aria-hidden="true">*</span>
             </label>
             <input
+              id="contribute-title"
               type="text"
               placeholder={roleConfig.titlePlaceholder}
+              aria-required="true"
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? 'title-error' : undefined}
               className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
                 errors.title ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
               }`}
               {...register('title')}
             />
             {errors.title && (
-              <p role="alert" className="text-xs text-rose-600 font-medium">
+              <p id="title-error" role="alert" className="text-xs text-rose-600 font-medium">
                 {errors.title.message}
               </p>
             )}
@@ -287,11 +291,12 @@ export default function ContributePage() {
 
           {/* Publisher / Publishing Organization */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+            <label htmlFor="contribute-publisher" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
               Publisher / Issuing Organization
             </label>
             <input
+              id="contribute-publisher"
               type="text"
               placeholder="e.g. Survey of India, Indian Council of Agricultural Research, or Ministry of Rural Development"
               className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
@@ -305,8 +310,8 @@ export default function ContributePage() {
           {/* Resource Type & Jurisdiction */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Resource Category <span className="text-rose-500">*</span>
+              <label htmlFor="contribute-resource-type" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Resource Category <span className="text-rose-500" aria-hidden="true">*</span>
               </label>
               {roleConfig.isTypeLocked ? (
                 <div className="space-y-1.5">
@@ -318,7 +323,7 @@ export default function ContributePage() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200 shadow-2xs">
                       Locked to {roleConfig.roleName}
                     </span>
-                    <input type="hidden" value={roleConfig.defaultType} {...register('resourceType')} />
+                    <input id="contribute-resource-type" type="hidden" value={roleConfig.defaultType} {...register('resourceType')} />
                   </div>
                   <p className="text-[11px] text-slate-500">
                     {roleConfig.lockedReason}
@@ -326,6 +331,8 @@ export default function ContributePage() {
                 </div>
               ) : (
                 <select
+                  id="contribute-resource-type"
+                  aria-required="true"
                   className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                   {...register('resourceType')}
                 >
@@ -339,19 +346,22 @@ export default function ContributePage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              <label htmlFor="contribute-jurisdiction" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                 Jurisdiction Code
               </label>
               <input
+                id="contribute-jurisdiction"
                 type="text"
                 placeholder="e.g. IN-MH (ISO 3166-2)"
+                aria-invalid={!!errors.jurisdiction}
+                aria-describedby={errors.jurisdiction ? 'jurisdiction-error' : undefined}
                 className={`w-full px-3.5 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   errors.jurisdiction ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
                 }`}
                 {...register('jurisdiction')}
               />
               {errors.jurisdiction && (
-                <p role="alert" className="text-xs text-rose-600 font-medium">
+                <p id="jurisdiction-error" role="alert" className="text-xs text-rose-600 font-medium">
                   {errors.jurisdiction.message}
                 </p>
               )}
@@ -360,19 +370,23 @@ export default function ContributePage() {
 
           {/* Abstract / Scope */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Executive Abstract / Scope <span className="text-rose-500">*</span>
+            <label htmlFor="contribute-abstract" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Executive Abstract / Scope <span className="text-rose-500" aria-hidden="true">*</span>
             </label>
             <textarea
+              id="contribute-abstract"
               rows={4}
               placeholder={roleConfig.abstractPlaceholder}
+              aria-required="true"
+              aria-invalid={!!errors.abstract}
+              aria-describedby={errors.abstract ? 'abstract-error' : undefined}
               className={`w-full px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                 errors.abstract ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 bg-white'
               }`}
               {...register('abstract')}
             />
             {errors.abstract && (
-              <p role="alert" className="text-xs text-rose-600 font-medium">
+              <p id="abstract-error" role="alert" className="text-xs text-rose-600 font-medium">
                 {errors.abstract.message}
               </p>
             )}
@@ -460,6 +474,7 @@ export default function ContributePage() {
             <button
               type="submit"
               disabled={isUploading}
+              aria-label="Publish to platform"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold rounded-xl shadow-md transition-colors disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               {isUploading ? (
