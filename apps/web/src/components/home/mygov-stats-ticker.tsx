@@ -48,12 +48,18 @@ const STATS = [
   },
 ];
 
+import { useTranslation } from '@/providers/i18n-context';
+
 export function MyGovStatsTicker() {
+  const { locale } = useTranslation();
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-8 relative z-30">
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 p-4 sm:p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {STATS.map((s, idx) => {
           const Icon = s.icon;
+          const primaryLabel = locale === 'hi' ? s.labelHi : s.labelEn;
+          const secondaryLabel = locale === 'hi' ? s.labelEn : s.labelHi;
           return (
             <div
               key={idx}
@@ -66,10 +72,10 @@ export function MyGovStatsTicker() {
                 {s.value}
               </div>
               <div className="text-xs font-bold text-slate-700 mt-0.5">
-                {s.labelEn}
+                {primaryLabel}
               </div>
               <div className="text-[10px] text-slate-400 font-medium">
-                {s.labelHi}
+                {secondaryLabel}
               </div>
             </div>
           );

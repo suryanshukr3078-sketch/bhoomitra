@@ -14,10 +14,11 @@ import {
 } from 'lucide-react';
 
 import { useAccessibility } from '@/providers/accessibility-context';
+import { useTranslation } from '@/providers/i18n-context';
 
 export function GovTopBar() {
   const { fontSize, setFontSize, contrast, setContrast } = useAccessibility();
-  const [lang, setLang] = useState<'en' | 'hi'>('en');
+  const { locale, setLocale, t } = useTranslation();
   const [accessMenuOpen, setAccessMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
 
@@ -64,7 +65,7 @@ export function GovTopBar() {
               ))}
             </svg>
             <span className="tracking-wider text-[11px] sm:text-xs uppercase font-bold">
-              {lang === 'hi' ? 'भारत सरकार' : 'GOVERNMENT OF INDIA'}
+              {t('topbar.govtOfIndia', 'GOVERNMENT OF INDIA')}
             </span>
           </a>
         </div>
@@ -76,7 +77,7 @@ export function GovTopBar() {
             href="#main-content"
             className="text-white/90 hover:text-white transition-colors text-xs hidden sm:inline"
           >
-            Skip to main content
+            {t('topbar.skipToMain', 'Skip to main content')}
           </a>
 
           {/* Language Pill (अ|A English ⌵) */}
@@ -86,9 +87,10 @@ export function GovTopBar() {
               onClick={() => setLangMenuOpen(!langMenuOpen)}
               onBlur={() => setTimeout(() => setLangMenuOpen(false), 200)}
               className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/60 hover:bg-white/10 text-white font-medium text-xs transition-colors"
-              aria-label="Select Language"
+              aria-label="Select Language / भाषा चुनें"
+              aria-expanded={langMenuOpen}
             >
-              <span className="font-semibold">{lang === 'hi' ? 'अ हिन्दी' : 'A English'}</span>
+              <span className="font-semibold">{locale === 'hi' ? 'अ हिन्दी' : 'A English'}</span>
               <ChevronDown className="w-3 h-3 text-white/80" />
             </button>
 
@@ -96,23 +98,23 @@ export function GovTopBar() {
               <div className="absolute right-0 mt-1 w-32 rounded-lg bg-white shadow-xl py-1 z-50 text-slate-800 text-xs border border-slate-200">
                 <button
                   onClick={() => {
-                    setLang('en');
+                    setLocale('en');
                     setLangMenuOpen(false);
                   }}
                   className="flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-100"
                 >
                   <span>English</span>
-                  {lang === 'en' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                  {locale === 'en' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                 </button>
                 <button
                   onClick={() => {
-                    setLang('hi');
+                    setLocale('hi');
                     setLangMenuOpen(false);
                   }}
                   className="flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-100 font-medium"
                 >
                   <span>हिन्दी</span>
-                  {lang === 'hi' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                  {locale === 'hi' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                 </button>
               </div>
             )}

@@ -1,0 +1,81 @@
+{
+  "topbar": {
+    "govtOfIndia": "GOVERNMENT OF INDIA",
+    "skipToMain": "Skip to main content",
+    "accessibility": "Accessibility",
+    "follow": "Connect & Follow"
+  },
+  "nav": {
+    "home": "Home",
+    "maps": "Spatial Maps",
+    "policies": "Policies",
+    "research": "Research",
+    "acquisition": "Acquisition",
+    "digitization": "Digitization",
+    "watershed": "Watershed",
+    "datasets": "Datasets",
+    "innovation": "Innovation",
+    "contribute": "Contribute",
+    "login": "Login",
+    "dashboard": "Dashboard",
+    "admin": "Admin Portal",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "sitemap": "Sitemap"
+  },
+  "hero": {
+    "tagline": "National Land Records Modernization & Spatial Transparency",
+    "slide1_title": "Bhu-Aadhaar (ULPIN) Cadastral Integration",
+    "slide1_desc": "Unique 14-digit geo-referenced cadastral parcel identification covering 28 states & UTs.",
+    "slide1_cta1": "Explore Spatial GIS",
+    "slide1_cta2": "Search Bhu-Aadhaar",
+    "slide2_title": "SVAMITVA Property Cards for Rural India",
+    "slide2_desc": "Drone-assisted surveying and spatial boundaries for inhabited rural abadi areas.",
+    "slide2_cta1": "Explore SVAMITVA",
+    "slide2_cta2": "Verify Records",
+    "slide3_title": "Public Policy & Cadastral Consultation",
+    "slide3_desc": "Participate in national land governance policy drafts, model acts, and citizen feedback.",
+    "slide3_cta1": "Browse Policies",
+    "slide3_cta2": "Submit Public Feedback"
+  },
+  "ticker": {
+    "parcels": "Total Parcels Mapped",
+    "states": "States & UTs Integrated",
+    "cards": "SVAMITVA Cards Issued",
+    "drones": "Villages Drone-Surveyed"
+  },
+  "citizenHub": {
+    "badge": "Citizen Services Hub",
+    "title": "Empowering Citizens with Digital Land Governance",
+    "subtitle": "Access certified land ownership documents, track land acquisition compensations, and participate in policy reforms directly.",
+    "searchParcel": "Search Parcel / ULPIN",
+    "propertyCard": "SVAMITVA Card Search",
+    "feedback": "Public Policy Feedback",
+    "grievance": "File Land Grievance"
+  },
+  "schemes": {
+    "badge": "National Initiatives",
+    "title": "Pillars of Indian Land Administration",
+    "subtitle": "Flagship programs orchestrated under the Department of Land Resources (DoLR), Government of India.",
+    "learnMore": "Learn More"
+  },
+  "noticeBoard": {
+    "badge": "Official Gazette",
+    "title": "Notifications & Public Consultations",
+    "viewAll": "View All Announcements",
+    "active": "Active Consultation"
+  },
+  "common": {
+    "search": "Search",
+    "filter": "Filter",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "close": "Close",
+    "loading": "Loading...",
+    "viewDetails": "View Details",
+    "readMore": "Read More",
+    "download": "Download",
+    "back": "Back",
+    "learnMore": "Learn More"
+  }
+}

@@ -9,6 +9,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { GovFooter } from '@/components/layout/gov-footer';
 import { AccessibilityProvider } from '@/providers/accessibility-context';
 import { AccessibilityToolbar } from '@/components/layout/accessibility-toolbar';
+import { I18nProvider } from '@/providers/i18n-context';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -84,15 +85,17 @@ export default function RootLayout({
         </a>
 
         <AccessibilityProvider>
-          <AuthProvider>
-            <Header />
-            <main id="main-content" className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col focus:outline-none" tabIndex={-1}>
-              <PageTransition>{children}</PageTransition>
-            </main>
-            <GovFooter />
-            <AccessibilityToolbar />
-            <Toaster />
-          </AuthProvider>
+          <I18nProvider>
+            <AuthProvider>
+              <Header />
+              <main id="main-content" className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col focus:outline-none" tabIndex={-1}>
+                <PageTransition>{children}</PageTransition>
+              </main>
+              <GovFooter />
+              <AccessibilityToolbar />
+              <Toaster />
+            </AuthProvider>
+          </I18nProvider>
         </AccessibilityProvider>
       </body>
     </html>

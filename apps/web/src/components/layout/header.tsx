@@ -25,9 +25,11 @@ import {
   GraduationCap,
   Users,
   ShieldAlert,
+  Globe2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslation } from '@/providers/i18n-context';
 import { GovTopBar } from '@/components/layout/gov-top-bar';
 import { BhoomitraMyGovLogo } from '@/components/layout/gov-emblem';
 
@@ -48,6 +50,7 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { user, isAuthenticated, logout } = useAuth();
+  const { locale, toggleLocale, t } = useTranslation();
   const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -89,31 +92,45 @@ export function Header() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search in Bhoomitra"
+              placeholder={locale === 'hi' ? 'भू-मित्र में खोजें...' : 'Search in Bhoomitra'}
               className="flex-1 px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none min-w-0 bg-transparent"
+              aria-label={locale === 'hi' ? 'खोज इनपुट' : 'Search query'}
             />
             <div className="h-5 w-px bg-slate-300 hidden sm:block" />
             <select
               value={searchCategory}
               onChange={(e) => setSearchCategory(e.target.value)}
               className="bg-transparent px-2.5 py-2 text-xs text-slate-600 focus:outline-none cursor-pointer hidden sm:block shrink-0"
+              aria-label={locale === 'hi' ? 'खोज श्रेणी' : 'Search category'}
             >
-              <option value="all">All Categories</option>
-              <option value="maps">Cadastral Maps</option>
-              <option value="policies">Policies / Acts</option>
-              <option value="research">Research Papers</option>
-              <option value="datasets">GIS Datasets</option>
+              <option value="all">{locale === 'hi' ? 'सभी श्रेणियां' : 'All Categories'}</option>
+              <option value="maps">{t('nav.maps', 'Cadastral Maps')}</option>
+              <option value="policies">{t('nav.policies', 'Policies / Acts')}</option>
+              <option value="research">{t('nav.research', 'Research Papers')}</option>
+              <option value="datasets">{t('nav.datasets', 'GIS Datasets')}</option>
             </select>
             <button
               type="submit"
               className="bg-[#d96534] hover:bg-[#c85627] text-white px-5 sm:px-6 py-2 text-xs sm:text-sm font-semibold transition-colors shrink-0"
             >
-              Search
+              {t('common.search', 'Search')}
             </button>
           </form>
 
-          {/* Right Controls: Hamburger Menu + User Profile Circle */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Right Controls: Language Switcher + Hamburger Menu + User Profile Circle */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Direct Language Switcher Toggle */}
+            <button
+              type="button"
+              onClick={toggleLocale}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-slate-300 hover:border-emerald-600 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              aria-label={`Switch to ${locale === 'en' ? 'Hindi' : 'English'}`}
+              title={`Switch language to ${locale === 'en' ? 'हिन्दी' : 'English'}`}
+            >
+              <Globe2 className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+              <span>{locale === 'en' ? 'हिन्दी' : 'English'}</span>
+            </button>
+
             {/* Hamburger Menu Trigger (Three Clean Lines) */}
             <button
               type="button"
@@ -233,23 +250,23 @@ export function Header() {
               {/* Primary Pages */}
               <div>
                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Main Services
+                  {locale === 'hi' ? 'प्रमुख सेवाएं' : 'Main Services'}
                 </div>
                 <div className="grid gap-1 font-semibold text-slate-800 text-sm">
                   <Link href="/" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    Home (मुख्य पृष्ठ)
+                    {t('nav.home', 'Home')}
                   </Link>
                   <Link href="/maps" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-amber-50 text-[#d96534] flex items-center gap-2 font-bold">
                     <MapPin className="w-4 h-4 text-[#f37021]" />
-                    <span>Cadastral GIS &amp; Maps</span>
+                    <span>{t('nav.maps', 'Cadastral GIS & Maps')}</span>
                   </Link>
                   <Link href="/dashboard" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100 flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-emerald-600" />
-                    <span>Governance Dashboard</span>
+                    <span>{t('nav.dashboard', 'Governance Dashboard')}</span>
                   </Link>
                   <Link href="/assistant" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg bg-orange-50 text-[#d96534] font-bold flex items-center gap-2">
                     <Bot className="w-4 h-4 text-[#f37021]" />
-                    <span>AI Cadastral Assistant</span>
+                    <span>{locale === 'hi' ? 'एआई भू-अभिलेख सहायक' : 'AI Cadastral Assistant'}</span>
                   </Link>
                 </div>
               </div>
@@ -257,29 +274,33 @@ export function Header() {
               {/* National Schemes */}
               <div>
                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Schemes &amp; Programs
+                  {locale === 'hi' ? 'राष्ट्रीय योजनाएं एवं कार्यक्रम' : 'Schemes & Programs'}
                 </div>
                 <div className="grid gap-1 text-xs font-medium text-slate-700">
                   <Link href="/maps?filter=svamitva" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    SVAMITVA Scheme (Drone Survey)
+                    {locale === 'hi' ? 'स्वामित्व योजना (ड्रोन सर्वेक्षण)' : 'SVAMITVA Scheme (Drone Survey)'}
                   </Link>
                   <Link href="/digitization" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    Bhu-Aadhaar (ULPIN) &amp; Dual-Pane OCR
+                    {t('nav.digitization', 'Bhu-Aadhaar (ULPIN) & Dual-Pane OCR')}
                   </Link>
                   <Link href="/watershed" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    Watershed SRISHTI-DRISHTI GIS
+                    {t('nav.watershed', 'Watershed SRISHTI-DRISHTI GIS')}
                   </Link>
                   <Link href="/acquisition" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    Land Acquisition (LAMS RFCTLARR)
+                    {t('nav.acquisition', 'Land Acquisition (LAMS RFCTLARR)')}
                   </Link>
                   <Link href="/policies" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    Acts &amp; Gazette Policies
+                    {t('nav.policies', 'Acts & Gazette Policies')}
                   </Link>
                   <Link href="/research" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    Research Papers
+                    {t('nav.research', 'Research Papers')}
                   </Link>
                   <Link href="/datasets" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-slate-100">
-                    Open GIS Datasets
+                    {t('nav.datasets', 'Open GIS Datasets')}
+                  </Link>
+                  <Link href="/contribute" onClick={() => setDrawerOpen(false)} className="px-3 py-2 rounded-lg hover:bg-emerald-50 text-emerald-800 font-semibold flex items-center justify-between">
+                    <span>{t('nav.contribute', 'Contribute Spatial Data')}</span>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   </Link>
                 </div>
               </div>

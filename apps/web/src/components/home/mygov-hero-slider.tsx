@@ -14,6 +14,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { AshokaEmblem } from '@/components/layout/gov-emblem';
+import { useTranslation } from '@/providers/i18n-context';
 
 interface Slide {
   id: string;
@@ -71,6 +72,7 @@ const SLIDES: Slide[] = [
 
 export function MyGovHeroSlider() {
   const [current, setCurrent] = useState(0);
+  const { locale, t } = useTranslation();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -83,6 +85,33 @@ export function MyGovHeroSlider() {
   const prevSlide = () => setCurrent((prev) => (prev - 1 + SLIDES.length) % SLIDES.length);
 
   const slide = SLIDES[current];
+
+  const slideTitle =
+    slide.id === 'bhu-aadhaar'
+      ? t('hero.slide1_title', slide.goldenTitle)
+      : slide.id === 'svamitva'
+      ? t('hero.slide2_title', slide.goldenTitle)
+      : slide.id === 'participatory-gis'
+      ? t('hero.slide3_title', slide.goldenTitle)
+      : slide.goldenTitle;
+
+  const slideTagline =
+    slide.id === 'bhu-aadhaar'
+      ? t('hero.slide1_desc', slide.tagline)
+      : slide.id === 'svamitva'
+      ? t('hero.slide2_desc', slide.tagline)
+      : slide.id === 'participatory-gis'
+      ? t('hero.slide3_desc', slide.tagline)
+      : slide.tagline;
+
+  const slideCta =
+    slide.id === 'bhu-aadhaar'
+      ? t('hero.slide1_cta1', slide.ctaText)
+      : slide.id === 'svamitva'
+      ? t('hero.slide2_cta1', slide.ctaText)
+      : slide.id === 'participatory-gis'
+      ? t('hero.slide3_cta1', slide.ctaText)
+      : slide.ctaText;
 
   return (
     <div className="relative w-full overflow-hidden text-white min-h-[380px] sm:min-h-[440px] lg:min-h-[480px] select-none">
@@ -112,7 +141,7 @@ export function MyGovHeroSlider() {
                 {/* Golden Display Title (Like MyGov's stylized text) */}
                 <div className="space-y-1">
                   <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight font-heading drop-shadow-md bg-gradient-to-r from-[#ffe082] via-[#ffb300] to-[#ff8f00] bg-clip-text text-transparent">
-                    {slide.goldenTitle}
+                    {slideTitle}
                   </h1>
                   <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white font-serif italic drop-shadow">
                     {slide.subtitle}
@@ -121,7 +150,7 @@ export function MyGovHeroSlider() {
 
                 {/* Tagline */}
                 <p className="text-slate-200 text-sm sm:text-base max-w-2xl leading-relaxed pt-1">
-                  {slide.tagline}
+                  {slideTagline}
                 </p>
 
                 {/* Direct CTA */}
@@ -131,7 +160,7 @@ export function MyGovHeroSlider() {
                     className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-[#f37021] hover:bg-[#e05e10] text-white font-extrabold text-sm sm:text-base shadow-xl transition-all active:scale-95"
                   >
                     <MapPin className="w-4 h-4" />
-                    <span>{slide.ctaText}</span>
+                    <span>{slideCta}</span>
                   </Link>
                 </div>
               </div>
