@@ -1,13 +1,22 @@
 from typing import Any
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.db import get_db
 from app.core.limiter import limiter
 from app.models.enums import ResourceStatus, ResourceType, ResourceVisibility
-from app.models.resources import Resource
+from app.models.identity import User
+from app.models.resources import Policy, PolicyFeedback, Resource
+from app.schemas.policies import (
+    PolicyFeedbackCreate,
+    PolicyFeedbackItem,
+    PolicyFeedbackListResponse,
+)
 
 router = APIRouter(prefix="/policies", tags=["Policies"])
 
@@ -118,5 +127,160 @@ async def download_policy_file(
     from app.api.v1.routes.resources import download_resource_file
 
     return await download_resource_file(resource_id=policy_id, db=db)
+
+
+async def _resolve_policy_resource_id(policy_id: str, db: AsyncSession) -> UUID:
+    target_uuid: UUID | None = None
+    try:
+        target_uuid = UUID(policy_id)
+    except ValueError:
+        pass
+
+    if target_uuid:
+        res = await db.execute(select(Policy).where(Policy.resource_id == target_uuid))
+        if res.scalar_one_or_none():
+            return target_uuid
+
+    query = select(Resource).where(
+        Resource.resource_type == ResourceType.POLICY,
+    )
+    if target_uuid:
+        query = query.where(Resource.id == target_uuid)
+    else:
+        query = query.where(Resource.slug == policy_id)
+
+    res = await db.execute(query)
+    resource = res.scalar_one_or_none()
+    if not resource:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Policy '{policy_id}' not found.",
+        )
+    return resource.id
+
+
+@router.get(
+    "/{policy_id}/feedback",
+    response_model=PolicyFeedbackListResponse,
+    summary="List public consultation comments and discussion feedback on a policy",
+)
+@limiter.limit("60/minute")
+async def list_policy_feedback(
+    policy_id: str,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    resolved_id = await _resolve_policy_resource_id(policy_id, db)
+
+    query = (
+        select(PolicyFeedback)
+        .options(selectinload(PolicyFeedback.user))
+        .where(
+            PolicyFeedback.policy_id == resolved_id,
+            PolicyFeedback.is_flagged == False,
+        )
+        .order_by(PolicyFeedback.created_at.asc())
+    )
+    result = await db.execute(query)
+    all_feedbacks = result.scalars().all()
+
+    feedback_map: dict[UUID, dict[str, Any]] = {}
+    top_level: list[dict[str, Any]] = []
+
+    for f in all_feedbacks:
+        user_role = "Citizen"
+        if f.user:
+            if f.user.is_superuser:
+                user_role = "Platform Administrator"
+            elif isinstance(f.user.profile, dict):
+                user_role = f.user.profile.get("role") or "Citizen"
+
+        item = {
+            "id": f.id,
+            "policy_id": f.policy_id,
+            "user_id": f.user_id,
+            "user_name": f.user.full_name if f.user else "Verified Citizen",
+            "user_email": f.user.email if f.user else "citizen@gov.in",
+            "user_role": user_role,
+            "parent_id": f.parent_id,
+            "comment": f.comment,
+            "created_at": f.created_at,
+            "replies": [],
+        }
+        feedback_map[f.id] = item
+
+    for f in all_feedbacks:
+        item = feedback_map[f.id]
+        if f.parent_id and f.parent_id in feedback_map:
+            feedback_map[f.parent_id]["replies"].append(item)
+        else:
+            top_level.append(item)
+
+    return {
+        "policy_id": str(resolved_id),
+        "total_comments": len(all_feedbacks),
+        "items": top_level,
+    }
+
+
+@router.post(
+    "/{policy_id}/feedback",
+    response_model=PolicyFeedbackItem,
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit public consultation comment or feedback on a policy",
+)
+@limiter.limit("20/minute")
+async def create_policy_feedback(
+    policy_id: str,
+    payload: PolicyFeedbackCreate,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    resolved_id = await _resolve_policy_resource_id(policy_id, db)
+
+    if payload.parent_id:
+        parent_res = await db.execute(
+            select(PolicyFeedback).where(
+                PolicyFeedback.id == payload.parent_id,
+                PolicyFeedback.policy_id == resolved_id,
+            )
+        )
+        if not parent_res.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Parent feedback comment does not exist for this policy.",
+            )
+
+    feedback = PolicyFeedback(
+        policy_id=resolved_id,
+        user_id=current_user.id,
+        parent_id=payload.parent_id,
+        comment=payload.comment.strip(),
+    )
+    db.add(feedback)
+    await db.commit()
+    await db.refresh(feedback)
+
+    user_role = "Citizen"
+    if current_user.is_superuser:
+        user_role = "Platform Administrator"
+    elif isinstance(current_user.profile, dict):
+        user_role = current_user.profile.get("role") or "Citizen"
+
+    return PolicyFeedbackItem(
+        id=feedback.id,
+        policy_id=feedback.policy_id,
+        user_id=feedback.user_id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        user_role=user_role,
+        parent_id=feedback.parent_id,
+        comment=feedback.comment,
+        created_at=feedback.created_at,
+        replies=[],
+    )
 
 

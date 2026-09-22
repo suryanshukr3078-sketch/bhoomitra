@@ -1,6 +1,9 @@
 from datetime import date, datetime
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from app.models.identity import User
 
 from geoalchemy2 import Geometry
 from pgvector.sqlalchemy import Vector
@@ -461,6 +464,12 @@ class Policy(TimestampMixin, Base):
         back_populates="policy",
     )
 
+    feedbacks: Mapped[list["PolicyFeedback"]] = relationship(
+        back_populates="policy",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
             """
@@ -475,6 +484,72 @@ class Policy(TimestampMixin, Base):
             "jurisdiction_code",
             "lifecycle_status",
         ),
+    )
+
+
+class PolicyFeedback(
+    UUIDPrimaryKeyMixin,
+    TimestampMixin,
+    Base,
+):
+    __tablename__ = "policy_feedbacks"
+
+    policy_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey(
+            "policies.resource_id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    user_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    parent_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey(
+            "policy_feedbacks.id",
+            ondelete="CASCADE",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    comment: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    is_flagged: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=false(),
+    )
+
+    policy: Mapped["Policy"] = relationship(
+        back_populates="feedbacks",
+    )
+
+    user: Mapped["User"] = relationship("User")
+
+    replies: Mapped[list["PolicyFeedback"]] = relationship(
+        back_populates="parent",
+        cascade="all, delete-orphan",
+    )
+
+    parent: Mapped["PolicyFeedback | None"] = relationship(
+        back_populates="replies",
+        remote_side="PolicyFeedback.id",
     )
 
 

@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { env } from '@/lib/environment';
 import { AttachedFilePreview } from '@/components/resources/attached-file-preview';
+import { PolicyFeedbackSection } from '@/components/policies/policy-feedback-section';
 
 interface PolicyDetail {
   id: string;
@@ -362,6 +363,9 @@ export default function PolicyDetailPage() {
           </p>
         </div>
       </article>
+
+      {/* Public Consultation & Discussion Forum */}
+      <PolicyFeedbackSection policyId={policy.id} />
 
       {/* Back to List Button */}
       <div className="pt-2">

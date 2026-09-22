@@ -11,6 +11,7 @@ from app.models.provenance import (
 )
 from app.models.resources import (
     Policy,
+    PolicyFeedback,
     ResearchPaper,
     Resource,
     ResourceVersion,
@@ -26,6 +27,7 @@ __all__ = [
     "ResourceVersion",
     "ResearchPaper",
     "Policy",
+    "PolicyFeedback",
     "SpatialLayer",
     "SpatialFeature",
     "ProvenanceActivity",
