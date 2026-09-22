@@ -253,26 +253,39 @@ _EMAIL_LOGS: list[dict[str, Any]] = []
 
 def get_effective_email_config() -> dict[str, Any]:
     global _RUNTIME_CONFIG
-    if _RUNTIME_CONFIG.get("password") or _RUNTIME_CONFIG.get("api_key"):
-        return dict(_RUNTIME_CONFIG)
     import os
-    if os.environ.get("PYTEST_CURRENT_TEST") or getattr(settings, "app_env", "") == "testing":
-        return dict(_RUNTIME_CONFIG)
-    try:
-        import psycopg
-        raw_url = str(settings.database_url)
-        sync_url = raw_url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+asyncpg://", "postgresql://")
-        with psycopg.connect(sync_url, connect_timeout=4) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT value FROM system_settings WHERE key = 'smtp_config'")
-                row = cur.fetchone()
-                if row and row[0]:
-                    val = row[0] if isinstance(row[0], dict) else json.loads(row[0])
-                    if isinstance(val, dict):
-                        _RUNTIME_CONFIG.update(val)
-    except Exception as e:
-        logger.debug(f"[EmailService] Could not load DB smtp config: {e}")
-    return dict(_RUNTIME_CONFIG)
+    if not _RUNTIME_CONFIG and not (os.environ.get("PYTEST_CURRENT_TEST") or getattr(settings, "app_env", "") == "testing"):
+        try:
+            import psycopg
+            raw_url = str(settings.database_url)
+            sync_url = raw_url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+asyncpg://", "postgresql://")
+            with psycopg.connect(sync_url, connect_timeout=4) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT value FROM system_settings WHERE key = 'smtp_config'")
+                    row = cur.fetchone()
+                    if row and row[0]:
+                        val = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+                        if isinstance(val, dict):
+                            _RUNTIME_CONFIG.update(val)
+        except Exception as e:
+            logger.debug(f"[EmailService] Could not load DB smtp config: {e}")
+
+    effective_port = int(_RUNTIME_CONFIG.get("port") or settings.smtp_port or 587)
+    effective_ssl = bool(_RUNTIME_CONFIG.get("use_ssl") if "use_ssl" in _RUNTIME_CONFIG else (settings.smtp_ssl or effective_port == 465))
+    effective_tls = bool(_RUNTIME_CONFIG.get("use_tls") if "use_tls" in _RUNTIME_CONFIG else (settings.smtp_tls and not effective_ssl))
+
+    effective: dict[str, Any] = {
+        "user": settings.smtp_user,
+        "password": settings.smtp_password,
+        "host": settings.smtp_host,
+        "port": effective_port,
+        "use_ssl": effective_ssl,
+        "use_tls": effective_tls,
+        "from_email": settings.smtp_from_email,
+        "from_name": settings.smtp_from_name,
+    }
+    effective.update({k: v for k, v in _RUNTIME_CONFIG.items() if v is not None and v != ""})
+    return effective
 
 
 def get_runtime_smtp_config() -> dict[str, Any]:
@@ -552,21 +565,27 @@ def send_email_sync(
             html_body=html_body,
             text_body=text_body,
         )
-        record_email_log(
-            to_email=to_email,
-            subject=subject,
-            html_body=html_body,
-            status="sent" if http_success else "failed",
-            message=http_msg,
-            channel=provider,
-            details={"provider": provider},
-        )
-        return EmailDeliveryResult(
-            success=http_success,
-            status="sent" if http_success else "failed",
-            message=http_msg,
-            details={"provider": provider},
-        )
+        if http_success:
+            record_email_log(
+                to_email=to_email,
+                subject=subject,
+                html_body=html_body,
+                status="sent",
+                message=http_msg,
+                channel=provider,
+                details={"provider": provider},
+            )
+            return EmailDeliveryResult(
+                success=True,
+                status="sent",
+                message=http_msg,
+                details={"provider": provider},
+            )
+        else:
+            logger.warning(
+                f"[EmailService] HTTP API dispatch ({provider}) failed: {http_msg}. "
+                "Falling back to standard SMTP dispatch..."
+            )
 
     # 2. Standard SMTP Dispatch
     smtp_user = cfg.get("user") or settings.smtp_user
@@ -597,8 +616,12 @@ def send_email_sync(
     from email.header import Header
     from email.utils import formataddr
 
-    from_email = cfg.get("from_email") or settings.smtp_from_email or smtp_user
-    from_name = cfg.get("from_name") or settings.smtp_from_name
+    host = cfg.get("host") or settings.smtp_host or "smtp.gmail.com"
+    if "gmail" in host.lower() and smtp_user and "@" in smtp_user:
+        from_email = smtp_user
+    else:
+        from_email = cfg.get("from_email") or settings.smtp_from_email or smtp_user
+    from_name = cfg.get("from_name") or settings.smtp_from_name or "Team CodeNova • Bhoomitra Platform"
     sender_header = formataddr((str(Header(from_name, "utf-8")), from_email)) if from_name else from_email
 
     msg = MIMEMultipart("alternative")
