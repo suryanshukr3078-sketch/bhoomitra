@@ -910,118 +910,148 @@ export function MapView({
           )}
         </div>
 
-        {/* Measurement Button next to Map Switcher */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md text-xs">
-          <button
-            type="button"
-            onClick={() => {
-              if (measureMode === 'distance') {
-                setMeasureMode('none');
-                setMeasurePoints([]);
-                setMeasuredDistance(0);
-              } else {
-                setMeasureMode('distance');
-                setMeasurePoints([]);
-                setMeasuredDistance(0);
-              }
-            }}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
-              measureMode === 'distance'
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-            title="Click points to measure distance (दूरी मापें)"
-          >
-            <Ruler className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Measure</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (measureMode === 'area') {
-                setMeasureMode('none');
-                setMeasurePoints([]);
-                setMeasuredArea(0);
-              } else {
-                setMeasureMode('area');
-                setMeasurePoints([]);
-                setMeasuredArea(0);
-              }
-            }}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
-              measureMode === 'area'
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-            title="Click polygon vertices to measure land area (क्षेत्रफल मापें)"
-          >
-            <Crosshair className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Area</span>
-          </button>
-
+        {/* Measurement Stack: Readout Card (when measuring) + Measure / Area Buttons */}
+        <div className="flex flex-col gap-2 items-start">
+          {/* Measurement Readout Card */}
           {measureMode !== 'none' && (
+            <div className="p-3 bg-slate-900/98 border border-emerald-500/70 rounded-2xl shadow-2xl backdrop-blur-xl text-xs text-white space-y-1.5 animate-in fade-in slide-in-from-bottom-2 min-w-[240px] max-w-xs border-l-4 border-l-emerald-500">
+              <div className="font-bold flex items-center justify-between gap-3 text-emerald-400">
+                <span className="flex items-center gap-1.5">
+                  <Ruler className="w-3.5 h-3.5" />
+                  {measureMode === 'distance' ? 'Linear Distance (दूरी)' : 'Enclosed Area (क्षेत्रफल)'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMeasureMode('none');
+                    setMeasurePoints([]);
+                    setMeasuredDistance(0);
+                    setMeasuredArea(0);
+                  }}
+                  className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                  title="Close Measurement"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {measurePoints.length === 0 ? (
+                <p className="text-[11px] text-slate-300 py-0.5">
+                  Click anywhere on the map to add your first point.
+                </p>
+              ) : measureMode === 'distance' ? (
+                <div className="font-mono text-sm font-extrabold text-blue-300">
+                  {measuredDistance > 1000
+                    ? `${(measuredDistance / 1000).toFixed(2)} km`
+                    : `${measuredDistance.toFixed(1)} meters`}
+                  <span className="text-[10px] text-slate-400 font-normal ml-1.5">
+                    ({measurePoints.length} {measurePoints.length === 1 ? 'point' : 'vertices'})
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-0.5 font-mono">
+                  <div className="text-base font-extrabold text-emerald-400">
+                    {(measuredArea / 10000).toFixed(2)} Hectares
+                  </div>
+                  <div className="text-[11px] text-slate-300">
+                    {(measuredArea * 0.000247105).toFixed(2)} Acres &bull; {measuredArea.toLocaleString(undefined, { maximumFractionDigits: 0 })} m²
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-sans">
+                    {measurePoints.length} boundary vertices marked
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                <span>{measurePoints.length > 0 ? 'Click map for next vertex' : 'Tool active'}</span>
+                {measurePoints.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMeasurePoints([]);
+                      setMeasuredDistance(0);
+                      setMeasuredArea(0);
+                    }}
+                    className="text-amber-400 hover:text-amber-300 font-semibold hover:underline"
+                  >
+                    Reset Points
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Measurement Buttons */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xl backdrop-blur-md text-xs">
             <button
               type="button"
               onClick={() => {
-                setMeasureMode('none');
-                setMeasurePoints([]);
-                setMeasuredDistance(0);
-                setMeasuredArea(0);
+                if (measureMode === 'distance') {
+                  setMeasureMode('none');
+                  setMeasurePoints([]);
+                  setMeasuredDistance(0);
+                } else {
+                  setMeasureMode('distance');
+                  setMeasurePoints([]);
+                  setMeasuredDistance(0);
+                }
               }}
-              className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
-              title="Clear measurement"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
+                measureMode === 'distance'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Click points to measure distance (दूरी मापें)"
             >
-              <X className="w-3.5 h-3.5" />
+              <Ruler className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Measure</span>
             </button>
-          )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (measureMode === 'area') {
+                  setMeasureMode('none');
+                  setMeasurePoints([]);
+                  setMeasuredArea(0);
+                } else {
+                  setMeasureMode('area');
+                  setMeasurePoints([]);
+                  setMeasuredArea(0);
+                }
+              }}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
+                measureMode === 'area'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Click polygon vertices to measure land area (क्षेत्रफल मापें)"
+            >
+              <Crosshair className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Area</span>
+            </button>
+
+            {measureMode !== 'none' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMeasureMode('none');
+                  setMeasurePoints([]);
+                  setMeasuredDistance(0);
+                  setMeasuredArea(0);
+                }}
+                className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                title="Clear measurement"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Measurement Readout Toast / Badge */}
-      {measureMode !== 'none' && measurePoints.length > 0 && (
-        <div className="absolute top-24 left-4 z-20 p-3 bg-slate-900/98 border border-blue-500/60 rounded-2xl shadow-2xl backdrop-blur-md text-xs text-white space-y-1 animate-in fade-in">
-          <div className="font-bold text-blue-400 flex items-center justify-between gap-3">
-            <span className="flex items-center gap-1">
-              <Ruler className="w-3.5 h-3.5" />
-              {measureMode === 'distance' ? 'Linear Perimeter:' : 'Enclosed Area:'}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setMeasureMode('none');
-                setMeasurePoints([]);
-              }}
-              className="text-slate-400 hover:text-white"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-          {measureMode === 'distance' ? (
-            <div className="font-mono text-sm font-extrabold text-blue-300">
-              {measuredDistance > 1000
-                ? `${(measuredDistance / 1000).toFixed(2)} km`
-                : `${measuredDistance.toFixed(1)} meters`}
-              <span className="text-[10px] text-slate-400 font-normal ml-1">
-                ({measurePoints.length} vertices)
-              </span>
-            </div>
-          ) : (
-            <div className="space-y-0.5 font-mono">
-              <div className="text-sm font-extrabold text-emerald-400">
-                {(measuredArea / 10000).toFixed(2)} Hectares
-              </div>
-              <div className="text-[11px] text-slate-300">
-                {(measuredArea * 0.000247105).toFixed(2)} Acres &bull; {measuredArea.toFixed(0)} m²
-              </div>
-            </div>
-          )}
-          <p className="text-[10px] text-slate-400">Click on map to add vertex point</p>
-        </div>
-      )}
-
       {/* Live Map Heads-Up Display (HUD) */}
-      <div className="absolute bottom-2 left-64 z-10 hidden sm:flex items-center gap-3 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl backdrop-blur-md text-[11px] text-slate-300 font-mono shadow-md pointer-events-none">
+      <div className="absolute bottom-2 left-80 z-10 hidden sm:flex items-center gap-3 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl backdrop-blur-md text-[11px] text-slate-300 font-mono shadow-md pointer-events-none">
         <span className="flex items-center gap-1 text-emerald-400 font-bold">
           <Compass className="w-3.5 h-3.5" />
           {cursorCoords[1].toFixed(4)}° N, {cursorCoords[0].toFixed(4)}° E
