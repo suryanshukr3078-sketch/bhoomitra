@@ -914,12 +914,20 @@ export function MapView({
         <div className="flex flex-col gap-2 items-start">
           {/* Measurement Readout Card */}
           {measureMode !== 'none' && (
-            <div className="p-3 bg-slate-900/98 border border-emerald-500/70 rounded-2xl shadow-2xl backdrop-blur-xl text-xs text-white space-y-1.5 animate-in fade-in slide-in-from-bottom-2 min-w-[240px] max-w-xs border-l-4 border-l-emerald-500">
-              <div className="font-bold flex items-center justify-between gap-3 text-emerald-400">
-                <span className="flex items-center gap-1.5">
-                  <Ruler className="w-3.5 h-3.5" />
-                  {measureMode === 'distance' ? 'Linear Distance (दूरी)' : 'Enclosed Area (क्षेत्रफल)'}
-                </span>
+            <div
+              style={{ backgroundColor: '#090d16' }}
+              className="p-3.5 bg-slate-950 border-2 border-emerald-500/80 rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs text-white space-y-2.5 animate-in fade-in slide-in-from-bottom-2 min-w-[270px] max-w-sm ring-1 ring-emerald-400/30"
+            >
+              {/* Card Header */}
+              <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="p-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    <Ruler className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="font-extrabold text-white text-xs tracking-wide">
+                    {measureMode === 'distance' ? 'Linear Distance (दूरी)' : 'Enclosed Area (क्षेत्रफल)'}
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -928,42 +936,67 @@ export function MapView({
                     setMeasuredDistance(0);
                     setMeasuredArea(0);
                   }}
-                  className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
+                  className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors"
                   title="Close Measurement"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
+              {/* Card Body */}
               {measurePoints.length === 0 ? (
-                <p className="text-[11px] text-slate-300 py-0.5">
-                  Click anywhere on the map to add your first point.
-                </p>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 text-xs font-medium">
+                  📍 Click anywhere on the map to add your first point.
+                </div>
               ) : measureMode === 'distance' ? (
-                <div className="font-mono text-sm font-extrabold text-blue-300">
-                  {measuredDistance > 1000
-                    ? `${(measuredDistance / 1000).toFixed(2)} km`
-                    : `${measuredDistance.toFixed(1)} meters`}
-                  <span className="text-[10px] text-slate-400 font-normal ml-1.5">
-                    ({measurePoints.length} {measurePoints.length === 1 ? 'point' : 'vertices'})
-                  </span>
+                <div className="space-y-1.5">
+                  <div className="text-2xl font-black text-sky-300 font-mono tracking-tight drop-shadow-sm">
+                    {measuredDistance > 1000
+                      ? `${(measuredDistance / 1000).toFixed(2)} km`
+                      : `${measuredDistance.toFixed(1)} meters`}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-100 font-mono bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                    <span className="text-sky-200">
+                      {measuredDistance > 1000
+                        ? `${measuredDistance.toFixed(0)} meters`
+                        : `${(measuredDistance * 3.28084).toFixed(1)} feet`}
+                    </span>
+                    <span className="text-slate-500">&bull;</span>
+                    <span className="text-slate-300">
+                      {measurePoints.length} {measurePoints.length === 1 ? 'point' : 'vertices'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-300 pt-0.5">
+                    <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse inline-block" />
+                    <span>Measuring continuous path</span>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-0.5 font-mono">
-                  <div className="text-base font-extrabold text-emerald-400">
+                <div className="space-y-1.5">
+                  <div className="text-2xl font-black text-emerald-400 font-mono tracking-tight drop-shadow-sm">
                     {(measuredArea / 10000).toFixed(2)} Hectares
                   </div>
-                  <div className="text-[11px] text-slate-300">
-                    {(measuredArea * 0.000247105).toFixed(2)} Acres &bull; {measuredArea.toLocaleString(undefined, { maximumFractionDigits: 0 })} m²
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-100 font-mono bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                    <span className="text-amber-300">
+                      {(measuredArea * 0.000247105).toFixed(2)} Acres
+                    </span>
+                    <span className="text-slate-500 font-bold">&bull;</span>
+                    <span className="text-sky-300">
+                      {measuredArea.toLocaleString(undefined, { maximumFractionDigits: 0 })} m²
+                    </span>
                   </div>
-                  <div className="text-[10px] text-slate-400 font-sans">
-                    {measurePoints.length} boundary vertices marked
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-300 pt-0.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                    <span>{measurePoints.length} boundary vertices marked</span>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
-                <span>{measurePoints.length > 0 ? 'Click map for next vertex' : 'Tool active'}</span>
+              {/* Card Footer */}
+              <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-800 text-slate-300">
+                <span className="font-medium text-slate-300">
+                  {measurePoints.length > 0 ? 'Click map for next vertex' : 'Tool active'}
+                </span>
                 {measurePoints.length > 0 && (
                   <button
                     type="button"
@@ -972,7 +1005,7 @@ export function MapView({
                       setMeasuredDistance(0);
                       setMeasuredArea(0);
                     }}
-                    className="text-amber-400 hover:text-amber-300 font-semibold hover:underline"
+                    className="text-amber-400 hover:text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 transition-colors"
                   >
                     Reset Points
                   </button>
